@@ -77,7 +77,7 @@ export const flowRunService = (log: FastifyBaseLogger) => ({
 
         if (!params.includeArchived) {
             query = query.andWhere({
-                archivedAt: Not(IsNull()),
+                archivedAt: IsNull(),
             })
         }
 
@@ -604,6 +604,7 @@ async function queueOrCreateInstantly(params: CreateParams, log: FastifyBaseLogg
         stepNameToTest: params.stepNameToTest,
         created: now,
         updated: now,
+        tags: [],
         steps: {},
         triggeredBy: params.triggeredBy,
     }
