@@ -74,7 +74,7 @@ Create a new tenant
   "ownerEmail": "owner@company.com",
   "ownerFirstName": "John",
   "ownerLastName": "Doe",
-  "ownerPassword": "SecurePassword123"
+  "ownerPassword": ""
 }
 ```
 

@@ -191,7 +191,7 @@ ORDER BY p.created DESC;
 ```
 
 ### 4. Create Tenant Manually
-
+##SecurePassword123
 ```bash
 # As super admin, just use the signup API
 curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
@@ -200,7 +200,7 @@ curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
     "email": "tenant@company.com",
     "firstName": "Admin",
     "lastName": "User",
-    "password": "SecurePassword123",
+    "password": "",
     "trackEvents": false,
     "newsLetter": false
   }'
