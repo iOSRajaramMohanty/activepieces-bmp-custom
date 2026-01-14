@@ -61,9 +61,11 @@ import { ApTableEditorPage } from '../routes/tables/id';
 import { TemplatesPage } from '../routes/templates';
 import { TodosPage } from '../routes/todos';
 import { TodoTestingPage } from '../routes/todos/id';
+import SuperAdminDashboard from '../routes/super-admin';
 
 import { AfterImportFlowRedirect } from './after-import-flow-redirect';
 import { DefaultRoute } from './default-route';
+import { PlatformDefaultRoute } from './platform-default-route';
 import { RoutePermissionGuard } from './permission-guard';
 import {
   ProjectRouterWrapper,
@@ -362,7 +364,7 @@ const routes = [
     element: (
       <PlatformLayout>
         <PageTitle title="Platform">
-          <Navigate to="/platform/projects" />
+          <PlatformDefaultRoute />
         </PageTitle>
       </PlatformLayout>
     ),
@@ -563,6 +565,16 @@ const routes = [
       <PlatformLayout>
         <PageTitle title="Platform Security">
           <Navigate to="/platform/security/audit-logs" replace />
+        </PageTitle>
+      </PlatformLayout>
+    ),
+  },
+  {
+    path: '/super-admin',
+    element: (
+      <PlatformLayout>
+        <PageTitle title="Super Admin Dashboard">
+          <SuperAdminDashboard />
         </PageTitle>
       </PlatformLayout>
     ),

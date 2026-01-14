@@ -62,8 +62,14 @@ const ApplyTags = ({ selectedPieces, onApplyTags }: ApplyTagsProps) => {
       });
     },
     onSuccess: () => {
-      toast(t('Tags applied.'), {});
+      toast.success(t('Tags applied.'), {});
       onApplyTags();
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.body?.message || error?.message || t('Something went wrong');
+      toast.error(t('Failed to apply tags'), {
+        description: errorMessage,
+      });
     },
   });
 

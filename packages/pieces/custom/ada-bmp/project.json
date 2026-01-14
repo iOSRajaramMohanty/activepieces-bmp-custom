@@ -1,0 +1,47 @@
+{
+  "name": "pieces-ada-bmp",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/pieces/custom/ada-bmp/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ]
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/pieces/custom/ada-bmp",
+        "tsConfig": "packages/pieces/custom/ada-bmp/tsconfig.lib.json",
+        "packageJson": "packages/pieces/custom/ada-bmp/package.json",
+        "main": "packages/pieces/custom/ada-bmp/src/index.ts",
+        "assets": [
+          "packages/pieces/custom/ada-bmp/*.md"
+        ],
+        "buildableProjectDepsInPackageJsonType": "dependencies",
+        "updateBuildableProjectDepsInPackageJson": true,
+        "clean": false
+      },
+      "dependsOn": [
+        "^build",
+        "prebuild"
+      ]
+    },
+    "prebuild": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/pieces/custom/ada-bmp",
+        "command": "bun install --no-save --silent"
+      },
+      "dependsOn": [
+        "^build"
+      ]
+    }
+  },
+  "tags": []
+}

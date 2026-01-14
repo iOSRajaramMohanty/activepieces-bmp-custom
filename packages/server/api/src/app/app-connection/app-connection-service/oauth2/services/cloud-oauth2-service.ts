@@ -70,7 +70,26 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
             }
         }
         catch (e: unknown) {
-            log.error(e)
+            // Extract detailed error information
+            const axiosError = e as any
+            const responseStatus = axiosError?.response?.status
+            const responseData = axiosError?.response?.data
+            const errorMessage = e instanceof Error ? e.message : String(e)
+            
+            log.error({
+                error: e,
+                pieceName,
+                code: request.code?.substring(0, 20) + '...', // Log partial code for debugging
+                clientId: request.clientId,
+                tokenUrl: request.tokenUrl,
+                authorizationMethod: request.authorizationMethod,
+                hasCodeVerifier: !!request.codeVerifier,
+                edition: system.getEdition(),
+                responseStatus,
+                responseData,
+                errorMessage,
+            }, '[CloudOAuth2] Failed to claim authorization code')
+            
             throw new ActivepiecesError({
                 code: ErrorCode.INVALID_CLOUD_CLAIM,
                 params: {

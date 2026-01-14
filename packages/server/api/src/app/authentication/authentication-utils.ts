@@ -15,6 +15,14 @@ export const authenticationUtils = {
         email,
         platformId,
     }: AssertUserIsInvitedToPlatformOrProjectParams): Promise<void> {
+        // Allow multiple signups in development mode
+        const environment = system.get(AppSystemProp.ENVIRONMENT)
+        const allowMultipleSignups = system.get(AppSystemProp.DEV_ALLOW_MULTIPLE_SIGNUPS) === 'true'
+        if (environment === ApEnvironment.DEVELOPMENT && allowMultipleSignups) {
+            log.info('[authenticationUtils] Skipping invitation check in development mode')
+            return
+        }
+        
         const isInvited = await userInvitationsService(log).hasAnyAcceptedInvitations({
             platformId,
             email,

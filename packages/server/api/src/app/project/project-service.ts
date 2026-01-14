@@ -19,6 +19,7 @@ import { Brackets, IsNull, Not, ObjectLiteral, SelectQueryBuilder } from 'typeor
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedStore } from '../database/redis-connections'
 import { system } from '../helper/system/system'
+import { platformService } from '../platform/platform.service'
 import { userService } from '../user/user-service'
 import { ProjectEntity } from './project-entity'
 import { projectHooks } from './project-hooks'
@@ -220,10 +221,17 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
         return
     }
 
+    // Get platform owner ID to make their personal projects visible to all
+    const platform = await platformService.getOneOrThrow(platformId)
+    const platformOwnerId = platform.ownerId
+
     queryBuilder.andWhere(new Brackets(qb => {
         qb.where(
             'project."ownerId" = :userId AND project.type = :personalType',
             { userId, personalType: ProjectType.PERSONAL },
+        ).orWhere(
+            'project."ownerId" = :platformOwnerId AND project.type = :personalType',
+            { platformOwnerId, personalType: ProjectType.PERSONAL },
         ).orWhere(
             'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
             { userId, platformId },

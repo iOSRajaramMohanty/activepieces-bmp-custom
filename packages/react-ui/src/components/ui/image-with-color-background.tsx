@@ -63,6 +63,9 @@ const ImageWithColorBackground = ({
           alt={alt}
           onLoad={handleLoad}
           onError={handleError}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="low"
           className={cn(
             `transition-opacity duration-500 w-full h-full object-contain`,
             {

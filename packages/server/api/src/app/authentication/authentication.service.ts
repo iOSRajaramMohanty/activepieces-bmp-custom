@@ -1,6 +1,6 @@
 import { OtpType } from '@activepieces/ee-shared'
-import { cryptoUtils } from '@activepieces/server-shared'
-import { ActivepiecesError, ApEdition, ApFlagId, assertNotNullOrUndefined, AuthenticationResponse, ErrorCode, isNil, PlatformRole, PlatformWithoutSensitiveData, ProjectType, User, UserIdentity, UserIdentityProvider } from '@activepieces/shared'
+import { AppSystemProp, cryptoUtils } from '@activepieces/server-shared'
+import { ActivepiecesError, ApEdition, ApFlagId, assertNotNullOrUndefined, AuthenticationResponse, ErrorCode, InvitationType, isNil, PlatformRole, PlatformWithoutSensitiveData, ProjectType, User, UserIdentity, UserIdentityProvider } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { otpService } from '../ee/authentication/otp/otp-service'
 import { flagService } from '../flags/flag.service'
@@ -15,6 +15,27 @@ import { userIdentityService } from './user-identity/user-identity-service'
 
 export const authenticationService = (log: FastifyBaseLogger) => ({
     async signUp(params: SignUpParams): Promise<AuthenticationResponse> {
+        // If platformId is not provided, check for accepted invitations first
+        if (isNil(params.platformId)) {
+            // Check if there's an accepted invitation for this email
+            const allAcceptedInvitations = await userInvitationsService(log).getAcceptedInvitationsByEmailWithoutPlatform({
+                email: params.email,
+            })
+            
+            if (allAcceptedInvitations.length > 0) {
+                // Use the first platform invitation's platformId
+                const platformInvitation = allAcceptedInvitations.find(inv => inv.type === InvitationType.PLATFORM)
+                if (platformInvitation) {
+                    log.info({ 
+                        email: params.email,
+                        invitationId: platformInvitation.id,
+                        platformId: platformInvitation.platformId
+                    }, '[signUp] Found accepted invitation, using invitation platformId')
+                    params.platformId = platformInvitation.platformId
+                }
+            }
+        }
+        
         if (!isNil(params.platformId)) {
             await authenticationUtils.assertEmailAuthIsEnabled({
                 platformId: params.platformId,
@@ -25,7 +46,9 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 platformId: params.platformId,
             })
         }
+        
         if (isNil(params.platformId)) {
+            // No invitation found, create new platform
             const userIdentity = await userIdentityService(log).create({
                 ...params,
                 verified: params.provider === UserIdentityProvider.GOOGLE || params.provider === UserIdentityProvider.JWT || params.provider === UserIdentityProvider.SAML,
@@ -37,18 +60,140 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             email: params.email,
             platformId: params.platformId,
         })
+        
+        // Get the accepted invitation to determine the platform role
+        const acceptedInvitations = await userInvitationsService(log).getAcceptedInvitationsByEmail({
+            email: params.email,
+            platformId: params.platformId,
+        })
+        log.info({ 
+            email: params.email, 
+            platformId: params.platformId,
+            invitationsCount: acceptedInvitations.length,
+            invitations: acceptedInvitations.map(inv => ({ 
+                id: inv.id, 
+                type: inv.type, 
+                platformRole: inv.platformRole,
+                status: inv.status 
+            }))
+        }, '[signUp] Found accepted invitations')
+        
+        const platformInvitation = acceptedInvitations.find(inv => inv.type === InvitationType.PLATFORM)
+        
+        // Ensure we have a valid platformRole from invitation
+        let invitedPlatformRole = PlatformRole.MEMBER
+        if (platformInvitation?.platformRole) {
+            invitedPlatformRole = platformInvitation.platformRole
+        } else if (platformInvitation) {
+            log.warn({ 
+                email: params.email,
+                invitationId: platformInvitation.id,
+                invitationType: platformInvitation.type,
+                platformRole: platformInvitation.platformRole
+            }, '[signUp] WARNING: Platform invitation found but platformRole is null/undefined, defaulting to MEMBER')
+        } else {
+            log.warn({ 
+                email: params.email,
+                platformId: params.platformId,
+                invitationsCount: acceptedInvitations.length
+            }, '[signUp] WARNING: No platform invitation found, defaulting to MEMBER')
+        }
+        
+        log.info({ 
+            email: params.email,
+            platformInvitationId: platformInvitation?.id,
+            invitedPlatformRole,
+            platformRoleFromInvitation: platformInvitation?.platformRole,
+            hasPlatformInvitation: !!platformInvitation
+        }, '[signUp] Using platform role from invitation')
+        
         const userIdentity = await userIdentityService(log).create({
             ...params,
             verified: true,
         })
+        
+        // Check if user already exists (from previous signup attempt)
+        const existingUser = await userService.getOneByIdentityAndPlatform({
+            identityId: userIdentity.id,
+            platformId: params.platformId,
+        })
+        
+        if (existingUser) {
+            log.warn({ 
+                userId: existingUser.id,
+                email: params.email,
+                existingRole: existingUser.platformRole,
+                expectedRole: invitedPlatformRole
+            }, '[signUp] User already exists, will update role if needed')
+            
+            // Update existing user's role to match invitation
+            if (existingUser.platformRole !== invitedPlatformRole && platformInvitation?.platformRole) {
+                await userService.update({
+                    id: existingUser.id,
+                    platformId: params.platformId,
+                    platformRole: invitedPlatformRole,
+                })
+                log.info({ 
+                    userId: existingUser.id,
+                    email: params.email,
+                    oldRole: existingUser.platformRole,
+                    newRole: invitedPlatformRole
+                }, '[signUp] Updated existing user role to match invitation')
+            }
+        }
+        
         const user = await userService.getOrCreateWithProject({
             identity: userIdentity,
             platformId: params.platformId,
+            platformRole: invitedPlatformRole,
         })
+        
+        log.info({ 
+            userId: user.id,
+            email: params.email,
+            createdPlatformRole: user.platformRole,
+            expectedPlatformRole: invitedPlatformRole,
+            wasExistingUser: !!existingUser
+        }, '[signUp] User created/retrieved with platform role')
+        
+        // Provision invitation (this may update the role, but we already set it correctly)
         await userInvitationsService(log).provisionUserInvitation({
             email: params.email,
             user,
         })
+        
+        // Verify and fix the role after provisioning to ensure it matches invitation
+        const updatedUser = await userService.getOneOrFail({ id: user.id })
+        if (updatedUser.platformRole !== invitedPlatformRole && platformInvitation?.platformRole) {
+            log.warn({ 
+                userId: updatedUser.id,
+                email: params.email,
+                currentRole: updatedUser.platformRole,
+                expectedRole: invitedPlatformRole,
+                invitationRole: platformInvitation.platformRole
+            }, '[signUp] Role mismatch detected, correcting to invitation role')
+            
+            await userService.update({
+                id: user.id,
+                platformId: params.platformId,
+                platformRole: invitedPlatformRole,
+            })
+            
+            const correctedUser = await userService.getOneOrFail({ id: user.id })
+            log.info({ 
+                userId: correctedUser.id,
+                email: params.email,
+                correctedPlatformRole: correctedUser.platformRole,
+                expectedPlatformRole: invitedPlatformRole
+            }, '[signUp] Role corrected to match invitation')
+        } else {
+            log.info({ 
+                userId: updatedUser.id,
+                email: params.email,
+                finalPlatformRole: updatedUser.platformRole,
+                expectedPlatformRole: invitedPlatformRole
+            }, '[signUp] Final platform role after provisioning')
+        }
 
         return authenticationUtils.getProjectAndToken({
             userId: user.id,
@@ -58,7 +203,12 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
     },
     async signInWithPassword(params: SignInWithPasswordParams): Promise<AuthenticationResponse> {
         const identity = await userIdentityService(log).verifyIdentityPassword(params)
+        log.info(`[signInWithPassword] Identity verified: ${identity.id}, email: ${params.email}`)
+        log.info(`[signInWithPassword] predefinedPlatformId: ${params.predefinedPlatformId}`)
+        
         const platformId = isNil(params.predefinedPlatformId) ? await getPersonalPlatformIdForIdentity(identity.id) : params.predefinedPlatformId
+        log.info(`[signInWithPassword] Resolved platformId: ${platformId}`)
+        
         if (isNil(platformId)) {
             throw new ActivepiecesError({
                 code: ErrorCode.AUTHENTICATION,
@@ -75,10 +225,14 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             email: params.email,
             platformId,
         })
+        log.info(`[signInWithPassword] Looking up user with identityId: ${identity.id}, platformId: ${platformId}`)
+        
         const user = await userService.getOneByIdentityAndPlatform({
             identityId: identity.id,
             platformId,
         })
+        log.info(`[signInWithPassword] User lookup result: ${user ? user.id : 'NULL'}`)
+        
         assertNotNullOrUndefined(user, 'User not found')
         return authenticationUtils.getProjectAndToken({
             userId: user.id,
@@ -251,11 +405,22 @@ async function getPersonalPlatformIdForFederatedAuthn(email: string, log: Fastif
 
 async function getPersonalPlatformIdForIdentity(identityId: string): Promise<string | null> {
     const edition = system.getEdition()
+    
+    // In Cloud edition or CE multi-tenant mode, find user's platform
     if (edition === ApEdition.CLOUD) {
         const platforms = await platformService.listPlatformsForIdentityWithAtleastProject({ identityId })
         const platform = platforms.find((platform) => !platformUtils.isCustomerOnDedicatedDomain(platform))
         return platform?.id ?? null
     }
+    
+    // In CE/EE multi-tenant mode, find the first platform the user owns or is a member of
+    const multiTenantEnabled = system.get(AppSystemProp.MULTI_TENANT_MODE) === 'true'
+    if (multiTenantEnabled) {
+        const platforms = await platformService.listPlatformsForIdentityWithAtleastProject({ identityId })
+        // Return the first platform (user's personal platform in multi-tenant mode)
+        return platforms[0]?.id ?? null
+    }
+    
     return null
 }
 

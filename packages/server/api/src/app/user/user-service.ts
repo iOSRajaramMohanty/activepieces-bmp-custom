@@ -47,7 +47,7 @@ export const userService = {
         }
         return userRepo().save(user)
     },
-    async getOrCreateWithProject({ identity, platformId }: GetOrCreateWithProjectParams): Promise<User> {
+    async getOrCreateWithProject({ identity, platformId, platformRole }: GetOrCreateWithProjectParams): Promise<User> {
         const user = await this.getOneByIdentityAndPlatform({
             identityId: identity.id,
             platformId,
@@ -56,7 +56,7 @@ export const userService = {
             const newUser = await this.create({
                 identityId: identity.id,
                 platformId,
-                platformRole: PlatformRole.MEMBER,
+                platformRole: platformRole ?? PlatformRole.MEMBER,
             })
 
             await projectService.create({
@@ -315,4 +315,5 @@ type UpdatePlatformIdParams = {
 type GetOrCreateWithProjectParams = {
     identity: UserIdentity
     platformId: string
+    platformRole?: PlatformRole
 }

@@ -2,9 +2,9 @@ import { typeboxResolver } from '@hookform/resolvers/typebox';
 import { Static, Type } from '@sinclair/typebox';
 import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -43,14 +43,24 @@ type SignInSchema = Static<typeof SignInSchema>;
 
 const SignInForm: React.FC = () => {
   const [showCheckYourEmailNote, setShowCheckYourEmailNote] = useState(false);
+  const [searchParams] = useSearchParams();
+  const emailFromQuery = searchParams.get('email') || '';
+  
   const form = useForm<SignInSchema>({
     resolver: typeboxResolver(SignInSchema),
     defaultValues: {
-      email: '',
+      email: emailFromQuery,
       password: '',
     },
     mode: 'onChange',
   });
+
+  // Update email field when query param changes
+  useEffect(() => {
+    if (emailFromQuery) {
+      form.setValue('email', emailFromQuery);
+    }
+  }, [emailFromQuery, form]);
 
   const { data: edition } = flagsHooks.useFlag(ApFlagId.EDITION);
 

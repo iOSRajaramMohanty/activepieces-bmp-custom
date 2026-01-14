@@ -7,8 +7,14 @@ export type UserId = ApId
 
 export enum PlatformRole {
     /**
+     * Super administrator with system-wide access across all platforms/tenants.
+     * Can view and manage all tenants, create new tenants, and access all data.
+     * Should only be assigned to system administrators.
+     */
+    SUPER_ADMIN = 'SUPER_ADMIN',
+    /**
      * Platform administrator with full control over platform settings,
-     * users, and all projects
+     * users, and all projects within their platform
      */
     ADMIN = 'ADMIN',
     /**

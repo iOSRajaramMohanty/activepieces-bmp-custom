@@ -1,3 +1,23 @@
+// CRITICAL: Load .env file FIRST, before ANY other imports
+import dotenv from 'dotenv'
+import path from 'path'
+import { existsSync } from 'fs'
+
+const possibleEnvPaths = [
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(__dirname, '../../../.env'),
+    path.resolve(__dirname, '../../../../.env'),
+]
+
+for (const envPath of possibleEnvPaths) {
+    if (existsSync(envPath)) {
+        dotenv.config({ path: envPath, override: true })
+        console.log('[instrumentation.ts] Loaded .env from:', envPath)
+        console.log('[instrumentation.ts] AP_DB_TYPE =', process.env.AP_DB_TYPE)
+        break
+    }
+}
+
 import { AppSystemProp } from '@activepieces/server-shared'
 import { FastifyOtelInstrumentation } from '@fastify/otel'
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'

@@ -41,6 +41,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     async provisionUserInvitation({ user, email }: ProvisionUserInvitationParams): Promise<void> {
         const invitations = await repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
+            .andWhere('"user_invitation"."platformId" = :platformId', { platformId: user.platformId })
             .andWhere({
                 status: InvitationStatus.ACCEPTED,
             })
@@ -101,6 +102,18 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     }: CreateParams): Promise<UserInvitationWithLink> {
         const platform = await platformService.getOneOrThrow(platformId)
         const id = apId()
+        
+        // Validate platformRole for PLATFORM invitations
+        if (type === InvitationType.PLATFORM) {
+            assertNotNullOrUndefined(platformRole, 'platformRole is required for PLATFORM invitations')
+            log.info({ 
+                email, 
+                platformId, 
+                platformRole, 
+                type 
+            }, '[createInvitation] Creating PLATFORM invitation with platformRole')
+        }
+        
         await repo().upsert({
             id,
             status,
@@ -111,6 +124,18 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             platformRole: type === InvitationType.PROJECT ? undefined : platformRole!,
             projectId: type === InvitationType.PLATFORM ? undefined : projectId!,
         }, ['email', 'platformId', 'projectId'])
+        
+        // Verify the invitation was saved correctly
+        const savedInvitation = await this.getOneOrThrow({ id, platformId })
+        if (type === InvitationType.PLATFORM && savedInvitation.platformRole !== platformRole) {
+            log.error({ 
+                email,
+                platformId,
+                expectedRole: platformRole,
+                savedRole: savedInvitation.platformRole,
+                invitationId: savedInvitation.id
+            }, '[createInvitation] ERROR: PlatformRole mismatch after save!')
+        }
 
         const userInvitation = await this.getOneOrThrow({
             id,
@@ -184,6 +209,16 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         await repo().update(invitation.id, {
             status: InvitationStatus.ACCEPTED,
         })
+        
+        // Refresh the invitation to ensure status is updated
+        const updatedInvitation = await this.getOneOrThrow({ id: invitationId, platformId })
+        log.info({ 
+            invitationId, 
+            platformId, 
+            email: updatedInvitation.email,
+            status: updatedInvitation.status 
+        }, '[accept] Invitation status updated to ACCEPTED')
+        
         const identity = await userIdentityService(log).getIdentityByEmail(invitation.email)
         if (isNil(identity)) {
             return {
@@ -212,6 +247,28 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         }).andWhere('LOWER(user_invitation.email) = :email', { email: email.toLowerCase().trim() })
             .getMany()
         return invitations.length > 0
+    },
+    async getAcceptedInvitationsByEmail({
+        email,
+        platformId,
+    }: HasAnyAcceptedInvitationsParams): Promise<UserInvitation[]> {
+        return repo().createQueryBuilder('user_invitation')
+            .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
+            .andWhere({
+                platformId,
+                status: InvitationStatus.ACCEPTED,
+            })
+            .getMany()
+    },
+    async getAcceptedInvitationsByEmailWithoutPlatform({
+        email,
+    }: { email: string }): Promise<UserInvitation[]> {
+        return repo().createQueryBuilder('user_invitation')
+            .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
+            .andWhere({
+                status: InvitationStatus.ACCEPTED,
+            })
+            .getMany()
     },
     async getByEmailAndPlatformIdOrThrow({
         email,

@@ -13,7 +13,6 @@ import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
-import { RequestTrial } from '@/app/components/request-trial';
 import { ApplyTags } from '@/app/routes/platform/setup/pieces/apply-tags';
 import { PieceActions } from '@/app/routes/platform/setup/pieces/piece-actions';
 import { SyncPiecesButton } from '@/app/routes/platform/setup/pieces/sync-pieces';
@@ -21,7 +20,6 @@ import { ConfigurePieceOAuth2Dialog } from '@/app/routes/platform/setup/pieces/u
 import { Badge } from '@/components/ui/badge';
 import { DataTable, RowDataWithActions } from '@/components/ui/data-table';
 import { DataTableColumnHeader } from '@/components/ui/data-table/data-table-column-header';
-import { LockedAlert } from '@/components/ui/locked-alert';
 import { oauthAppsQueries } from '@/features/connections/lib/oauth-apps-hooks';
 import { InstallPieceDialog } from '@/features/pieces/components/install-piece-dialog';
 import { PieceIcon } from '@/features/pieces/components/piece-icon';
@@ -181,12 +179,14 @@ const PlatformPiecesPage = () => {
         title={t('Pieces')}
       >
         <div className="flex gap-3">
-          <ApplyTags
-            selectedPieces={selectedPieces}
-            onApplyTags={() => {
-              refetchPieces();
-            }}
-          ></ApplyTags>
+          {isEnabled && (
+            <ApplyTags
+              selectedPieces={selectedPieces}
+              onApplyTags={() => {
+                refetchPieces();
+              }}
+            ></ApplyTags>
+          )}
           <SyncPiecesButton />
           <InstallPieceDialog
             onInstallPiece={() => refetchPieces()}
@@ -195,20 +195,6 @@ const PlatformPiecesPage = () => {
         </div>
       </DashboardPageHeader>
       <div className="mx-auto w-full flex-col">
-        {!isEnabled && (
-          <LockedAlert
-            title={t('Control Pieces')}
-            description={t(
-              "Show the pieces that matter most to your users and hide the ones you don't like.",
-            )}
-            button={
-              <RequestTrial
-                featureKey="ENTERPRISE_PIECES"
-                buttonVariant="outline-primary"
-              />
-            }
-          />
-        )}
         <DataTable
           emptyStateTextTitle={t('No pieces found')}
           emptyStateTextDescription={t(

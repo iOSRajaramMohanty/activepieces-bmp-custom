@@ -83,7 +83,12 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             invitationId: invitation.id,
             platformId: invitation.platformId,
         })
-        await reply.status(StatusCodes.OK).send(invitation)
+        // Refresh invitation to get updated status
+        const updatedInvitation = await userInvitationsService(request.log).getOneOrThrow({
+            id: invitation.id,
+            platformId: invitation.platformId,
+        })
+        await reply.status(StatusCodes.OK).send(updatedInvitation)
     })
 
     app.delete('/:id', DeleteInvitationRequestParams, async (request, reply) => {

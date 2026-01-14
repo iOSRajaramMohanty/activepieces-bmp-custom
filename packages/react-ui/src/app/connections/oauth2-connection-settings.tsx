@@ -121,7 +121,7 @@ function OAuth2ConnectionSettings({
       {grantType !== OAuth2GrantType.CLIENT_CREDENTIALS && (
         <div className="border border-solid p-2 rounded-lg gap-2 flex text-center items-center justify-center h-full">
           <div className="rounded-full border border-solid p-1 flex items-center justify-center">
-            <img src={piece.logoUrl} className="w-5 h-5"></img>
+            <img src={piece.logoUrl} className="w-5 h-5" loading="lazy" decoding="async" fetchPriority="low" alt={piece.displayName}></img>
           </div>
           <div className="text-sm">{piece.displayName}</div>
           <div className="grow"></div>

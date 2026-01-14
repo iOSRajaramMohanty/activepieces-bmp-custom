@@ -24,7 +24,7 @@ const AcceptInvitation = () => {
       if (!registered) {
         setTimeout(() => {
           const email = searchParams.get('email');
-          navigate(`/sign-up?email=${email}`);
+          navigate(`/sign-up?email=${encodeURIComponent(email || '')}`);
         }, 3000);
       } else {
         navigate('/sign-in');

@@ -55,7 +55,9 @@ import { UserInvitationEntity } from '../user-invitations/user-invitation.entity
 import { createPGliteDataSource } from './pglite-connection'
 import { createPostgresDataSource } from './postgres-connection'
 
-const databaseType = system.get(AppSystemProp.DB_TYPE)
+// CRITICAL FIX: Don't read DB_TYPE when module loads - read it when createDataSource() is called
+// This ensures environment variables are loaded before DB_TYPE is read
+// const databaseType = system.get(AppSystemProp.DB_TYPE)  // OLD - reads too early!
 
 function getEntities(): EntitySchema<unknown>[] {
     return [
@@ -120,11 +122,19 @@ export const commonProperties = {
 let _databaseConnection: DataSource | null = null
 
 const createDataSource = (): DataSource => {
+    // Read DB_TYPE here instead of at module load time
+    // This ensures .env variables are loaded first
+    const databaseType = system.get(AppSystemProp.DB_TYPE)
+    
+    console.log('[database-connection] Creating DataSource with DB_TYPE:', databaseType)
+    
     switch (databaseType) {
         case DatabaseType.PGLITE:
+            console.log('[database-connection] Using PGlite')
             return createPGliteDataSource()
         case DatabaseType.POSTGRES:
         default:
+            console.log('[database-connection] Using PostgreSQL')
             return createPostgresDataSource()
     }
 }
