@@ -10,44 +10,35 @@ echo "🛑 Stopping Backend (Port 3000)..."
 lsof -ti :3000 | xargs kill -9 2>/dev/null
 sleep 1
 
-echo "🛑 Stopping Frontend (Port 4201)..."
-lsof -ti :4201 | xargs kill -9 2>/dev/null
+echo "🛑 Stopping Frontend (Port 4200)..."
+lsof -ti :4200 | xargs kill -9 2>/dev/null
 sleep 2
 
 echo "✅ Services stopped"
 echo ""
 
-# Start Backend
-echo "🚀 Starting Backend API..."
+# Start all services (Backend + Frontend + Engine)
+echo "🚀 Starting Activepieces Services..."
+echo "   (This starts Backend API, Frontend UI, and Engine together)"
 cd /Users/rajarammohanty/Documents/POC/activepieces
 nohup ./scripts/run-dev.sh > backend.log 2>&1 &
-BACKEND_PID=$!
-echo "   Backend PID: $BACKEND_PID"
-sleep 5
+SERVICES_PID=$!
+echo "   Services PID: $SERVICES_PID"
+echo "   ⏳ Waiting for services to start..."
+sleep 10
 
 # Check if backend started
 if lsof -i :3000 > /dev/null 2>&1; then
     echo "   ✅ Backend running on http://localhost:3000"
 else
-    echo "   ❌ Backend failed to start. Check backend.log"
+    echo "   ⏳ Backend still starting... (may take 30-60 seconds)"
 fi
 
-echo ""
-
-# Start Frontend
-echo "🚀 Starting Frontend UI..."
-cd /Users/rajarammohanty/Documents/POC/activepieces/activepieces-admin-ui
-nohup npm start > frontend.log 2>&1 &
-FRONTEND_PID=$!
-echo "   Frontend PID: $FRONTEND_PID"
-echo "   ⏳ Waiting for frontend to compile..."
-sleep 10
-
 # Check if frontend started
-if lsof -i :4201 > /dev/null 2>&1; then
-    echo "   ✅ Frontend running on http://localhost:4201"
+if lsof -i :4200 > /dev/null 2>&1; then
+    echo "   ✅ Frontend running on http://localhost:4200"
 else
-    echo "   ⏳ Frontend still starting... Check frontend.log"
+    echo "   ⏳ Frontend still starting... (may take 30-60 seconds)"
 fi
 
 echo ""
@@ -57,11 +48,10 @@ echo "════════════════════════�
 echo ""
 echo "📊 Service Status:"
 echo "   Backend:  http://localhost:3000"
-echo "   Frontend: http://localhost:4201"
+echo "   Frontend: http://localhost:4200"
 echo ""
 echo "📝 View Logs:"
-echo "   Backend:  tail -f backend.log"
-echo "   Frontend: tail -f activepieces-admin-ui/frontend.log"
+echo "   All Services: tail -f backend.log"
 echo ""
 echo "🛑 Stop Services:"
 echo "   ./scripts/stop-all.sh"
