@@ -105,7 +105,7 @@ ORDER BY p.created DESC;
 ```
 
 ### Create New Tenant
-
+##SecurePassword123
 ```bash
 curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
   -H "Content-Type: application/json" \
@@ -113,7 +113,7 @@ curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
     "email": "tenant@company.com",
     "firstName": "Admin",
     "lastName": "User",
-    "password": "SecurePassword123"
+    "password": ""
   }'
 ```
 
