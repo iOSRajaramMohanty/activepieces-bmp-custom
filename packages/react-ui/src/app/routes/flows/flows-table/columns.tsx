@@ -1,9 +1,12 @@
 import { ColumnDef } from '@tanstack/react-table';
+import { isNil } from '@activepieces/shared';
 import { t } from 'i18next';
-import { EllipsisVertical, Tag, Blocks, Clock, ToggleLeft } from 'lucide-react';
+import { EllipsisVertical, Tag, Blocks, Clock, ToggleLeft, User } from 'lucide-react';
 import { Dispatch, SetStateAction } from 'react';
 
 import FlowActionMenu from '@/app/components/flow-actions-menu';
+import { ApAvatar } from '@/components/custom/ap-avatar';
+import { useEmbedding } from '@/components/embed-provider';
 import { Button } from '@/components/ui/button';
 import { RowDataWithActions } from '@/components/ui/data-table';
 import { DataTableColumnHeader } from '@/components/ui/data-table/data-table-column-header';
@@ -25,7 +28,12 @@ export const flowsTableColumns = ({
   setRefresh,
 }: FlowsTableColumnsProps): (ColumnDef<RowDataWithActions<PopulatedFlow>> & {
   accessorKey: string;
-})[] => [
+})[] => {
+  const {
+    embedState: { isEmbedded },
+  } = useEmbedding();
+
+  return [
   {
     accessorKey: 'name',
     size: 200,
@@ -212,4 +220,5 @@ export const flowsTableColumns = ({
     accessorKey: 'connectionExternalId',
     enableHiding: true,
   },
-];
+  ];
+};
