@@ -11,23 +11,40 @@ import {
   Activity,
   Hash,
   ArrowRight,
+  Trash,
+  Workflow,
+  Tag,
+  Blocks,
+  ToggleLeft,
+  Clock,
 } from 'lucide-react';
 import React, { useMemo } from 'react';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
+import { ConfirmationDeleteDialog } from '@/components/delete-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
 import { DataTableColumnHeader } from '@/components/ui/data-table/data-table-column-header';
 import { TruncatedColumnTextValue } from '@/components/ui/data-table/truncated-column-text-value';
 import { FormattedDate } from '@/components/ui/formatted-date';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { platformUserHooks } from '@/hooks/platform-user-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
 import { api } from '@/lib/api';
 import { platformApi } from '@/lib/platforms-api';
-import { PlatformRole, ProjectType, ProjectWithLimits, SeekPage } from '@activepieces/shared';
+import { platformUserApi } from '@/lib/platform-user-api';
+import { flowsApi } from '@/features/flows/lib/flows-api';
+import { ApAvatar } from '@/components/custom/ap-avatar';
+import { FlowStatusToggle } from '@/features/flows/components/flow-status-toggle';
+import { PieceIconList } from '@/features/pieces/components/piece-icon-list';
+import { PlatformRole, ProjectType, ProjectWithLimits, SeekPage, PopulatedFlow, isNil } from '@activepieces/shared';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -35,7 +52,8 @@ import { Button } from '@/components/ui/button';
 export default function OwnerDashboard() {
   const { data: currentUser } = userHooks.useCurrentUser();
   const { platform } = platformHooks.useCurrentPlatform();
-  const { data: usersData, isLoading: usersLoading } = platformUserHooks.useUsers();
+  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = platformUserHooks.useUsers();
+  const currentUserId = authenticationSession.getCurrentUserId();
   // Use non-EE endpoint /v1/projects instead of /v1/users/projects/platforms
   const { data: projectsResponse, isLoading: projectsLoading } = useQuery<SeekPage<ProjectWithLimits>, Error>({
     queryKey: ['projects', platform?.id],
@@ -48,7 +66,7 @@ export default function OwnerDashboard() {
   });
   const projectsData = projectsResponse?.data || [];
 
-  // Check if user is owner
+  // Check if user is owner (early return)
   if (currentUser?.platformRole !== PlatformRole.OWNER) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -106,6 +124,39 @@ export default function OwnerDashboard() {
     });
   }, [projectsData, platform, platformUsers]);
 
+  // Fetch flows for all projects in the platform
+  const { data: flowsData, isLoading: flowsLoading } = useQuery<PopulatedFlow[], Error>({
+    queryKey: ['platform-flows', platform?.id, platformProjects.map(p => p.id).join(',')],
+    queryFn: async () => {
+      if (!platformProjects.length) return [];
+      
+      // Fetch flows for each project and aggregate them
+      const flowsPromises = platformProjects.map(async (project) => {
+        try {
+          const response = await flowsApi.list({
+            projectId: project.id,
+            limit: 10000, // Get all flows for each project
+            cursor: undefined,
+          });
+          return response.data || [];
+        } catch (error) {
+          console.error(`Error fetching flows for project ${project.id}:`, error);
+          return [];
+        }
+      });
+      
+      const flowsArrays = await Promise.all(flowsPromises);
+      // Flatten and add project info to each flow
+      return flowsArrays.flat().map(flow => ({
+        ...flow,
+        projectDisplayName: platformProjects.find(p => p.id === flow.projectId)?.displayName || '',
+      }));
+    },
+    enabled: !!platform?.id && platformProjects.length > 0,
+  });
+
+  const allFlows = flowsData || [];
+
   const switchToAdminMutation = useMutation({
     mutationFn: (adminId: string) => platformApi.switchToAdmin(adminId),
     onSuccess: (data) => {
@@ -133,6 +184,24 @@ export default function OwnerDashboard() {
     },
   });
 
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      await platformUserApi.delete(userId);
+    },
+    onSuccess: () => {
+      refetchUsers();
+      toast.success(t('User deleted successfully'), {
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast.error(t('Error'), {
+        description: error?.response?.data?.message || t('Failed to delete user'),
+        duration: 3000,
+      });
+    },
+  });
+
   // Calculate stats
   const stats = useMemo(() => {
     const totalUsers = platformUsers.length;
@@ -140,10 +209,7 @@ export default function OwnerDashboard() {
     const totalOperators = platformUsers.filter((u) => u.platformRole === PlatformRole.OPERATOR).length;
     const totalMembers = platformUsers.filter((u) => u.platformRole === PlatformRole.MEMBER).length;
     const totalProjects = platformProjects.length;
-    
-    // Note: Flow count is not directly available in ProjectWithLimits
-    // We'll show 0 for now, or can be enhanced later with a separate API call
-    const totalFlows = 0;
+    const totalFlows = allFlows.length;
 
     return {
       totalUsers,
@@ -153,7 +219,7 @@ export default function OwnerDashboard() {
       totalProjects,
       totalFlows,
     };
-  }, [platformUsers, platformProjects]);
+  }, [platformUsers, platformProjects, allFlows]);
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -222,7 +288,7 @@ export default function OwnerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {projectsLoading ? '...' : stats.totalFlows}
+              {flowsLoading ? '...' : stats.totalFlows}
             </div>
           </CardContent>
         </Card>
@@ -230,7 +296,7 @@ export default function OwnerDashboard() {
 
       {/* Tabs for different views */}
       <Tabs defaultValue="users" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="users">
             <Users className="mr-2 h-4 w-4" />
             {t('Users')}
@@ -238,6 +304,10 @@ export default function OwnerDashboard() {
           <TabsTrigger value="projects">
             <FolderKanban className="mr-2 h-4 w-4" />
             {t('Projects')}
+          </TabsTrigger>
+          <TabsTrigger value="flows">
+            <Workflow className="mr-2 h-4 w-4" />
+            {t('Flows')}
           </TabsTrigger>
         </TabsList>
 
@@ -392,25 +462,76 @@ export default function OwnerDashboard() {
                   },
                   {
                     id: 'actions',
-                    size: 100,
+                    size: 150,
                     header: () => <div className="text-center">{t('Actions')}</div>,
                     cell: ({ row }) => {
-                      // Only show switch button for ADMIN users
-                      if (row.original.platformRole !== PlatformRole.ADMIN) {
-                        return null;
-                      }
+                      const isAdmin = row.original.platformRole === PlatformRole.ADMIN;
+                      const isCurrentUser = row.original.id === currentUserId;
+                      const canDelete = isAdmin && !isCurrentUser;
+
+                      // Count operators and members for this admin's platform
+                      const adminOperators = platformUsers.filter(
+                        (u) => u.platformRole === PlatformRole.OPERATOR
+                      ).length;
+                      const adminMembers = platformUsers.filter(
+                        (u) => u.platformRole === PlatformRole.MEMBER
+                      ).length;
+                      const totalChildUsers = adminOperators + adminMembers;
+
                       return (
-                        <div className="flex justify-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="hover:bg-accent"
-                            onClick={() => switchToAdminMutation.mutate(row.original.id)}
-                            disabled={switchToAdminMutation.isPending}
-                            title={t('Switch to admin account')}
-                          >
-                            <ArrowRight className="size-4" />
-                          </Button>
+                        <div className="flex justify-center gap-2">
+                          {/* Switch button for ADMIN users */}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="hover:bg-accent"
+                              onClick={() => switchToAdminMutation.mutate(row.original.id)}
+                              disabled={switchToAdminMutation.isPending}
+                              title={t('Switch to admin account')}
+                            >
+                              <ArrowRight className="size-4" />
+                            </Button>
+                          )}
+                          {/* Delete button for ADMIN users only */}
+                          {canDelete && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <ConfirmationDeleteDialog
+                                  title={t('Delete Admin Account')}
+                                  message={
+                                    totalChildUsers > 0
+                                      ? t(
+                                          'Are you sure you want to delete admin "{{email}}"? This will also permanently delete all {{count}} operator(s) and member(s) associated with this admin account.',
+                                          {
+                                            email: row.original.email,
+                                            count: totalChildUsers,
+                                          },
+                                        )
+                                      : t(
+                                          'Are you sure you want to delete admin "{{email}}"?',
+                                          { email: row.original.email },
+                                        )
+                                  }
+                                  entityName={`${t('Admin')} ${row.original.email}`}
+                                  mutationFn={async () => {
+                                    deleteUserMutation.mutate(row.original.id);
+                                  }}
+                                >
+                                  <Button
+                                    loading={deleteUserMutation.isPending}
+                                    variant="ghost"
+                                    className="size-8 p-0"
+                                  >
+                                    <Trash className="size-4 text-destructive" />
+                                  </Button>
+                                </ConfirmationDeleteDialog>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                {t('Delete admin account')}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       );
                     },
@@ -504,6 +625,175 @@ export default function OwnerDashboard() {
                 }}
                 hidePagination={true}
                 isLoading={projectsLoading}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Flows Tab */}
+        <TabsContent value="flows" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('Platform Flows')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                emptyStateTextTitle={t('No flows found')}
+                emptyStateTextDescription={t(
+                  'There are no flows in your platform',
+                )}
+                emptyStateIcon={<Workflow className="size-14" />}
+                columns={[
+                  {
+                    accessorKey: 'name',
+                    size: 200,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Name')}
+                        icon={Tag}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      const displayName = row.original.version?.displayName || t('Untitled');
+                      return (
+                        <TruncatedColumnTextValue value={displayName} />
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'project',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Project')}
+                        icon={FolderKanban}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      const projectName = (row.original as any).projectDisplayName || '-';
+                      return (
+                        <TruncatedColumnTextValue value={projectName} />
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'steps',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Steps')}
+                        icon={Blocks}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <PieceIconList
+                          trigger={row.original.version?.trigger}
+                          maxNumberOfIconsToShow={2}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'owner',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Created by')}
+                        icon={UserCog}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      const ownerId = row.original.ownerId;
+                      return isNil(ownerId) ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <ApAvatar
+                          id={ownerId}
+                          size="small"
+                          includeAvatar={true}
+                          includeName={true}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'status',
+                    size: 100,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Status')}
+                        icon={ToggleLeft}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <div
+                          className="flex items-center space-x-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <FlowStatusToggle flow={row.original} />
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'created',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Created')}
+                        icon={Calendar}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <div className="text-left">
+                          <FormattedDate
+                            date={new Date(row.original.created)}
+                            className="text-left font-medium"
+                            includeTime={false}
+                          />
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'updated',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Last modified')}
+                        icon={Clock}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      const updated = row.original.version?.updated || row.original.updated;
+                      return (
+                        <div className="text-left">
+                          <FormattedDate
+                            date={new Date(updated)}
+                            className="text-left font-medium"
+                          />
+                        </div>
+                      );
+                    },
+                  },
+                ]}
+                page={{
+                  data: allFlows,
+                  next: null,
+                  previous: null,
+                }}
+                hidePagination={true}
+                isLoading={flowsLoading}
               />
             </CardContent>
           </Card>

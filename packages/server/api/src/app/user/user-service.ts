@@ -173,7 +173,38 @@ export const userService = {
         }
     },
     async delete({ id, platformId }: DeleteParams): Promise<void> {
+        // Check if the user being deleted is an ADMIN
+        const userToDelete = await userRepo().findOne({
+            where: { id, platformId },
+        })
 
+        if (!userToDelete) {
+            return
+        }
+
+        // If deleting an ADMIN, also delete all OPERATOR and MEMBER users in the same platform
+        if (userToDelete.platformRole === PlatformRole.ADMIN) {
+            const operatorsAndMembers = await userRepo().find({
+                where: {
+                    platformId,
+                    platformRole: In([PlatformRole.OPERATOR, PlatformRole.MEMBER]),
+                },
+            })
+
+            // Delete all operators and members first
+            for (const user of operatorsAndMembers) {
+                await platformProjectService(system.globalLogger()).deletePersonalProjectForUser({
+                    userId: user.id,
+                    platformId,
+                })
+                await userRepo().delete({
+                    id: user.id,
+                    platformId,
+                })
+            }
+        }
+
+        // Delete the admin user
         await platformProjectService(system.globalLogger()).deletePersonalProjectForUser({
             userId: id,
             platformId,

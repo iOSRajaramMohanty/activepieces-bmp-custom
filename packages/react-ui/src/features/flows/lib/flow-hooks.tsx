@@ -146,6 +146,14 @@ export const flowHooks = {
             description: errorMessage,
             duration: 5000,
           });
+        } else if (
+          errorCode === ErrorCode.AUTHORIZATION &&
+          errorMessage
+        ) {
+          toast.error(t('Permission Denied'), {
+            description: errorMessage,
+            duration: 5000,
+          });
         } else {
           internalErrorToast();
         }

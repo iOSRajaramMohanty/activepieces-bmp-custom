@@ -39,9 +39,14 @@ export function PlatformSidebar() {
   const branding = flagsHooks.useWebsiteBranding();
   const { data: currentUser } = userHooks.useCurrentUser();
   const isSuperAdmin = currentUser?.platformRole === PlatformRole.SUPER_ADMIN;
+  const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   
   // Determine platform admin default route based on user role
-  const platformAdminDefaultRoute = isSuperAdmin ? '/super-admin' : '/platform/users';
+  const platformAdminDefaultRoute = isSuperAdmin 
+    ? '/super-admin' 
+    : isOwner 
+    ? '/owner-dashboard' 
+    : '/platform/users';
 
   const setupItems = [
     {
@@ -65,8 +70,15 @@ export function PlatformSidebar() {
       label: t('Super Admin Dashboard'),
       icon: Shield,
     });
+  } else if (isOwner) {
+    // Show Owner Dashboard link for owners
+    generalItems.push({
+      to: '/owner-dashboard',
+      label: t('Owner Dashboard'),
+      icon: Shield,
+    });
   } else {
-    // Show Users option only for non-super admin platform admins
+    // Show Users option only for regular platform admins
     generalItems.push({
       to: '/platform/users',
       label: t('Users'),

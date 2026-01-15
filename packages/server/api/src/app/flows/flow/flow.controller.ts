@@ -75,7 +75,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                 })
             }
             
-            // For operators/members: can only create flows in admin's personal projects
+            // For operators/members: can create flows in admin's personal projects within the same platform
             if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
                 if (project.type !== ProjectType.PERSONAL) {
                     throw new ActivepiecesError({
@@ -86,6 +86,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                     })
                 }
                 
+                // Verify the project owner is an ADMIN in the same platform
                 const projectOwner = await userService.getOneOrFail({ id: project.ownerId })
                 if (projectOwner.platformRole !== PlatformRole.ADMIN || projectOwner.platformId !== user.platformId) {
                     throw new ActivepiecesError({
@@ -95,15 +96,18 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                         },
                     })
                 }
+                // Allow flow creation - operators and members can create flows
             }
             
-            // For admins: can only create flows in their own projects
+            // For admins: can create flows in their own projects
             if (user.platformRole === PlatformRole.ADMIN) {
-                if (project.ownerId !== user.id) {
+                // Admins can create flows in their own personal projects
+                // They can also see and edit flows created by operators/members in their projects
+                if (project.type === ProjectType.PERSONAL && project.ownerId !== user.id) {
                     throw new ActivepiecesError({
                         code: ErrorCode.AUTHORIZATION,
                         params: {
-                            message: 'Admins can only create flows in their own projects',
+                            message: 'Admins can only create flows in their own personal projects',
                         },
                     })
                 }

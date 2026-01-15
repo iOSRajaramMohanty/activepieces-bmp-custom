@@ -1,7 +1,8 @@
 import { AuthorizationRouteSecurity, AuthorizationType, ProjectAuthorizationConfig, RouteKind } from '@activepieces/server-shared'
-import { ActivepiecesError, ErrorCode, isNil, PlatformRole, Principal, PrincipalType } from '@activepieces/shared'
+import { ActivepiecesError, ApEdition, ErrorCode, isNil, PlatformRole, Principal, PrincipalType } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { rbacService } from '../../../../ee/authentication/project-role/rbac-service'
+import { system } from '../../../../helper/system/system'
 import { userService } from '../../../../user/user-service'
 
 export const authorizeOrThrow = async (principal: Principal, security: AuthorizationRouteSecurity, log: FastifyBaseLogger): Promise<void> => {
@@ -54,6 +55,16 @@ async function assertAccessToProject(principal: Principal, projectSecurity: Proj
             },
         })
     }
+    
+    // In COMMUNITY edition, skip RBAC permission checks as we use platform roles instead of project roles
+    // Operators and members can access projects based on platform role and project ownership
+    const edition = system.getEdition()
+    if (edition === ApEdition.COMMUNITY) {
+        // In COMMUNITY edition, allow access if user has access to the project
+        // The actual authorization is handled by the route handler based on platform roles
+        return
+    }
+    
     await rbacService(log).assertPrinicpalAccessToProject({ principal, permission: projectSecurity.permission, projectId: projectSecurity.projectId })
 }
 
