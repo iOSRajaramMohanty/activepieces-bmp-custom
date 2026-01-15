@@ -17,6 +17,12 @@ sleep 2
 echo "✅ Services stopped"
 echo ""
 
+# Reset Nx cache to prevent watch errors (especially after merges)
+echo "🔄 Resetting Nx cache..."
+npx nx reset > /dev/null 2>&1
+echo "✅ Nx cache reset complete"
+echo ""
+
 # Start all services (Backend + Frontend + Engine)
 echo "🚀 Starting Activepieces Services..."
 echo "   (This starts Backend API, Frontend UI, and Engine together)"
