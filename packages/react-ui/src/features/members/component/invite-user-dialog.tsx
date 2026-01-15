@@ -42,6 +42,7 @@ import { useAuthorization } from '@/hooks/authorization-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
 import { projectCollectionUtils } from '@/hooks/project-collection';
 import { userHooks } from '@/hooks/user-hooks';
+import { authenticationSession } from '@/lib/authentication-session';
 import { HttpError } from '@/lib/api';
 import { formatUtils } from '@/lib/utils';
 import {
@@ -87,8 +88,20 @@ export const InviteUserDialog = ({
   const [invitationLink, setInvitationLink] = useState('');
   const { platform } = platformHooks.useCurrentPlatform();
   const { refetch } = userInvitationsHooks.useInvitations();
-  const { project } = projectCollectionUtils.useCurrentProject();
   const { data: currentUser } = userHooks.useCurrentUser();
+  const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
+  const projectId = authenticationSession.getProjectId();
+  // Only get project if not owner and projectId exists (owners don't have projects)
+  let project = null;
+  try {
+    if (!isOwner && projectId) {
+      const projectQuery = projectCollectionUtils.useCurrentProject();
+      project = projectQuery?.project || null;
+    }
+  } catch (error) {
+    // If useCurrentProject fails (e.g., no project), set to null
+    project = null;
+  }
   const { checkAccess } = useAuthorization();
   const userHasPermissionToInviteUser = checkAccess(
     Permission.WRITE_INVITATION,
@@ -108,6 +121,9 @@ export const InviteUserDialog = ({
             platformRole: data.platformRole,
           });
         case InvitationType.PROJECT:
+          if (!project?.id) {
+            throw new Error('Project is required for project invitations');
+          }
           return userInvitationApi.invite({
             email: data.email.trim().toLowerCase(),
             type: data.type,
@@ -140,14 +156,20 @@ export const InviteUserDialog = ({
 
   const roles = rolesData?.data ?? [];
 
+  const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
+
   const form = useForm<FormSchema>({
     resolver: typeboxResolver(FormSchema),
     defaultValues: {
       email: '',
-      type: platform.plan.projectRolesEnabled
-        ? InvitationType.PROJECT
-        : InvitationType.PLATFORM,
-      platformRole: PlatformRole.ADMIN,
+      // Owners can only invite to platform, not to projects
+      type: isOwner
+        ? InvitationType.PLATFORM
+        : platform.plan.projectRolesEnabled
+          ? InvitationType.PROJECT
+          : InvitationType.PLATFORM,
+      // Default to OPERATOR for admins, ADMIN for owners
+      platformRole: isAdmin ? PlatformRole.OPERATOR : PlatformRole.ADMIN,
       projectRole: roles?.[0]?.name,
     },
   });
@@ -242,17 +264,22 @@ export const InviteUserDialog = ({
                           <SelectContent>
                             <SelectGroup>
                               <SelectLabel>{t('Invite To')}</SelectLabel>
-                              {currentUser?.platformRole ===
-                                PlatformRole.ADMIN && (
+                              {(currentUser?.platformRole ===
+                                PlatformRole.ADMIN ||
+                                currentUser?.platformRole ===
+                                  PlatformRole.OWNER) && (
                                 <SelectItem value={InvitationType.PLATFORM}>
                                   {t('Entire Platform')}
                                 </SelectItem>
                               )}
-                              {platform.plan.projectRolesEnabled && (
-                                <SelectItem value={InvitationType.PROJECT}>
-                                  {project.displayName} (Current)
-                                </SelectItem>
-                              )}
+                              {platform.plan.projectRolesEnabled &&
+                                currentUser?.platformRole !==
+                                  PlatformRole.OWNER &&
+                                project && (
+                                  <SelectItem value={InvitationType.PROJECT}>
+                                    {project.displayName} (Current)
+                                  </SelectItem>
+                                )}
                             </SelectGroup>
                           </SelectContent>
                         </Select>

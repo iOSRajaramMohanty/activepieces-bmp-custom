@@ -1,6 +1,7 @@
 import {
   PlatformWithoutSensitiveData,
   UpdatePlatformRequestBody,
+  AuthenticationResponse,
 } from '@activepieces/shared';
 
 import { api } from './api';
@@ -45,6 +46,12 @@ export const platformApi = {
       {
         'Content-Type': 'multipart/form-data',
       },
+    );
+  },
+
+  switchToAdmin(adminId: string) {
+    return api.post<AuthenticationResponse>(
+      `/v1/platforms/switch-to-admin/${adminId}`,
     );
   },
 };

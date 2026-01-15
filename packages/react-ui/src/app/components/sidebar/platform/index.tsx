@@ -132,20 +132,27 @@ export function PlatformSidebar() {
       </SidebarHeader>
       <div className="flex-1 overflow-y-auto scrollbar-hover">
         <SidebarContent className="px-1 gap-0">
-          <SidebarGroup className="cursor-default shrink-0">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuButton
-                  onClick={() => navigate('/')}
-                  className="py-5 px-2"
-                >
-                  <ArrowLeft />
-                  {t('Exit platform admin')}
-                </SidebarMenuButton>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          <SidebarSeparator className="mb-3" />
+          {/* Hide "Exit platform admin" for Super Admins and Owners - they don't have personal projects */}
+          {currentUser?.platformRole !== PlatformRole.SUPER_ADMIN && currentUser?.platformRole !== PlatformRole.OWNER && (
+            <>
+              <SidebarGroup className="cursor-default shrink-0">
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuButton
+                      onClick={() => {
+                        navigate('/', { replace: true });
+                      }}
+                      className="py-5 px-2"
+                    >
+                      <ArrowLeft />
+                      {t('Exit platform admin')}
+                    </SidebarMenuButton>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              <SidebarSeparator className="mb-3" />
+            </>
+          )}
           {groups.map((group, idx) => (
             <SidebarGroup key={group.label} className="cursor-default shrink-0">
               {idx > 0 && <SidebarSeparator className="mb-3" />}

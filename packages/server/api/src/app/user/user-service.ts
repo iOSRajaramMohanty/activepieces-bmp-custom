@@ -59,12 +59,17 @@ export const userService = {
                 platformRole: platformRole ?? PlatformRole.MEMBER,
             })
 
-            await projectService.create({
-                displayName: identity.firstName + '\'s Project',
-                ownerId: newUser.id,
-                platformId,
-                type: ProjectType.PERSONAL,
-            })
+            // Only create personal project for ADMIN users
+            // Operators, Members, Owners, and Super Admins should not have personal projects
+            // They will use admin's personal projects instead
+            if (newUser.platformRole === PlatformRole.ADMIN) {
+                await projectService.create({
+                    displayName: identity.firstName + '\'s Project',
+                    ownerId: newUser.id,
+                    platformId,
+                    type: ProjectType.PERSONAL,
+                })
+            }
             return newUser
         }
         return user
@@ -218,15 +223,19 @@ export const userService = {
         id,
         platformId,
     }: UpdatePlatformIdParams): Promise<void> {
+        // Get current user to preserve their role (especially for OWNER role)
+        const user = await userRepo().findOneByOrFail({ id })
         await userRepo().update(id, {
             updated: dayjs().toISOString(),
-            platformRole: PlatformRole.ADMIN,
+            // Preserve OWNER role if it exists, otherwise set to ADMIN
+            platformRole: user.platformRole === PlatformRole.OWNER ? PlatformRole.OWNER : PlatformRole.ADMIN,
             platformId,
         })
     },
 
     isUserPrivileged(user: User): boolean {
-        return user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OPERATOR
+        // Owners, Admins, and Operators are privileged and can see all projects in their platform
+        return user.platformRole === PlatformRole.OWNER || user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OPERATOR
     },
 }
 

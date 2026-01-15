@@ -2,7 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useMemo, useRef, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,6 +35,7 @@ import {
   AuthenticationResponse,
   ErrorCode,
   isNil,
+  PlatformRole,
   SignUpRequest,
 } from '@activepieces/shared';
 
@@ -56,6 +57,7 @@ const SignUpForm = ({
   setShowCheckYourEmailNote: (value: boolean) => void;
 }) => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { data: termsOfServiceUrl } = flagsHooks.useFlag<string>(
     ApFlagId.TERMS_OF_SERVICE_URL,
   );
@@ -107,6 +109,8 @@ const SignUpForm = ({
     onSuccess: (data) => {
       if (data.verified) {
         authenticationSession.saveResponse(data, false);
+        // All users should go through the default route logic
+        // This ensures proper handling of projectId and role-based routing
         redirectAfterLogin();
       } else {
         setShowCheckYourEmailNote(true);

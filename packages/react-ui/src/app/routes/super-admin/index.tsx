@@ -12,6 +12,7 @@ import {
   Hash,
   Trash2,
   AlertTriangle,
+  ArrowRight,
 } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -34,15 +35,17 @@ import {
 } from '@/components/ui/dialog';
 import { superAdminHooks } from '@/hooks/super-admin-hooks';
 import { userHooks } from '@/hooks/user-hooks';
+import { authenticationSession } from '@/lib/authentication-session';
 import { PlatformRole } from '@activepieces/shared';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { superAdminApi } from '@/lib/super-admin-api';
+import { superAdminApi, AccountSwitchingActivity } from '@/lib/super-admin-api';
 
 import { CreateTenantDialog } from './create-tenant-dialog';
 
 export default function SuperAdminDashboard() {
   const { data: currentUser } = userHooks.useCurrentUser();
+  const currentPlatformId = authenticationSession.getPlatformId();
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } =
     superAdminHooks.useSystemStats();
   const { data: platforms, isLoading: platformsLoading, refetch: refetchPlatforms } =
@@ -51,6 +54,11 @@ export default function SuperAdminDashboard() {
     superAdminHooks.useAllUsers();
   const { data: projects, isLoading: projectsLoading } =
     superAdminHooks.useAllProjects();
+  const { data: activities, isLoading: activitiesLoading, refetch: refetchActivities } =
+    useQuery<AccountSwitchingActivity[]>({
+      queryKey: ['account-switching-activities'],
+      queryFn: () => superAdminApi.getAccountSwitchingActivities(100),
+    });
 
   const [selectedPlatformId, setSelectedPlatformId] = useState<string | null>(
     null,
@@ -70,6 +78,51 @@ export default function SuperAdminDashboard() {
     onError: (error: any) => {
       toast.error(t('Error'), {
         description: error?.response?.data?.message || t('Failed to delete tenant'),
+        duration: 3000,
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => superAdminApi.deleteUser(userId),
+    onSuccess: (data) => {
+      toast.success(t('Success'), {
+        description: data.message,
+        duration: 3000,
+      });
+      refetchUsers();
+      refetchStats();
+    },
+    onError: (error: any) => {
+      toast.error(t('Error'), {
+        description: error?.response?.data?.message || t('Failed to delete user'),
+        duration: 3000,
+      });
+    },
+  });
+
+  const switchToTenantMutation = useMutation({
+    mutationFn: (platformId: string) => superAdminApi.switchToTenant(platformId),
+    onSuccess: (data) => {
+      // Push current session to stack before switching
+      const currentUserId = authenticationSession.getCurrentUserId();
+      const currentPlatformId = authenticationSession.getPlatformId();
+      authenticationSession.pushSwitchSession({
+        token: authenticationSession.getToken()!,
+        projectId: authenticationSession.getProjectId(),
+        switchType: 'SUPER_ADMIN_TO_OWNER',
+        userId: currentUserId!,
+        platformId: currentPlatformId,
+      });
+      // Save new session
+      authenticationSession.saveResponse(data, false);
+      toast.success(t('Switched to tenant account'));
+      // Redirect to owner dashboard
+      window.location.href = '/owner-dashboard';
+    },
+    onError: (error: any) => {
+      toast.error(t('Error'), {
+        description: error?.response?.data?.message || t('Failed to switch to tenant account'),
         duration: 3000,
       });
     },
@@ -135,11 +188,50 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statsLoading ? '...' : stats?.totalUsers ?? 0}
+              {statsLoading ? '...' : (() => {
+                // Calculate total from displayed roles only
+                const superAdmins = stats?.totalSuperAdmins ?? 0;
+                const owners = stats?.totalOwners ?? 0;
+                const admins = stats?.totalAdmins ?? 0;
+                const operators = stats?.totalOperators ?? 0;
+                const members = stats?.totalMembers ?? 0;
+                // Only count roles that will be displayed (non-zero)
+                const displayedTotal = (superAdmins > 0 ? superAdmins : 0) + 
+                                      (owners > 0 ? owners : 0) + 
+                                      (admins > 0 ? admins : 0) +
+                                      (operators > 0 ? operators : 0) +
+                                      (members > 0 ? members : 0);
+                return displayedTotal;
+              })()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats?.totalSuperAdmins ?? 0} {t('super admins')},{' '}
-              {stats?.totalAdmins ?? 0} {t('admins')}
+              {(() => {
+                const parts: string[] = [];
+                const superAdmins = stats?.totalSuperAdmins ?? 0;
+                const owners = stats?.totalOwners ?? 0;
+                const admins = stats?.totalAdmins ?? 0;
+                const operators = stats?.totalOperators ?? 0;
+                const members = stats?.totalMembers ?? 0;
+                
+                // Only show roles with count > 0
+                if (superAdmins > 0) {
+                  parts.push(`${superAdmins} ${t('super admins')}`);
+                }
+                if (owners > 0) {
+                  parts.push(`${owners} ${t('owners')}`);
+                }
+                if (admins > 0) {
+                  parts.push(`${admins} ${t('admins')}`);
+                }
+                if (operators > 0) {
+                  parts.push(`${operators} ${t('operators')}`);
+                }
+                if (members > 0) {
+                  parts.push(`${members} ${t('members')}`);
+                }
+                
+                return parts.length > 0 ? parts.join(', ') : t('No users');
+              })()}
             </p>
           </CardContent>
         </Card>
@@ -175,7 +267,7 @@ export default function SuperAdminDashboard() {
 
       {/* Tabs for different views */}
       <Tabs defaultValue="platforms" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="platforms">
             <Building2 className="mr-2 h-4 w-4" />
             {t('Platforms')}
@@ -187,6 +279,10 @@ export default function SuperAdminDashboard() {
           <TabsTrigger value="projects">
             <FolderKanban className="mr-2 h-4 w-4" />
             {t('Projects')}
+          </TabsTrigger>
+          <TabsTrigger value="activities">
+            <Activity className="mr-2 h-4 w-4" />
+            {t('Account Switching')}
           </TabsTrigger>
         </TabsList>
 
@@ -298,14 +394,28 @@ export default function SuperAdminDashboard() {
                     header: () => <div className="text-center">{t('Actions')}</div>,
                     cell: ({ row }) => {
                       const [open, setOpen] = useState(false);
+                      // Disable delete for Super Admin's own platform
+                      const isOwnPlatform = row.original.id === currentPlatformId;
                       return (
-                        <div className="flex justify-center">
+                        <div className="flex justify-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="hover:bg-accent"
+                            onClick={() => switchToTenantMutation.mutate(row.original.id)}
+                            disabled={switchToTenantMutation.isPending}
+                            title={t('Switch to tenant account')}
+                          >
+                            <ArrowRight className="size-4" />
+                          </Button>
                           <Dialog open={open} onOpenChange={setOpen}>
                             <DialogTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                disabled={isOwnPlatform}
+                                title={isOwnPlatform ? t('Cannot delete your own platform') : t('Delete tenant')}
                               >
                                 <Trash2 className="size-4" />
                               </Button>
@@ -454,13 +564,19 @@ export default function SuperAdminDashboard() {
                             className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                               role === 'SUPER_ADMIN'
                                 ? 'bg-purple-100 text-purple-800'
+                                : role === 'OWNER'
+                                ? 'bg-indigo-100 text-indigo-800'
                                 : role === 'ADMIN'
                                 ? 'bg-blue-100 text-blue-800'
+                                : role === 'OPERATOR'
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}
                           >
                             {role === 'SUPER_ADMIN'
                               ? t('Super Admin')
+                              : role === 'OWNER'
+                              ? t('Owner')
                               : role === 'ADMIN'
                               ? t('Admin')
                               : role === 'OPERATOR'
@@ -531,6 +647,77 @@ export default function SuperAdminDashboard() {
                       return (
                         <div className="text-left">
                           <FormattedDate date={new Date(row.original.created)} />
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    id: 'actions',
+                    size: 100,
+                    header: () => <div className="text-center">{t('Actions')}</div>,
+                    cell: ({ row }) => {
+                      const [open, setOpen] = useState(false);
+                      const isSuperAdmin = row.original.platformRole === PlatformRole.SUPER_ADMIN;
+                      const isCurrentUser = row.original.id === currentUser?.id;
+                      const canDelete = isSuperAdmin && !isCurrentUser;
+                      
+                      return (
+                        <div className="flex justify-center">
+                          <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                disabled={!canDelete}
+                                title={!canDelete ? (isCurrentUser ? t('Cannot delete your own account') : t('Only super admins can be deleted')) : t('Delete user')}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                  <AlertTriangle className="size-5 text-destructive" />
+                                  {t('Delete Super Admin')}
+                                </DialogTitle>
+                                <DialogDescription>
+                                  <p className="mb-2">
+                                    {t(
+                                      'Are you sure you want to delete super admin "{{email}}"?',
+                                      { email: row.original.email },
+                                    )}
+                                  </p>
+                                  <p className="font-semibold mb-2">{t('This will permanently delete:')}</p>
+                                  <ul className="list-disc list-inside space-y-1">
+                                    <li>{t('The super admin user account')}</li>
+                                    <li>{t('All projects owned by this super admin')}</li>
+                                  </ul>
+                                  <p className="mt-4 font-semibold text-green-600">
+                                    {t('Note: Owners (tenants) created by this super admin will be preserved.')}
+                                  </p>
+                                  <p className="mt-4 font-semibold text-destructive">
+                                    {t('This action cannot be undone!')}
+                                  </p>
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <Button variant="outline" onClick={() => setOpen(false)}>
+                                  {t('Cancel')}
+                                </Button>
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => {
+                                    deleteUserMutation.mutate(row.original.id);
+                                    setOpen(false);
+                                  }}
+                                  disabled={deleteUserMutation.isPending}
+                                >
+                                  {deleteUserMutation.isPending ? t('Deleting...') : t('Delete')}
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       );
                     },
@@ -660,6 +847,116 @@ export default function SuperAdminDashboard() {
                 }}
                 hidePagination={true}
                 isLoading={projectsLoading}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Account Switching Activities Tab */}
+        <TabsContent value="activities" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('Account Switching Activities')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                emptyStateTextTitle={t('No activities found')}
+                emptyStateTextDescription={t(
+                  'There are no account switching activities recorded',
+                )}
+                emptyStateIcon={<Activity className="size-14" />}
+                columns={[
+                  {
+                    accessorKey: 'created',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Date & Time')}
+                        icon={Calendar}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <div className="text-left">
+                          <FormattedDate date={new Date(row.original.created)} />
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'switchType',
+                    size: 150,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('Switch Type')}
+                        icon={Activity}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      const switchType = row.original.switchType;
+                      return (
+                        <div className="text-left">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              switchType === 'SUPER_ADMIN_TO_OWNER'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}
+                          >
+                            {switchType === 'SUPER_ADMIN_TO_OWNER'
+                              ? t('Super Admin → Owner')
+                              : t('Owner → Admin')}
+                          </span>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'originalUserEmail',
+                    size: 200,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('From User')}
+                        icon={UserCog}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <TruncatedColumnTextValue
+                          value={row.original.originalUserEmail}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    accessorKey: 'switchedToUserEmail',
+                    size: 200,
+                    header: ({ column }) => (
+                      <DataTableColumnHeader
+                        column={column}
+                        title={t('To User')}
+                        icon={UserCog}
+                      />
+                    ),
+                    cell: ({ row }) => {
+                      return (
+                        <TruncatedColumnTextValue
+                          value={row.original.switchedToUserEmail}
+                        />
+                      );
+                    },
+                  },
+                ]}
+                page={{
+                  data: (activities ?? []) as AccountSwitchingActivity[],
+                  next: null,
+                  previous: null,
+                }}
+                hidePagination={true}
+                isLoading={activitiesLoading}
               />
             </CardContent>
           </Card>

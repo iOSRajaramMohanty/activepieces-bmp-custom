@@ -12,12 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { userHooks } from '@/hooks/user-hooks';
 import { PlatformRole } from '@activepieces/shared';
 
 type PlatformRoleSelectProps = {
   form: UseFormReturn<any>;
 };
 export const PlatformRoleSelect = ({ form }: PlatformRoleSelectProps) => {
+  const { data: currentUser } = userHooks.useCurrentUser();
+  const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
+  const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
+
   return (
     <FormField
       control={form.control}
@@ -32,13 +37,21 @@ export const PlatformRoleSelect = ({ form }: PlatformRoleSelectProps) => {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>{t('Platform Role')}</SelectLabel>
-                <SelectItem value={PlatformRole.ADMIN}>{t('Admin')}</SelectItem>
-                <SelectItem value={PlatformRole.OPERATOR}>
-                  {t('Operator')}
-                </SelectItem>
-                <SelectItem value={PlatformRole.MEMBER}>
-                  {t('Member')}
-                </SelectItem>
+                {/* Owner can invite ADMIN */}
+                {isOwner && (
+                  <SelectItem value={PlatformRole.ADMIN}>{t('Admin')}</SelectItem>
+                )}
+                {/* Admin can only invite OPERATOR and MEMBER (not ADMIN) */}
+                {isAdmin && (
+                  <>
+                    <SelectItem value={PlatformRole.OPERATOR}>
+                      {t('Operator')}
+                    </SelectItem>
+                    <SelectItem value={PlatformRole.MEMBER}>
+                      {t('Member')}
+                    </SelectItem>
+                  </>
+                )}
               </SelectGroup>
             </SelectContent>
           </Select>

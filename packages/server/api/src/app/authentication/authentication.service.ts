@@ -1,6 +1,6 @@
 import { OtpType } from '@activepieces/ee-shared'
 import { AppSystemProp, cryptoUtils } from '@activepieces/server-shared'
-import { ActivepiecesError, ApEdition, ApFlagId, assertNotNullOrUndefined, AuthenticationResponse, ErrorCode, InvitationType, isNil, PlatformRole, PlatformWithoutSensitiveData, ProjectType, User, UserIdentity, UserIdentityProvider } from '@activepieces/shared'
+import { ActivepiecesError, ApEdition, ApFlagId, assertNotNullOrUndefined, AuthenticationResponse, ErrorCode, InvitationType, isNil, PlatformRole, PlatformWithoutSensitiveData, ProjectType, User, UserIdentity, UserIdentityProvider, UserStatus } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { otpService } from '../ee/authentication/otp/otp-service'
 import { flagService } from '../flags/flag.service'
@@ -203,13 +203,22 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
     },
     async signInWithPassword(params: SignInWithPasswordParams): Promise<AuthenticationResponse> {
         const identity = await userIdentityService(log).verifyIdentityPassword(params)
-        log.info(`[signInWithPassword] Identity verified: ${identity.id}, email: ${params.email}`)
-        log.info(`[signInWithPassword] predefinedPlatformId: ${params.predefinedPlatformId}`)
+        log.info({ identityId: identity.id, email: params.email }, '[signInWithPassword] Identity verified')
+        log.info({ predefinedPlatformId: params.predefinedPlatformId }, '[signInWithPassword] predefinedPlatformId')
         
         const platformId = isNil(params.predefinedPlatformId) ? await getPersonalPlatformIdForIdentity(identity.id) : params.predefinedPlatformId
-        log.info(`[signInWithPassword] Resolved platformId: ${platformId}`)
+        log.info({ platformId, email: params.email }, '[signInWithPassword] Resolved platformId')
         
         if (isNil(platformId)) {
+            // Additional debugging: check if user exists
+            const users = await userService.getByIdentityId({ identityId: identity.id })
+            log.error({ 
+                email: params.email, 
+                identityId: identity.id,
+                usersFound: users.length,
+                users: users.map(u => ({ id: u.id, platformId: u.platformId, platformRole: u.platformRole, status: u.status }))
+            }, '[signInWithPassword] No platform found for identity')
+            
             throw new ActivepiecesError({
                 code: ErrorCode.AUTHENTICATION,
                 params: {
@@ -406,11 +415,28 @@ async function getPersonalPlatformIdForFederatedAuthn(email: string, log: Fastif
 async function getPersonalPlatformIdForIdentity(identityId: string): Promise<string | null> {
     const edition = system.getEdition()
     
-    // In Cloud edition or CE multi-tenant mode, find user's platform
+    // First, check if user has a direct platformId (for owners, super admins, admins, etc.)
+    const users = await userService.getByIdentityId({ identityId })
+    if (users.length > 0) {
+        // Prioritize: active users with platformId, then any user with platformId
+        const activeUserWithPlatform = users.find((u) => u.platformId && u.status === UserStatus.ACTIVE)
+        if (activeUserWithPlatform?.platformId) {
+            return activeUserWithPlatform.platformId
+        }
+        // If no active user found, try to find any user with platformId
+        const userWithPlatform = users.find((u) => u.platformId)
+        if (userWithPlatform?.platformId) {
+            return userWithPlatform.platformId
+        }
+    }
+    
+    // Fallback: In Cloud edition or CE multi-tenant mode, find user's platform via projects
     if (edition === ApEdition.CLOUD) {
         const platforms = await platformService.listPlatformsForIdentityWithAtleastProject({ identityId })
         const platform = platforms.find((platform) => !platformUtils.isCustomerOnDedicatedDomain(platform))
-        return platform?.id ?? null
+        if (platform?.id) {
+            return platform.id
+        }
     }
     
     // In CE/EE multi-tenant mode, find the first platform the user owns or is a member of
@@ -418,7 +444,9 @@ async function getPersonalPlatformIdForIdentity(identityId: string): Promise<str
     if (multiTenantEnabled) {
         const platforms = await platformService.listPlatformsForIdentityWithAtleastProject({ identityId })
         // Return the first platform (user's personal platform in multi-tenant mode)
-        return platforms[0]?.id ?? null
+        if (platforms.length > 0) {
+            return platforms[0].id
+        }
     }
     
     return null

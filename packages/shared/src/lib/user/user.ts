@@ -13,6 +13,12 @@ export enum PlatformRole {
      */
     SUPER_ADMIN = 'SUPER_ADMIN',
     /**
+     * Platform owner (tenant owner) with full control over their platform.
+     * Can invite admins, view all projects and flows, switch between admin accounts.
+     * Cannot create personal projects or flows directly.
+     */
+    OWNER = 'OWNER',
+    /**
      * Platform administrator with full control over platform settings,
      * users, and all projects within their platform
      */

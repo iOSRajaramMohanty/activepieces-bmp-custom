@@ -11,7 +11,7 @@ export const AuthenticationResponse = Type.Composite([
     Type.Pick(UserIdentity, ['verified', 'firstName', 'lastName', 'email', 'trackEvents', 'newsLetter']),
     Type.Object({
         token: Type.String(),
-        projectId: Type.String(),
+        projectId: Type.Optional(Type.String()), // Optional for Super Admins and Owners who don't have projects
     }),
 ])
 export type AuthenticationResponse = Static<typeof AuthenticationResponse>

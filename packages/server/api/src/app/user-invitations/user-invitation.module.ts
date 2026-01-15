@@ -8,6 +8,7 @@ import {
     isNil,
     ListUserInvitationsRequest,
     Permission,
+    PlatformRole,
     Principal,
     PrincipalType,
     ProjectRole,
@@ -25,6 +26,7 @@ import { platformMustBeOwnedByCurrentUser, platformMustHaveFeatureEnabled, proje
 import { assertRoleHasPermission } from '../ee/authentication/project-role/rbac-middleware'
 import { projectRoleService } from '../ee/projects/project-role/project-role.service'
 import { projectService } from '../project/project-service'
+import { userService } from '../user/user-service'
 import { userInvitationsService } from './user-invitation.service'
 
 export const invitationModule: FastifyPluginAsyncTypebox = async (app) => {
@@ -41,7 +43,22 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                 await assertPrincipalHasPermissionToProject(app, request, reply, request.principal, request.body.projectId, Permission.WRITE_INVITATION)
                 break
             case InvitationType.PLATFORM:
-                await platformMustBeOwnedByCurrentUser.call(app, request, reply)
+                // Check if user is ADMIN or OWNER (non-EE check before EE hook)
+                if (request.principal.type === PrincipalType.USER) {
+                    const user = await userService.getOneOrFail({ id: request.principal.id })
+                    const canInvite = (user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OWNER) && user.platformId === request.principal.platform.id
+                    if (!canInvite) {
+                        throw new ActivepiecesError({
+                            code: ErrorCode.AUTHORIZATION,
+                            params: {
+                                message: 'Only platform admins and owners can invite users to the platform',
+                            },
+                        })
+                    }
+                } else {
+                    // For SERVICE principal, use EE hook
+                    await platformMustBeOwnedByCurrentUser.call(app, request, reply)
+                }
                 break
         }
         const status = request.principal.type === PrincipalType.SERVICE ? InvitationStatus.ACCEPTED : InvitationStatus.PENDING
@@ -104,7 +121,22 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                 break
             }
             case InvitationType.PLATFORM:
-                await platformMustBeOwnedByCurrentUser.call(app, request, reply)
+                // Check if user is ADMIN or OWNER (non-EE check before EE hook)
+                if (request.principal.type === PrincipalType.USER) {
+                    const user = await userService.getOneOrFail({ id: request.principal.id })
+                    const canDelete = (user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OWNER) && user.platformId === request.principal.platform.id
+                    if (!canDelete) {
+                        throw new ActivepiecesError({
+                            code: ErrorCode.AUTHORIZATION,
+                            params: {
+                                message: 'Only platform admins and owners can delete platform invitations',
+                            },
+                        })
+                    }
+                } else {
+                    // For SERVICE principal, use EE hook
+                    await platformMustBeOwnedByCurrentUser.call(app, request, reply)
+                }
                 break
         }
         await userInvitationsService(request.log).delete({

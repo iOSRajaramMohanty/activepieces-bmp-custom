@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useState, useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -23,6 +23,7 @@ import {
   AuthenticationResponse,
   ErrorCode,
   isNil,
+  PlatformRole,
   SignInRequest,
 } from '@activepieces/shared';
 
@@ -44,6 +45,7 @@ type SignInSchema = Static<typeof SignInSchema>;
 const SignInForm: React.FC = () => {
   const [showCheckYourEmailNote, setShowCheckYourEmailNote] = useState(false);
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const emailFromQuery = searchParams.get('email') || '';
   
   const form = useForm<SignInSchema>({
@@ -75,6 +77,8 @@ const SignInForm: React.FC = () => {
     mutationFn: authenticationApi.signIn,
     onSuccess: (data) => {
       authenticationSession.saveResponse(data, false);
+      // All users should go through the default route logic
+      // This ensures proper handling of projectId and role-based routing
       redirectAfterLogin();
     },
     onError: (error) => {

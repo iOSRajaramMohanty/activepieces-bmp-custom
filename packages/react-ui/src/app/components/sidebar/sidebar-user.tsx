@@ -6,8 +6,9 @@ import {
   Shield,
   UserCogIcon,
   UserPlus,
+  ArrowLeft,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useEmbedding } from '@/components/embed-provider';
@@ -41,7 +42,7 @@ import {
 } from '@/hooks/authorization-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
-import { Permission } from '@activepieces/shared';
+import { Permission, PlatformRole } from '@activepieces/shared';
 
 import AccountSettingsDialog from '../account-settings';
 import { HelpAndFeedback } from '../help-and-feedback';
@@ -57,8 +58,27 @@ export function SidebarUser() {
   const { reset } = useTelemetry();
   const { checkAccess } = useAuthorization();
   const canInviteUsers = checkAccess(Permission.WRITE_INVITATION);
+  // Super Admins cannot invite users - only Owners can invite admins
+  // Operators and Members cannot invite users - only Admins and Owners can invite
+  const isSuperAdmin = user?.platformRole === PlatformRole.SUPER_ADMIN;
+  const isOwner = user?.platformRole === PlatformRole.OWNER;
+  const isOperator = user?.platformRole === PlatformRole.OPERATOR;
+  const isMember = user?.platformRole === PlatformRole.MEMBER;
+  const canShowInviteUser = canInviteUsers && !isSuperAdmin && !isOperator && !isMember;
   const isInPlatformAdmin = location.pathname.startsWith('/platform');
   const isCollapsed = state === 'collapsed';
+  
+  // Validate and clean switch stack on mount/update
+  useEffect(() => {
+    if (user) {
+      authenticationSession.validateAndCleanSwitchStack(
+        user.platformRole,
+        authenticationSession.getCurrentUserId()
+      );
+    }
+  }, [user]);
+  
+  const isSwitchedAccount = authenticationSession.isSwitchedAccount();
 
   if (!user || embedState.isEmbedded) {
     return null;
@@ -139,14 +159,14 @@ export function SidebarUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {!isInPlatformAdmin && <SidebarPlatformAdminButton />}
+            {!isInPlatformAdmin && !isOwner && <SidebarPlatformAdminButton />}
 
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setAccountSettingsOpen(true)}>
                 <UserCogIcon className="w-4 h-4 mr-2" />
                 {t('Account Settings')}
               </DropdownMenuItem>
-              {canInviteUsers && (
+              {canShowInviteUser && (
                 <DropdownMenuItem onClick={() => setInviteUserOpen(true)}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   {t('Invite User')}
@@ -154,6 +174,21 @@ export function SidebarUser() {
               )}
               <HelpAndFeedback />
             </DropdownMenuGroup>
+            {isSwitchedAccount && 
+             user?.platformRole !== PlatformRole.OPERATOR && 
+             user?.platformRole !== PlatformRole.MEMBER && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    authenticationSession.restorePreviousSession();
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  {authenticationSession.getSwitchBackText()}
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />

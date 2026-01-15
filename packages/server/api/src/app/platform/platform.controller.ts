@@ -4,11 +4,13 @@ import {
     ApEdition,
     ApId,
     assertNotNullOrUndefined,
+    AuthenticationResponse,
     ErrorCode,
     FileCompression,
     FileType,
     isMultipartFile,
     isNil,
+    PlatformRole,
     PlatformWithoutSensitiveData,
     PrincipalType,
     SERVICE_KEY_SECURITY_OPENAPI,
@@ -19,6 +21,9 @@ import {
     Type,
 } from '@fastify/type-provider-typebox'
 import { StatusCodes } from 'http-status-codes'
+import { authenticationUtils } from '../authentication/authentication-utils'
+import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
+import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { userIdentityRepository } from '../authentication/user-identity/user-identity-service'
 import { transaction } from '../core/db/transaction'
 import { platformToEditMustBeOwnedByCurrentUser } from '../ee/authentication/ee-authorization'
@@ -160,6 +165,169 @@ export const platformController: FastifyPluginAsyncTypebox = async (app) => {
             return res.status(StatusCodes.NO_CONTENT).send()
         })
     }
+
+    /**
+     * List all admins in the platform
+     * Owner can see all admins in their platform
+     */
+    app.get('/admins', {
+        config: {
+            security: securityAccess.platformAdminOnly([PrincipalType.USER]),
+        },
+        schema: {
+            response: {
+                [StatusCodes.OK]: Type.Array(Type.Any()),
+            },
+        },
+    }, async (request) => {
+        const platformId = request.principal.platform.id
+        const owner = await userService.getOneOrFail({ id: request.principal.id })
+        
+        // Verify user is the platform owner
+        if (owner.platformRole !== PlatformRole.OWNER) {
+            throw new ActivepiecesError({
+                code: ErrorCode.AUTHORIZATION,
+                params: {
+                    message: 'Only platform owner can list admins',
+                },
+            })
+        }
+        
+        const admins = await userRepo().find({
+            where: {
+                platformId,
+                platformRole: PlatformRole.ADMIN,
+            },
+            relations: ['identity'],
+        })
+        
+        return admins.map(admin => ({
+            id: admin.id,
+            email: admin.identity?.email,
+            firstName: admin.identity?.firstName,
+            lastName: admin.identity?.lastName,
+            status: admin.status,
+            created: admin.created,
+        }))
+    })
+
+    /**
+     * Switch to admin account
+     * Owner can switch into any admin account within their platform
+     */
+    app.post('/switch-to-admin/:adminId', {
+        config: {
+            security: securityAccess.platformAdminOnly([PrincipalType.USER]),
+        },
+        schema: {
+            params: Type.Object({
+                adminId: Type.String(),
+            }),
+            response: {
+                [StatusCodes.OK]: AuthenticationResponse,
+            },
+        },
+    }, async (request, reply) => {
+        const { adminId } = request.params
+        const ownerId = request.principal.id
+        const platformId = request.principal.platform.id
+        
+        request.log.info({ adminId, ownerId, platformId }, '[Platform] Owner switching to admin account')
+        
+        try {
+            // Verify user is the platform owner
+            const owner = await userService.getOneOrFail({ id: ownerId })
+            
+            if (owner.platformRole !== PlatformRole.OWNER) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'Only platform owner can switch to admin accounts',
+                    },
+                })
+            }
+            
+            // Get admin user
+            const admin = await userService.getOneOrFail({ id: adminId })
+            
+            // Verify admin belongs to owner's platform
+            if (admin.platformId !== platformId) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'Admin does not belong to your platform',
+                    },
+                })
+            }
+            
+            // Verify admin is actually an admin
+            if (admin.platformRole !== PlatformRole.ADMIN) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'User is not an admin',
+                    },
+                })
+            }
+            
+            const ownerIdentity = await userIdentityService(request.log).getOneOrFail({ id: owner.identityId })
+            const adminIdentity = await userIdentityService(request.log).getOneOrFail({ id: admin.identityId })
+            
+            request.log.info({
+                ownerId,
+                adminId: admin.id,
+                platformId,
+            }, '[Platform] Switching to admin account')
+            
+            // Log the account switching activity (wrapped in try-catch in case migration hasn't run)
+            try {
+                await accountSwitchingActivityService(request.log).logActivity({
+                    originalUserId: ownerId,
+                    switchedToUserId: admin.id,
+                    switchType: 'OWNER_TO_ADMIN',
+                    originalUserEmail: ownerIdentity.email,
+                    switchedToUserEmail: adminIdentity.email,
+                    originalPlatformId: platformId,
+                    switchedToPlatformId: platformId,
+                })
+                request.log.info({ ownerId, adminId: admin.id }, '[Platform] Successfully logged account switching activity')
+            } catch (error: any) {
+                // Log error but don't fail the switch if table doesn't exist yet
+                const errorMessage = error?.message || String(error)
+                if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+                    request.log.warn({ error: errorMessage }, '[Platform] Account switching activity table does not exist yet. Migration needs to run. Switch will proceed without logging.')
+                } else {
+                    request.log.error({ error }, '[Platform] Failed to log account switching activity')
+                }
+            }
+            
+            // Get admin's projects to set as default project
+            const adminProjects = await projectRepo().find({
+                where: {
+                    ownerId: admin.id,
+                    platformId: platformId,
+                },
+                order: {
+                    created: 'ASC',
+                },
+                take: 1,
+            })
+            
+            const defaultProjectId = adminProjects.length > 0 ? adminProjects[0].id : null
+            
+            // Return admin's authentication token
+            const authResponse = await authenticationUtils.getProjectAndToken({
+                userId: admin.id,
+                platformId: platformId,
+                projectId: defaultProjectId,
+            })
+            
+            return reply.status(StatusCodes.OK).send(authResponse)
+        } catch (error) {
+            request.log.error({ error, adminId, ownerId }, '[Platform] Failed to switch to admin account')
+            throw error
+        }
+    })
 }
 
 const UpdatePlatformRequest = {

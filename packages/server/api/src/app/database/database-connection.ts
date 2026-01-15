@@ -8,6 +8,7 @@ import { AIProviderEntity } from '../ai/ai-provider-entity'
 import { PlatformAnalyticsReportEntity } from '../analytics/platform-analytics-report.entity'
 import { AppConnectionEntity } from '../app-connection/app-connection.entity'
 import { UserIdentityEntity } from '../authentication/user-identity/user-identity-entity'
+import { AccountSwitchingActivityEntity } from '../account-switching/account-switching-activity.entity'
 import { AlertEntity } from '../ee/alerts/alerts-entity'
 import { ApiKeyEntity } from '../ee/api-keys/api-key-entity'
 import { AppCredentialEntity } from '../ee/app-credentials/app-credentials.entity'
@@ -92,6 +93,7 @@ function getEntities(): EntitySchema<unknown>[] {
         TodoActivityEntity,
         TriggerSourceEntity,
         UserBadgeEntity,
+        AccountSwitchingActivityEntity,
         // Enterprise
         ProjectMemberEntity,
         ProjectPlanEntity,

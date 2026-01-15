@@ -3,6 +3,7 @@ import { PrincipalType, Project, UpdateProjectRequestInCommunity } from '@active
 import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox'
 import { StatusCodes } from 'http-status-codes'
 import { paginationHelper } from '../helper/pagination/pagination-utils'
+import { userService } from '../user/user-service'
 import { projectService } from './project-service'
 
 export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -30,7 +31,14 @@ export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
     }, async (request) => {
-        return paginationHelper.createPage([await projectService.getUserProjectOrThrow(request.principal.id)], null)
+        // Get all projects the user can access (including admin's personal projects for operators/members)
+        const user = await userService.getOneOrFail({ id: request.principal.id })
+        const projects = await projectService.getAllForUser({
+            platformId: request.principal.platform.id,
+            userId: request.principal.id,
+            isPrivileged: userService.isUserPrivileged(user),
+        })
+        return paginationHelper.createPage(projects, null)
     })
 }
 

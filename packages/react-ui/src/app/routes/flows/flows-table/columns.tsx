@@ -63,6 +63,29 @@ export const flowsTableColumns = ({
     },
   },
   {
+    accessorKey: 'created',
+    size: 150,
+    header: ({ column }) => (
+      <DataTableColumnHeader
+        column={column}
+        title={t('Created')}
+        icon={Clock}
+      />
+    ),
+    cell: ({ row }) => {
+      const created = row.original.created;
+      return (
+        <div className="text-left">
+          <FormattedDate
+            date={new Date(created)}
+            className="text-left font-medium"
+            includeTime={false}
+          />
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'updated',
     header: ({ column }) => (
       <DataTableColumnHeader
@@ -90,7 +113,7 @@ export const flowsTableColumns = ({
           header: ({ column }: { column: any }) => (
             <DataTableColumnHeader
               column={column}
-              title={t('Owner')}
+              title={t('Created by')}
               icon={User}
             />
           ),
@@ -100,6 +123,31 @@ export const flowsTableColumns = ({
             ) : (
               <ApAvatar
                 id={row.original.ownerId}
+                size="small"
+                includeAvatar={true}
+                includeName={true}
+              />
+            );
+          },
+        },
+        {
+          accessorKey: 'updatedBy',
+          size: 150,
+          header: ({ column }: { column: any }) => (
+            <DataTableColumnHeader
+              column={column}
+              title={t('Last updated by')}
+              icon={User}
+            />
+          ),
+          cell: ({ row }: { row: any }) => {
+            const updatedBy = row.original.version?.updatedBy;
+            if (isNil(updatedBy)) {
+              return <span className="text-muted-foreground">—</span>;
+            }
+            return (
+              <ApAvatar
+                id={updatedBy}
                 size="small"
                 includeAvatar={true}
                 includeName={true}

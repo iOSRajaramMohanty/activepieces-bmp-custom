@@ -1,5 +1,5 @@
 import { t } from 'i18next';
-import { UserPlus, UsersRound, Settings, Lock } from 'lucide-react';
+import { UserPlus, UsersRound, Settings } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -44,7 +44,7 @@ export const ProjectDashboardPageHeader = ({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<
-    'general' | 'members' | 'alerts' | 'pieces' | 'environment'
+    'general' | 'members' | 'alerts' | 'pieces' | 'mcp'
   >('general');
   const location = useLocation();
   const { projectMembers } = projectMembersHooks.useProjectMembers();
@@ -71,6 +71,8 @@ export const ProjectDashboardPageHeader = ({
   const showInviteUserButton =
     userHasPermissionToInviteUser && project.type === ProjectType.TEAM;
 
+  const showSettingsButton = user?.platformRole === PlatformRole.ADMIN;
+
   const isProjectPage = location.pathname.includes('/projects/');
 
   const hasGeneralSettings =
@@ -83,7 +85,7 @@ export const ProjectDashboardPageHeader = ({
     | 'members'
     | 'alerts'
     | 'pieces'
-    | 'environment' => {
+    | 'mcp' => {
     if (hasGeneralSettings) return 'general';
     if (
       project.type === ProjectType.TEAM &&
@@ -102,22 +104,6 @@ export const ProjectDashboardPageHeader = ({
         titleClassName="text-base"
         projectType={project.type}
       />
-      {project.type === ProjectType.PERSONAL && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Lock className="w-4 h-4" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>
-                {t(
-                  'This is your private project. Only you can see and access it.',
-                )}
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
     </div>
   );
 
@@ -150,17 +136,19 @@ export const ProjectDashboardPageHeader = ({
           <span className="text-sm font-medium">Invite</span>
         </Button>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={() => {
-          setSettingsInitialTab(getFirstAvailableTab());
-          setSettingsOpen(true);
-        }}
-      >
-        <Settings className="w-4 h-4" />
-      </Button>
+      {showSettingsButton && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            setSettingsInitialTab(getFirstAvailableTab());
+            setSettingsOpen(true);
+          }}
+        >
+          <Settings className="w-4 h-4" />
+        </Button>
+      )}
     </div>
   ) : (
     children

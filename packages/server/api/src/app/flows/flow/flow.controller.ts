@@ -15,9 +15,11 @@ import {
     isNil,
     ListFlowsRequest,
     Permission,
+    PlatformRole,
     PlatformUsageMetric,
     PopulatedFlow,
     PrincipalType,
+    ProjectType,
     SeekPage,
     SERVICE_KEY_SECURITY_OPENAPI,
     SharedTemplate,
@@ -34,6 +36,8 @@ import { assertUserHasPermissionToFlow } from '../../ee/authentication/project-r
 import { platformPlanService } from '../../ee/platform/platform-plan/platform-plan.service'
 import { gitRepoService } from '../../ee/projects/project-release/git-sync/git-sync.service'
 import { applicationEvents } from '../../helper/application-events'
+import { projectService } from '../../project/project-service'
+import { platformService } from '../../platform/platform.service'
 import { userService } from '../../user/user-service'
 import { migrateFlowVersionTemplate } from '../flow-version/migrations'
 import { FlowEntity } from './flow.entity'
@@ -44,6 +48,68 @@ const DEFAULT_PAGE_SIZE = 10
 export const flowController: FastifyPluginAsyncTypebox = async (app) => {
     app.addHook('preSerialization', entitiesMustBeOwnedByCurrentProject)
     app.post('/', CreateFlowRequestOptions, async (request, reply) => {
+        // Validate flow creation based on user role and project ownership
+        if (request.principal.type === PrincipalType.USER) {
+            const user = await userService.getOneOrFail({ id: request.principal.id })
+            const project = await projectService.getOneOrThrow(request.projectId)
+            
+            // Check if user is SUPER_ADMIN (they cannot create flows)
+            if (user.platformRole === PlatformRole.SUPER_ADMIN) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'Super Admin cannot create flows',
+                    },
+                })
+            }
+            
+            // Check if user is platform owner (cannot create flows unless switched to admin)
+            if (user.platformRole === PlatformRole.OWNER) {
+                // Platform owner cannot create flows in their own account
+                // (They can only create flows when switched to an admin account)
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'Platform owner cannot create flows. Switch to an admin account to create flows.',
+                    },
+                })
+            }
+            
+            // For operators/members: can only create flows in admin's personal projects
+            if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
+                if (project.type !== ProjectType.PERSONAL) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Operators and Members can only create flows in admin personal projects',
+                        },
+                    })
+                }
+                
+                const projectOwner = await userService.getOneOrFail({ id: project.ownerId })
+                if (projectOwner.platformRole !== PlatformRole.ADMIN || projectOwner.platformId !== user.platformId) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Operators and Members can only create flows in admin personal projects within the same platform',
+                        },
+                    })
+                }
+            }
+            
+            // For admins: can only create flows in their own projects
+            if (user.platformRole === PlatformRole.ADMIN) {
+                if (project.ownerId !== user.id) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Admins can only create flows in their own projects',
+                        },
+                    })
+                }
+            }
+        }
+        
         const newFlow = await flowService(request.log).create({
             projectId: request.projectId,
             request: request.body,
@@ -96,6 +162,39 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
         },
     }, async (request) => {
         const userId = await authenticationUtils.extractUserIdFromRequest(request)
+        
+        // Check platform role restrictions for publishing flows
+        if (request.principal.type === PrincipalType.USER) {
+            const user = await userService.getOneOrFail({ id: request.principal.id })
+            const project = await projectService.getOneOrThrow(request.projectId)
+            
+            // Check if user is the project owner - project owners can always edit/publish flows in their personal projects
+            // This allows admins to edit/publish flows created by OPERATOR/MEMBER users in their personal projects
+            const isProjectOwner = project.ownerId === user.id && project.type === ProjectType.PERSONAL
+            
+            // Operators and Members cannot publish flows (LOCK_AND_PUBLISH or CHANGE_STATUS to ENABLED)
+            // Exception: Project owners can always publish flows in their personal projects
+            if (!isProjectOwner && (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER)) {
+                if (request.body.type === FlowOperationType.LOCK_AND_PUBLISH) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Operators and Members cannot publish flows. Only admins can publish flows.',
+                        },
+                    })
+                }
+                if (request.body.type === FlowOperationType.CHANGE_STATUS && 
+                    request.body.request?.status === FlowStatus.ENABLED) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Operators and Members cannot enable flows. Only admins can enable flows.',
+                        },
+                    })
+                }
+            }
+        }
+        
         await assertUserHasPermissionToFlow(request.principal, request.projectId, request.body.type, request.log)
 
         const flow = await flowService(request.log).getOnePopulatedOrThrow({

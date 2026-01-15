@@ -28,7 +28,8 @@ export const LOGIN_QUERY_PARAM = 'activepiecesLogin';
 export const PROVIDER_NAME_QUERY_PARAM = 'providerName';
 
 export const useDefaultRedirectPath = () => {
-  return '/flows';
+  // Return root route to let DefaultRoute component handle role-based redirects
+  return '/';
 };
 
 export const useRedirectAfterLogin = () => {

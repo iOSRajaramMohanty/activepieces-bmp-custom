@@ -8,6 +8,7 @@ import {
     ErrorCode,
     isNil,
     Metadata,
+    PlatformRole,
     Project,
     ProjectIcon,
     ProjectId,
@@ -28,6 +29,20 @@ export const projectRepo = repoFactory(ProjectEntity)
 
 export const projectService = {
     async create(params: CreateParams): Promise<Project> {
+        // Validate: If creating a PERSONAL project, ensure the owner is an ADMIN
+        // Operators, Members, and Owners should not have personal projects
+        if (params.type === ProjectType.PERSONAL && !isNil(params.ownerId)) {
+            const owner = await userService.getOneOrFail({ id: params.ownerId })
+            if (owner.platformRole !== PlatformRole.ADMIN && owner.platformRole !== PlatformRole.SUPER_ADMIN) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.AUTHORIZATION,
+                    params: {
+                        message: 'Only Admins can create personal projects. Operators, Members, and Owners cannot create projects.',
+                    },
+                })
+            }
+        }
+        
         const colors = Object.values(ColorName)
         const icon: ProjectIcon = {
             color: colors[Math.floor(Math.random() * colors.length)],
@@ -227,12 +242,20 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
 
     queryBuilder.andWhere(new Brackets(qb => {
         qb.where(
+            // User's own personal projects
             'project."ownerId" = :userId AND project.type = :personalType',
             { userId, personalType: ProjectType.PERSONAL },
         ).orWhere(
+            // Platform owner's personal projects (visible to all)
             'project."ownerId" = :platformOwnerId AND project.type = :personalType',
             { platformOwnerId, personalType: ProjectType.PERSONAL },
         ).orWhere(
+            // Admin's personal projects (visible to all platform members)
+            // This makes all admin personal projects visible to operators/members
+            'project."ownerId" IN (SELECT id FROM "user" WHERE "platformId" = :platformId AND "platformRole" = :adminRole) AND project.type = :personalType',
+            { platformId, adminRole: 'ADMIN', personalType: ProjectType.PERSONAL },
+        ).orWhere(
+            // Projects where user is a member (TEAM projects)
             'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
             { userId, platformId },
         )

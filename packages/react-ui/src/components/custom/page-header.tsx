@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { useEmbedding } from '@/components/embed-provider';
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar-shadcn';
+import { SwitchBackButton } from '@/app/components/switch-back-button';
 
 interface PageHeaderProps {
   title: ReactNode;
@@ -62,7 +63,10 @@ export const PageHeader = ({
           {leftContent}
         </div>
 
-        {rightContent}
+        <div className="flex items-center gap-2">
+          <SwitchBackButton />
+          {rightContent}
+        </div>
       </div>
     </div>
   );

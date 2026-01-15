@@ -62,6 +62,7 @@ import { TemplatesPage } from '../routes/templates';
 import { TodosPage } from '../routes/todos';
 import { TodoTestingPage } from '../routes/todos/id';
 import SuperAdminDashboard from '../routes/super-admin';
+import OwnerDashboard from '../routes/owner-dashboard';
 
 import { AfterImportFlowRedirect } from './after-import-flow-redirect';
 import { DefaultRoute } from './default-route';
@@ -575,6 +576,16 @@ const routes = [
       <PlatformLayout>
         <PageTitle title="Super Admin Dashboard">
           <SuperAdminDashboard />
+        </PageTitle>
+      </PlatformLayout>
+    ),
+  },
+  {
+    path: '/owner-dashboard',
+    element: (
+      <PlatformLayout>
+        <PageTitle title="Owner Dashboard">
+          <OwnerDashboard />
         </PageTitle>
       </PlatformLayout>
     ),

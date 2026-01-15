@@ -41,7 +41,7 @@ const notifyVendorPostAuthentication = () => {
   parentWindow.postMessage(configurationFinishedEvent, '*');
 };
 
-const handleVendorNavigation = ({ projectId }: { projectId: string }) => {
+const handleVendorNavigation = ({ projectId }: { projectId?: string }) => {
   const handleVendorRouteChange = (
     event: MessageEvent<ActivepiecesVendorRouteChanged>,
   ) => {
@@ -55,7 +55,8 @@ const handleVendorNavigation = ({ projectId }: { projectId: string }) => {
       ).some((route) => targetRoute.includes(route));
       if (!targetRouteRequiresProjectId) {
         memoryRouter.navigate(targetRoute);
-      } else {
+      } else if (projectId) {
+        // Only navigate to project routes if projectId exists
         memoryRouter.navigate(
           combinePaths({
             secondPath: targetRoute,
@@ -63,6 +64,8 @@ const handleVendorNavigation = ({ projectId }: { projectId: string }) => {
           }),
         );
       }
+      // If projectId is undefined and route requires it, skip navigation
+      // (Super Admins/Owners don't have projects)
     }
   };
   window.addEventListener('message', handleVendorRouteChange);

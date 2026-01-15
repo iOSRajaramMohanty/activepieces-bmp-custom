@@ -33,7 +33,8 @@ async function assertPlatformIsOwnedByCurrentPrincipal(principal: Principal): Pr
         return
     }
     const user = await userService.getOneOrFail({ id: principal.id })
-    if (user.platformRole !== PlatformRole.ADMIN) {
+    // Allow both ADMIN and OWNER roles to access platform admin endpoints
+    if (user.platformRole !== PlatformRole.ADMIN && user.platformRole !== PlatformRole.OWNER) {
         throw new ActivepiecesError({
             code: ErrorCode.AUTHORIZATION,
             params: {

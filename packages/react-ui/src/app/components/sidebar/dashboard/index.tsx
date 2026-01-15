@@ -147,16 +147,25 @@ export function ProjectDashboardSidebar() {
 
   const permissionFilter = (link: SidebarGeneralItemType) => {
     if (link.type === 'link') {
-      return isNil(link.hasPermission) || link.hasPermission;
+      // Check both hasPermission and show properties
+      const hasPermission = isNil(link.hasPermission) || link.hasPermission;
+      const shouldShow = isNil(link.show) || link.show;
+      return hasPermission && shouldShow;
     }
     return true;
   };
+
+  // Hide Explore, Impact, and Leaderboard for operators and members
+  const isOperator = currentUser?.platformRole === PlatformRole.OPERATOR;
+  const isMember = currentUser?.platformRole === PlatformRole.MEMBER;
+  const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
+  const shouldHideNavigationItems = isOperator || isMember;
 
   const exploreLink: SidebarItemType = {
     type: 'link',
     to: '/templates',
     label: t('Explore'),
-    show: true,
+    show: !shouldHideNavigationItems,
     icon: Compass,
     hasPermission: true,
     isSubItem: false,
@@ -167,7 +176,7 @@ export function ProjectDashboardSidebar() {
     to: '/impact',
     label: t('Impact'),
     icon: LineChart,
-    show: true,
+    show: !shouldHideNavigationItems,
     hasPermission: true,
     isSubItem: false,
   };
@@ -177,7 +186,7 @@ export function ProjectDashboardSidebar() {
     to: '/leaderboard',
     label: t('Leaderboard'),
     icon: Trophy,
-    show: true,
+    show: !shouldHideNavigationItems,
     hasPermission: true,
     isSubItem: false,
   };

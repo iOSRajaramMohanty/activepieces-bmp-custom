@@ -29,6 +29,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { platformUserHooks } from '@/hooks/platform-user-hooks';
+import { userHooks } from '@/hooks/user-hooks';
+import { authenticationSession } from '@/lib/authentication-session';
 import { platformUserApi } from '@/lib/platform-user-api';
 import { PlatformRole, UserStatus } from '@activepieces/shared';
 
@@ -36,6 +38,8 @@ import { UpdateUserDialog } from './update-user-dialog';
 
 export default function UsersPage() {
   const { data, isLoading, refetch } = platformUserHooks.useUsers();
+  const { data: currentUser } = userHooks.useCurrentUser();
+  const currentUserId = authenticationSession.getCurrentUserId();
 
   const { mutate: deleteUser, isPending: isDeleting } = useMutation({
     mutationKey: ['delete-user'],
@@ -153,11 +157,16 @@ export default function UsersPage() {
                 />
               ),
               cell: ({ row }) => {
+                const role = row.original.platformRole;
                 return (
                   <div className="text-left">
-                    {row.original.platformRole === PlatformRole.ADMIN
+                    {role === PlatformRole.SUPER_ADMIN
+                      ? t('Super Admin')
+                      : role === PlatformRole.OWNER
+                      ? t('Owner')
+                      : role === PlatformRole.ADMIN
                       ? t('Admin')
-                      : row.original.platformRole === PlatformRole.OPERATOR
+                      : role === PlatformRole.OPERATOR
                       ? t('Operator')
                       : t('Member')}
                   </div>
@@ -294,31 +303,51 @@ export default function UsersPage() {
               );
             },
             (row) => {
+              // Disable delete for OWNER, SUPER_ADMIN, and the currently logged-in user
+              const isOwner = row.platformRole === PlatformRole.OWNER;
+              const isSuperAdmin = row.platformRole === PlatformRole.SUPER_ADMIN;
+              const isCurrentUser = row.id === currentUserId;
+              const canDelete = !isOwner && !isSuperAdmin && !isCurrentUser;
+
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
                     <TooltipTrigger>
-                      <ConfirmationDeleteDialog
-                        title={t('Delete User')}
-                        message={t(
-                          'Are you sure you want to delete this user?',
-                        )}
-                        entityName={`${t('User')} ${row.email}`}
-                        mutationFn={async () => {
-                          deleteUser(row.id);
-                        }}
-                      >
+                      {canDelete ? (
+                        <ConfirmationDeleteDialog
+                          title={t('Delete User')}
+                          message={t(
+                            'Are you sure you want to delete this user?',
+                          )}
+                          entityName={`${t('User')} ${row.email}`}
+                          mutationFn={async () => {
+                            deleteUser(row.id);
+                          }}
+                        >
+                          <Button
+                            loading={isDeleting}
+                            variant="ghost"
+                            className="size-8 p-0"
+                          >
+                            <Trash className="size-4 text-destructive" />
+                          </Button>
+                        </ConfirmationDeleteDialog>
+                      ) : (
                         <Button
-                          loading={isDeleting}
+                          disabled={true}
                           variant="ghost"
                           className="size-8 p-0"
                         >
-                          <Trash className="size-4 text-destructive" />
+                          <Trash className="size-4 text-muted-foreground" />
                         </Button>
-                      </ConfirmationDeleteDialog>
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      {t('Delete user')}
+                      {isOwner || isSuperAdmin
+                        ? t('Cannot delete owner or super admin')
+                        : isCurrentUser
+                        ? t('Cannot delete your own account')
+                        : t('Delete user')}
                     </TooltipContent>
                   </Tooltip>
                 </div>

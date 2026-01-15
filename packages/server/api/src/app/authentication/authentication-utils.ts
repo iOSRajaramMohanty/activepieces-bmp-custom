@@ -1,5 +1,5 @@
 import { AppSystemProp } from '@activepieces/server-shared'
-import { ActivepiecesError, ApEdition, ApEnvironment, assertNotNullOrUndefined, AuthenticationResponse, EndpointScope, ErrorCode, isNil, PrincipalType, Project, TelemetryEventName, User, UserIdentity, UserIdentityProvider, UserStatus } from '@activepieces/shared'
+import { ActivepiecesError, ApEdition, ApEnvironment, assertNotNullOrUndefined, AuthenticationResponse, EndpointScope, ErrorCode, isNil, PlatformRole, PrincipalType, Project, TelemetryEventName, User, UserIdentity, UserIdentityProvider, UserStatus } from '@activepieces/shared'
 import { FastifyBaseLogger, FastifyRequest } from 'fastify'
 import { system } from '../helper/system/system'
 import { telemetry } from '../helper/telemetry.utils'
@@ -40,6 +40,46 @@ export const authenticationUtils = {
 
     async getProjectAndToken(params: GetProjectAndTokenParams): Promise<AuthenticationResponse> {
         const user = await userService.getOneOrFail({ id: params.userId })
+        
+        // Update last active date when user authenticates
+        await userService.updateLastActiveDate({ id: params.userId })
+        
+        // Super Admins and Owners should not have projects
+        // Return authentication without projectId
+        if (user.platformRole === PlatformRole.SUPER_ADMIN || user.platformRole === PlatformRole.OWNER) {
+            const identity = await userIdentityService(system.globalLogger()).getOneOrFail({ id: user.identityId })
+            if (!identity.verified) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.EMAIL_IS_NOT_VERIFIED,
+                    params: {
+                        email: identity.email,
+                    },
+                })
+            }
+            if (user.status === UserStatus.INACTIVE) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.USER_IS_INACTIVE,
+                    params: {
+                        email: identity.email,
+                    },
+                })
+            }
+            const token = await accessTokenManager.generateToken({
+                id: user.id,
+                type: PrincipalType.USER,
+                platform: {
+                    id: params.platformId,
+                },
+                tokenVersion: identity.tokenVersion,
+            })
+            return {
+                ...user,
+                ...identity,
+                token,
+                // projectId is optional - Super Admins and Owners don't have projects
+            }
+        }
+        
         const projects = await projectService.getAllForUser({
             platformId: params.platformId,
             userId: params.userId,
