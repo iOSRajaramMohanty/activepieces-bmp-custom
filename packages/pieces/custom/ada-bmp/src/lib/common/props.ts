@@ -39,9 +39,9 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
 
       try {
         const apiUrl = API_ENDPOINTS.getChannels();
-        debugLog('Fetching channels from /user/mymenu', { url: apiUrl });
+        debugLog('Fetching channels from /account', { url: apiUrl });
         
-        // Fetch menu from the API using auth.secret_text
+        // Fetch accounts from the API using auth.secret_text
         const response = await httpClient.sendRequest({
           method: HttpMethod.GET,
           url: apiUrl,
@@ -51,30 +51,32 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
           },
         });
 
-        debugLog('Menu response received', { status: response.status });
+        debugLog('Account response received', { status: response.status });
 
         // Parse the response to extract channels
-        // Response structure: { status, errorCode, message, data: [ { name, subMenu: [...] } ] }
+        // Response structure: { status, message, data: [ { platform, ... } ], pageNo, pageSize, pageTotal, totalRecord }
         const body = response.body as {
           status: number;
-          errorCode: number;
           message: string;
           data: Array<{
             id: string;
+            platform: string;
+            clientId: string;
+            clientName: string;
             name: string;
-            subMenu: Array<{
-              id: string;
-              name: string;
-              subMenu: any[];
-            }>;
+            accountNo: string;
+            status: string;
+            coreAppStatus: string;
+            [key: string]: any;
           }>;
+          pageNo: number;
+          pageSize: number;
+          pageTotal: number;
+          totalRecord: number;
         };
 
-        // Find the "Channel" menu item
-        const channelMenu = body.data.find((item) => item.name === 'Channel');
-        
-        if (!channelMenu || !channelMenu.subMenu) {
-          debugLog('Channel menu not found in response');
+        if (!body.data || body.data.length === 0) {
+          debugLog('No accounts found in response');
           return {
             disabled: true,
             placeholder: 'No channels found',
@@ -82,11 +84,38 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
           };
         }
 
-        // Extract channels from the subMenu
-        const channels = channelMenu.subMenu.map((channel) => ({
-          id: channel.id,
-          name: channel.name,
-        }));
+        // Extract unique platforms from accounts
+        const platformSet = new Set<string>();
+        body.data.forEach((account) => {
+          if (account.platform) {
+            platformSet.add(account.platform);
+          }
+        });
+
+        // Map platform codes to channel names
+        const platformToChannel: Record<string, string> = {
+          'WA': 'Whatsapp',
+          'FB': 'Facebook',
+          'IG': 'Instagram',
+          'LINE': 'Line',
+        };
+
+        // Convert platforms to channels
+        const channels = Array.from(platformSet)
+          .map((platform) => ({
+            platform,
+            name: platformToChannel[platform] || platform,
+          }))
+          .filter((channel) => channel.name !== channel.platform); // Only include known platforms
+
+        if (channels.length === 0) {
+          debugLog('No valid channels found');
+          return {
+            disabled: true,
+            placeholder: 'No channels found',
+            options: [],
+          };
+        }
 
         debugLog('Channels extracted successfully', { count: channels.length, channels });
         

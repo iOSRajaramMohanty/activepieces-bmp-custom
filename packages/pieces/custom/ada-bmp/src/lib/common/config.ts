@@ -34,15 +34,15 @@ export const API_ENDPOINTS = {
   
   /**
    * Get available channels endpoint
-   * GET /user/mymenu
+   * GET /account
    */
-  getChannels: () => `${getBaseUrl()}/user/mymenu`,
+  getChannels: () => `${getBaseUrl()}/account`,
   
   /**
    * Get accounts for a specific platform
-   * GET /account?status=all&platform={platform}
+   * GET /account?platform={platform}
    */
-  getAccounts: (platform: string) => `${getBaseUrl()}/account?status=all&platform=${platform}`,
+  getAccounts: (platform: string) => `${getBaseUrl()}/account?platform=${platform}`,
   
   /**
    * Send message endpoint
