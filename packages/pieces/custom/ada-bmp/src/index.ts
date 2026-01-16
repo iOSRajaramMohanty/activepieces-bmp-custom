@@ -10,6 +10,7 @@ import {
 } from '@activepieces/pieces-framework';
 import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
+import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
 import { API_ENDPOINTS, getBaseUrl, debugLog } from './lib/common/config';
 
 export const adaBmpAuth = PieceAuth.SecretText({
@@ -18,12 +19,14 @@ export const adaBmpAuth = PieceAuth.SecretText({
   required: true,
   validate: async ({ auth }) => {
     try {
-      const apiUrl = API_ENDPOINTS.validateToken();
+      // Validate token by calling /user/checkToken endpoint (POST method)
+      // This endpoint expects accessToken in the request body
+      const apiUrl = API_ENDPOINTS.validateToken(); // /user/checkToken endpoint
       console.log('[ADA-BMP] ===== TOKEN VALIDATION START =====');
       console.log('[ADA-BMP] URL:', apiUrl);
       console.log('[ADA-BMP] Token (first 10 chars):', auth.substring(0, 10) + '...');
       
-      // Validate token by calling /user/checkToken endpoint (POST method)
+      // Validate token by calling /user/checkToken endpoint with accessToken in body
       const response = await httpClient.sendRequest({
         method: HttpMethod.POST,
         url: apiUrl,
@@ -51,8 +54,26 @@ export const adaBmpAuth = PieceAuth.SecretText({
       console.error('[ADA-BMP] ===== TOKEN VALIDATION ERROR =====');
       console.error('[ADA-BMP] Error Type:', error.constructor.name);
       console.error('[ADA-BMP] Error Message:', error.message);
-      console.error('[ADA-BMP] Error Response:', error.response?.status, error.response?.body);
-      console.error('[ADA-BMP] Full Error:', error);
+      console.error('[ADA-BMP] Error Response Status:', error.response?.status);
+      console.error('[ADA-BMP] Error Response Body:', error.response?.body);
+      
+      // Check if it's an authentication error
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        return {
+          valid: false,
+          error: 'Invalid token: Authentication failed. Please check your API token.',
+        };
+      }
+      
+      // If it's a 400 error, provide more detailed error message from the API
+      if (error.response?.status === 400) {
+        const errorBody = error.response?.body;
+        const errorMessage = errorBody?.message || errorBody?.error || 'Invalid token format or token expired';
+        return {
+          valid: false,
+          error: `Token validation failed: ${errorMessage}. Please check your API token and ensure ADA_BMP_API_URL is correctly set in your .env file.`,
+        };
+      }
       
       return {
         valid: false,
@@ -72,6 +93,7 @@ export const adaBmp = createPiece({
   authors: [],
   actions: [
     sendMessageAction,
+    sendBulkMessageAction,
     createCustomApiCallAction({
       baseUrl: () => getBaseUrl(),
       auth: adaBmpAuth,

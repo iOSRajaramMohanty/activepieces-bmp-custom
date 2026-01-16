@@ -431,3 +431,139 @@ export const messageText = Property.LongText({
   description: 'The message text to send. You can use variables from previous steps like {{previousStep.fieldName}}',
   required: true,
 });
+
+export const messageType = Property.StaticDropdown({
+  displayName: 'Message Type',
+  description: 'Select the type of WhatsApp message to send',
+  required: true,
+  defaultValue: 'text',
+  options: {
+    options: [
+      {
+        label: 'Send WA Text',
+        value: 'text',
+      },
+      {
+        label: 'Send WA Button',
+        value: 'button',
+      },
+      {
+        label: 'Send WA List',
+        value: 'list',
+      },
+      {
+        label: 'Send WA Media',
+        value: 'media',
+      },
+      {
+        label: 'Send WA Template',
+        value: 'template',
+      },
+      {
+        label: 'Send WA Catalog',
+        value: 'catalog',
+      },
+    ],
+  },
+});
+
+export const adaBmpContactCategory = <R extends boolean>(required: R) =>
+  Property.Dropdown<string, R, typeof adaBmpAuth>({
+    auth: adaBmpAuth,
+    displayName: 'Contact Category',
+    description: 'Select the contact category to send bulk messages to',
+    required,
+    refreshers: ['channel'], // Refresh when channel changes
+    async options({ auth, channel }) {
+      if (!auth) {
+        return {
+          disabled: true,
+          placeholder: 'Connect your ADA BMP account',
+          options: [],
+        };
+      }
+
+      if (!channel) {
+        return {
+          disabled: true,
+          placeholder: 'Select a channel first',
+          options: [],
+        };
+      }
+
+      try {
+        // Map channel name to platform code
+        const platformCode = CHANNEL_TO_PLATFORM[channel as string];
+        
+        if (!platformCode) {
+          debugLog('Unknown channel', { channel });
+          return {
+            disabled: true,
+            placeholder: 'Invalid channel selected',
+            options: [],
+          };
+        }
+
+        const apiUrl = API_ENDPOINTS.getContactCategories(platformCode);
+        debugLog('Fetching contact categories', { url: apiUrl, platform: platformCode });
+        
+        // Fetch contact categories from the API
+        const response = await httpClient.sendRequest({
+          method: HttpMethod.GET,
+          url: apiUrl,
+          authentication: {
+            type: AuthenticationType.BEARER_TOKEN,
+            token: (auth as any).secret_text,
+          },
+        });
+
+        debugLog('Contact categories response received', { status: response.status });
+
+        // Parse the response
+        // Response structure: { status, message, data: [ { id, name, totalMember, ... } ], pageNo, pageSize, pageTotal, totalRecord }
+        const body = response.body as {
+          status: number;
+          message: string;
+          data: Array<{
+            id: string;
+            name: string;
+            platform: string;
+            totalMember: number;
+            [key: string]: any;
+          }>;
+          pageNo: number;
+          pageSize: number;
+          pageTotal: number;
+          totalRecord: number;
+        };
+
+        if (!body.data || body.data.length === 0) {
+          debugLog('No contact categories found', { platform: platformCode });
+          return {
+            disabled: true,
+            placeholder: 'No contact categories available',
+            options: [],
+          };
+        }
+
+        const categories = body.data;
+        debugLog('Contact categories fetched successfully', { count: categories.length });
+        
+        return {
+          disabled: false,
+          placeholder: 'Select contact category',
+          options: categories.map((category) => ({
+            label: `${category.name} - ${category.totalMember} Contact${category.totalMember !== 1 ? 's' : ''}`,
+            value: category.id,
+          })),
+        };
+      } catch (error) {
+        debugLog('Failed to fetch contact categories', error);
+        return {
+          disabled: true,
+          placeholder: 'Failed to load contact categories',
+          options: [],
+        };
+      }
+    },
+  });

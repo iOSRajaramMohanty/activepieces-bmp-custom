@@ -16,10 +16,21 @@
  *   export ADA_BMP_API_URL=http://localhost:8080
  */
 export const getBaseUrl = (): string => {
-  const baseUrl = process.env.ADA_BMP_API_URL || 'https://bmpapistgjkt.cl.bmp.ada-asia.my';
+  const envUrl = process.env.ADA_BMP_API_URL;
+  const defaultUrl = 'https://bmpapistgjkt.cl.bmp.ada-asia.my';
+  const baseUrl = envUrl || defaultUrl;
+  
+  // Log for debugging
+  if (envUrl) {
+    console.log('[ADA-BMP Config] Using ADA_BMP_API_URL from environment:', envUrl);
+  } else {
+    console.log('[ADA-BMP Config] ADA_BMP_API_URL not found in environment, using default:', defaultUrl);
+  }
   
   // Remove trailing slash if present
-  return baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const finalUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  console.log('[ADA-BMP Config] Final base URL:', finalUrl);
+  return finalUrl;
 };
 
 /**
@@ -55,6 +66,18 @@ export const API_ENDPOINTS = {
    * GET /msglog/live?accountNo={accountNo}&platform={platform}
    */
   getRecipients: (accountNo: string, platform: string) => `${getBaseUrl()}/msglog/live?accountNo=${accountNo}&platform=${platform}`,
+  
+  /**
+   * Get contact categories for a platform
+   * GET /contact-category?platform={platform}
+   */
+  getContactCategories: (platform: string) => `${getBaseUrl()}/contact-category?platform=${platform}`,
+  
+  /**
+   * Send bulk message endpoint
+   * POST /message/bulk
+   */
+  sendBulkMessage: () => `${getBaseUrl()}/message/bulk`,
 };
 
 /**
