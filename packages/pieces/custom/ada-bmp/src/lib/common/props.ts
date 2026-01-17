@@ -138,6 +138,124 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
     },
   });
 
+export const adaBmpChannelForBulk = <R extends boolean>(required: R) =>
+  Property.Dropdown<string, R, typeof adaBmpAuth>({
+    auth: adaBmpAuth,
+    displayName: 'Channel',
+    description: 'Select the messaging channel (WhatsApp, Facebook, Instagram)',
+    required,
+    refreshers: [],
+    async options({ auth }) {
+      if (!auth) {
+        return {
+          disabled: true,
+          placeholder: 'Connect your ADA BMP account',
+          options: [],
+        };
+      }
+
+      try {
+        const apiUrl = API_ENDPOINTS.getChannels();
+        debugLog('Fetching channels from /account', { url: apiUrl });
+        
+        // Fetch accounts from the API using auth.secret_text
+        const response = await httpClient.sendRequest({
+          method: HttpMethod.GET,
+          url: apiUrl,
+          authentication: {
+            type: AuthenticationType.BEARER_TOKEN,
+            token: (auth as any).secret_text,
+          },
+        });
+
+        debugLog('Account response received', { status: response.status });
+
+        // Parse the response to extract channels
+        // Response structure: { status, message, data: [ { platform, ... } ], pageNo, pageSize, pageTotal, totalRecord }
+        const body = response.body as {
+          status: number;
+          message: string;
+          data: Array<{
+            id: string;
+            platform: string;
+            clientId: string;
+            clientName: string;
+            name: string;
+            accountNo: string;
+            status: string;
+            coreAppStatus: string;
+            [key: string]: any;
+          }>;
+          pageNo: number;
+          pageSize: number;
+          pageTotal: number;
+          totalRecord: number;
+        };
+
+        if (!body.data || body.data.length === 0) {
+          debugLog('No accounts found in response');
+          return {
+            disabled: true,
+            placeholder: 'No channels found',
+            options: [],
+          };
+        }
+
+        // Extract unique platforms from accounts
+        const platformSet = new Set<string>();
+        body.data.forEach((account) => {
+          if (account.platform) {
+            platformSet.add(account.platform);
+          }
+        });
+
+        // Map platform codes to channel names
+        const platformToChannel: Record<string, string> = {
+          'WA': 'Whatsapp',
+          'FB': 'Facebook',
+          'IG': 'Instagram',
+          'LINE': 'Line',
+        };
+
+        // Convert platforms to channels and exclude Line
+        const channels = Array.from(platformSet)
+          .map((platform) => ({
+            platform,
+            name: platformToChannel[platform] || platform,
+          }))
+          .filter((channel) => channel.name !== channel.platform) // Only include known platforms
+          .filter((channel) => channel.name !== 'Line' && channel.platform !== 'LINE'); // Exclude Line channel for bulk messages
+
+        if (channels.length === 0) {
+          debugLog('No valid channels found');
+          return {
+            disabled: true,
+            placeholder: 'No channels found',
+            options: [],
+          };
+        }
+
+        debugLog('Channels extracted successfully', { count: channels.length, channels });
+        
+        return {
+          disabled: false,
+          placeholder: 'Select channel',
+          options: channels.map((channel) => ({
+            label: channel.name,
+            value: channel.name, // Use name as value so we can map to platform code
+          })),
+        };
+      } catch (error) {
+        debugLog('Failed to fetch channels', error);
+        return {
+          disabled: true,
+          placeholder: 'Failed to load channels',
+          options: [],
+        };
+      }
+    },
+  });
+
 export const adaBmpAccount = <R extends boolean>(required: R) =>
   Property.Dropdown<string, R, typeof adaBmpAuth>({
     auth: adaBmpAuth,
@@ -432,6 +550,12 @@ export const messageText = Property.LongText({
   required: true,
 });
 
+export const otpText = Property.ShortText({
+  displayName: 'OTP',
+  description: 'Enter the OTP value for authentication template',
+  required: true,
+});
+
 export const messageType = Property.StaticDropdown({
   displayName: 'Message Type',
   description: 'Select the type of WhatsApp message to send',
@@ -471,35 +595,36 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
   Property.Dropdown<string, R, typeof adaBmpAuth>({
     auth: adaBmpAuth,
     displayName: 'Contact Category',
-    description: 'Select the contact category to send bulk messages to',
+    description: 'Select a contact category to send bulk messages to',
     required,
     refreshers: ['channel'], // Refresh when channel changes
-    async options({ auth, channel }) {
-      if (!auth) {
-        return {
-          disabled: true,
-          placeholder: 'Connect your ADA BMP account',
-          options: [],
-        };
-      }
-
-      if (!channel) {
-        return {
-          disabled: true,
-          placeholder: 'Select a channel first',
-          options: [],
-        };
-      }
-
+    async options({ auth, channel }): Promise<{ disabled: boolean; placeholder: string; options: Array<{ label: string; value: string }> }> {
+      // Always return a valid structure - wrap everything in try-catch
       try {
-        // Map channel name to platform code
-        const platformCode = CHANNEL_TO_PLATFORM[channel as string];
-        
-        if (!platformCode) {
-          debugLog('Unknown channel', { channel });
+        if (!auth) {
           return {
             disabled: true,
-            placeholder: 'Invalid channel selected',
+            placeholder: 'Connect your ADA BMP account',
+            options: [],
+          };
+        }
+
+        if (!channel || typeof channel !== 'string') {
+          return {
+            disabled: true,
+            placeholder: 'Select a channel first',
+            options: [],
+          };
+        }
+
+        // Map channel name to platform code
+        const platformCode = CHANNEL_TO_PLATFORM[channel];
+        
+        if (!platformCode) {
+          debugLog('Unknown channel', { channel, availableChannels: Object.keys(CHANNEL_TO_PLATFORM) });
+          return {
+            disabled: true,
+            placeholder: `Invalid channel selected: ${channel}`,
             options: [],
           };
         }
@@ -508,6 +633,220 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
         debugLog('Fetching contact categories', { url: apiUrl, platform: platformCode });
         
         // Fetch contact categories from the API
+        let response;
+        try {
+          response = await httpClient.sendRequest({
+            method: HttpMethod.GET,
+            url: apiUrl,
+            authentication: {
+              type: AuthenticationType.BEARER_TOKEN,
+              token: (auth as any).secret_text,
+            },
+          });
+        } catch (requestError: any) {
+          debugLog('HTTP request failed', requestError);
+          throw new Error(`Failed to fetch contact categories: ${requestError?.message || 'Network error'}`);
+        }
+
+        debugLog('Contact categories response received', { status: response.status });
+
+        // Check if response status indicates an error
+        if (response.status >= 400) {
+          const errorBody = response.body as any;
+          const errorMsg = errorBody?.message || errorBody?.error || `HTTP ${response.status}`;
+          throw new Error(`API error: ${errorMsg}`);
+        }
+
+        // Parse the response
+        // Response structure: { status, message, data: [ { id, name, totalMember, contactCategoryNumber, ... } ], pageNo, pageSize, pageTotal, totalRecord }
+        let body: {
+          status?: number;
+          message?: string;
+          data?: Array<{
+            id: string;
+            name: string;
+            platform: string;
+            totalMember: number;
+            contactCategoryNumber?: number;
+            [key: string]: any;
+          }>;
+          pageNo?: number;
+          pageSize?: number;
+          pageTotal?: number;
+          totalRecord?: number;
+        };
+
+        try {
+          body = response.body as typeof body;
+        } catch (parseError: any) {
+          debugLog('Failed to parse response body', parseError);
+          throw new Error('Invalid response format from API');
+        }
+
+        // Check if response body has error structure
+        if (body.status && body.status >= 400) {
+          throw new Error(body.message || 'API returned an error');
+        }
+
+        if (!body.data || body.data.length === 0) {
+          debugLog('No contact categories found', { platform: platformCode });
+          return {
+            disabled: false,
+            placeholder: 'No contact categories available',
+            options: [],
+          };
+        }
+
+        // Sort by contactCategoryNumber in descending order (max value first)
+        const categories = body.data.sort((a, b) => {
+          const aNum = a.contactCategoryNumber ?? 0;
+          const bNum = b.contactCategoryNumber ?? 0;
+          return bNum - aNum; // Descending order (higher number first)
+        });
+        
+        debugLog('Contact categories fetched and sorted successfully', { count: categories.length });
+        
+        // Ensure all options have valid label and value
+        const validCategories = Array.isArray(categories) ? categories : [];
+        const options = validCategories
+          .filter((category) => {
+            // Strict validation: both id and name must be present and non-empty
+            if (!category || typeof category !== 'object') return false;
+            const id = category.id;
+            const name = category.name;
+            return id != null && 
+                   String(id).trim() !== '' &&
+                   name != null && 
+                   String(name).trim() !== '';
+          })
+          .map((category) => {
+            try {
+              const name = String(category.name || '').trim();
+              const totalMember = Number(category.totalMember) || 0;
+              const label = `${name} - ${totalMember} Contact${totalMember !== 1 ? 's' : ''}`;
+              const value = String(category.id || '').trim();
+              
+              // Only return if both label and value are valid
+              if (label && value) {
+                return {
+                  label: label,
+                  value: value,
+                };
+              }
+              return null;
+            } catch (err) {
+              debugLog('Error mapping category', { category, error: err });
+              return null;
+            }
+          })
+          .filter((option): option is { label: string; value: string } => {
+            // Type guard to filter out null values
+            return option !== null && 
+                   typeof option === 'object' &&
+                   typeof option.label === 'string' &&
+                   typeof option.value === 'string' &&
+                   option.label.length > 0 &&
+                   option.value.length > 0;
+          });
+
+        return {
+          disabled: false,
+          placeholder: 'Select a contact category',
+          options: Array.isArray(options) ? options : [], // Ensure it's always an array
+        };
+      } catch (error: any) {
+        debugLog('Failed to fetch contact categories', error);
+        const errorMessage = error?.message || error?.toString() || 'Unknown error occurred';
+        console.error('Contact categories fetch error:', error);
+        // Always return a valid structure with proper types
+        const safeErrorMessage = typeof errorMessage === 'string' 
+          ? errorMessage.substring(0, 100) 
+          : 'Unknown error occurred';
+        return {
+          disabled: true,
+          placeholder: `Error: ${safeErrorMessage}. Please check your connection and try again.`,
+          options: [] as Array<{ label: string; value: string }>, // Explicitly type the empty array
+        };
+      }
+    },
+  });
+
+// Template category filter property
+// Note: required is set to false because it's only required when messageType === 'template'
+// We handle this validation in the action's run method
+// defaultValue is set to 'AUTHENTICATION' to ensure it's pre-selected by default
+export const adaBmpTemplateCategory = Property.Dropdown<string, false, undefined>({
+  auth: undefined,
+  displayName: 'Template Category',
+  description: 'Filter templates by category (defaults to AUTHENTICATION)',
+  required: false, // Only required when Message Type is "Send WA Template" - validated in action
+  defaultValue: 'AUTHENTICATION', // Default value should be pre-selected when enabled
+  refreshers: ['messageType'], // Refresh when messageType changes
+  options: async ({ messageType }) => {
+    // Disable Template Category when Message Type is not "Send WA Template" (value: 'template')
+    const isTemplateType = messageType === 'template';
+    
+    return {
+      disabled: !isTemplateType,
+      placeholder: isTemplateType 
+        ? 'Select category (default: AUTHENTICATION)' 
+        : 'Template Category is only available for "Send WA Template" message type',
+      options: [
+        { label: 'AUTHENTICATION', value: 'AUTHENTICATION' },
+        { label: 'MARKETING', value: 'MARKETING' },
+        { label: 'UTILITY', value: 'UTILITY' },
+      ],
+    };
+  },
+});
+
+export const adaBmpTemplate = <R extends boolean>(required: R) =>
+  Property.Dropdown<string, R, typeof adaBmpAuth>({
+    auth: adaBmpAuth,
+    displayName: 'Template',
+    description: 'Select a template to use for the message (optional)',
+    required,
+    refreshers: ['account', 'messageType', 'templateCategory'], // Refresh when account, messageType, or templateCategory changes
+    async options({ auth, account, messageType, templateCategory }) {
+      // Always log the templateCategory value received
+      console.log('[ADA-BMP Template Options] Options function called', {
+        hasAuth: !!auth,
+        account,
+        messageType,
+        templateCategory,
+        templateCategoryType: typeof templateCategory,
+      });
+      
+      if (!auth) {
+        return {
+          disabled: true,
+          placeholder: 'Connect your ADA BMP account',
+          options: [],
+        };
+      }
+
+      // Only show template dropdown when Message Type is "Send WA Template" (value: 'template')
+      if (messageType !== 'template') {
+        return {
+          disabled: true,
+          placeholder: 'Template is only available for "Send WA Template" message type',
+          options: [],
+        };
+      }
+
+      if (!account) {
+        return {
+          disabled: true,
+          placeholder: 'Select an account first',
+          options: [],
+        };
+      }
+
+      try {
+        const apiUrl = API_ENDPOINTS.getTemplates(account as string);
+        debugLog('Fetching templates', { url: apiUrl, accountId: account });
+        
+        // Fetch templates from the API
         const response = await httpClient.sendRequest({
           method: HttpMethod.GET,
           url: apiUrl,
@@ -517,18 +856,22 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
           },
         });
 
-        debugLog('Contact categories response received', { status: response.status });
+        debugLog('Templates response received', { status: response.status });
 
         // Parse the response
-        // Response structure: { status, message, data: [ { id, name, totalMember, ... } ], pageNo, pageSize, pageTotal, totalRecord }
+        // Response structure: { status, message, data: [ { id, name, status, createdDate, ... } ], pageNo, pageSize, pageTotal, totalRecord }
         const body = response.body as {
           status: number;
           message: string;
           data: Array<{
             id: string;
             name: string;
-            platform: string;
-            totalMember: number;
+            status: string;
+            category: string;
+            type?: string;
+            content?: string;
+            createdDate?: string | number | Date;
+            isCallPermissionRequest?: boolean;
             [key: string]: any;
           }>;
           pageNo: number;
@@ -538,30 +881,140 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
         };
 
         if (!body.data || body.data.length === 0) {
-          debugLog('No contact categories found', { platform: platformCode });
+          debugLog('No templates found', { accountId: account });
           return {
-            disabled: true,
-            placeholder: 'No contact categories available',
+            disabled: false,
+            placeholder: 'No templates available for this account',
             options: [],
           };
         }
 
-        const categories = body.data;
-        debugLog('Contact categories fetched successfully', { count: categories.length });
+        // Get the selected category filter, default to AUTHENTICATION
+        // If templateCategory is not provided (first load), use AUTHENTICATION as default
+        const selectedCategory = templateCategory && typeof templateCategory === 'string' 
+          ? templateCategory 
+          : 'AUTHENTICATION';
+        
+        // Always log for debugging (not just when ADA_BMP_DEBUG=true)
+        console.log('[ADA-BMP Template Filter] Filtering by category', { 
+          selectedCategory, 
+          templateCategory,
+          templateCategoryType: typeof templateCategory,
+          totalTemplates: body.data.length,
+          categoriesInResponse: [...new Set(body.data.map(t => t.category))],
+        });
+        
+        // Filter only APPROVED templates by selected category, then sort by createdDate (newest first)
+        // Normalize category comparison (trim and uppercase for consistency)
+        const normalizedSelectedCategory = (selectedCategory || '').trim().toUpperCase();
+        const templates = body.data
+          .filter((template) => {
+            const isApproved = template.status === 'APPROVED';
+            const templateCategoryValue = (template.category || '').trim().toUpperCase();
+            const matchesCategory = templateCategoryValue === normalizedSelectedCategory;
+            
+            // For MARKETING and UTILITY categories, only show templates where isCallPermissionRequest === true
+            // For AUTHENTICATION category, show all templates (no isCallPermissionRequest filter)
+            let matchesCallPermissionRequirement = true;
+            if (normalizedSelectedCategory === 'MARKETING' || normalizedSelectedCategory === 'UTILITY') {
+              matchesCallPermissionRequirement = template.isCallPermissionRequest === true;
+            }
+            
+            const shouldInclude = isApproved && matchesCategory && matchesCallPermissionRequirement;
+            
+            // Always log filtering decisions for debugging
+            if (!shouldInclude && isApproved && matchesCategory) {
+              console.log('[ADA-BMP Template Filter] Template filtered out', {
+                name: template.name,
+                templateCategory: template.category,
+                normalizedTemplateCategory: templateCategoryValue,
+                selectedCategory: selectedCategory,
+                normalizedSelectedCategory: normalizedSelectedCategory,
+                isCallPermissionRequest: template.isCallPermissionRequest,
+                matchesCategory,
+                matchesCallPermissionRequirement,
+                reason: !matchesCategory ? 'category mismatch' : !matchesCallPermissionRequirement ? 'isCallPermissionRequest is not true' : 'not approved',
+              });
+            }
+            
+            if (shouldInclude) {
+              console.log('[ADA-BMP Template Filter] Template included', {
+                name: template.name,
+                category: template.category,
+                isCallPermissionRequest: template.isCallPermissionRequest,
+              });
+            }
+            
+            return shouldInclude;
+          })
+          .sort((a, b) => {
+            // Sort by createdDate (newest first)
+            // Handle different date formats: string, timestamp, or Date object
+            const getDateValue = (template: typeof a): number => {
+              if (!template.createdDate) {
+                return 0; // Put templates without date at the end
+              }
+              
+              if (typeof template.createdDate === 'number') {
+                return template.createdDate;
+              }
+              
+              if (template.createdDate instanceof Date) {
+                return template.createdDate.getTime();
+              }
+              
+              if (typeof template.createdDate === 'string') {
+                const date = new Date(template.createdDate);
+                return isNaN(date.getTime()) ? 0 : date.getTime();
+              }
+              
+              return 0;
+            };
+            
+            const dateA = getDateValue(a);
+            const dateB = getDateValue(b);
+            
+            // Sort descending (newest first)
+            return dateB - dateA;
+          });
+        
+        // Always log results for debugging
+        console.log('[ADA-BMP Template Filter] Filtering complete', { 
+          count: templates.length, 
+          category: selectedCategory,
+          filteredFrom: body.data.length,
+          sortedBy: 'createdDate (newest first)',
+          templateNames: templates.map(t => t.name),
+        });
+        
+        debugLog('Templates fetched successfully', { 
+          count: templates.length, 
+          category: selectedCategory,
+          filteredFrom: body.data.length,
+          sortedBy: 'createdDate (newest first)'
+        });
         
         return {
           disabled: false,
-          placeholder: 'Select contact category',
-          options: categories.map((category) => ({
-            label: `${category.name} - ${category.totalMember} Contact${category.totalMember !== 1 ? 's' : ''}`,
-            value: category.id,
-          })),
+          placeholder: `Select template (optional) - ${selectedCategory} templates`,
+          options: templates.map((template) => {
+            return {
+              label: template.name, // Display only the template name from API
+              value: JSON.stringify({ 
+                id: template.id, 
+                name: template.name, 
+                category: template.category,
+                type: template.type,
+                isCallPermissionRequest: template.isCallPermissionRequest || false
+              }),
+            };
+          }),
         };
       } catch (error) {
-        debugLog('Failed to fetch contact categories', error);
+        debugLog('Failed to fetch templates', error);
         return {
           disabled: true,
-          placeholder: 'Failed to load contact categories',
+          placeholder: 'Failed to load templates',
           options: [],
         };
       }

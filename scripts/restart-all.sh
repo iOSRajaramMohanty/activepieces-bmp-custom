@@ -20,7 +20,12 @@ echo ""
 # Reset Nx cache to prevent watch errors (especially after merges)
 echo "🔄 Resetting Nx cache..."
 npx nx reset > /dev/null 2>&1
-echo "✅ Nx cache reset complete"
+
+# Ensure Nx cache directory structure exists to prevent ENOENT errors
+echo "🔧 Ensuring Nx cache directory structure exists..."
+mkdir -p .nx/cache/terminalOutputs
+chmod -R 755 .nx/cache 2>/dev/null || true
+echo "✅ Nx cache reset and directory structure ready"
 echo ""
 
 # Start all services (Backend + Frontend + Engine)

@@ -62,5 +62,11 @@ echo ""
 # ./scripts/build-pieces.sh all       # Build ALL community pieces (slow!)
 ./scripts/build-pieces.sh slack     # Build specific piece only
 
+# Ensure Nx cache directory exists to prevent ENOENT errors
+echo "🔧 Ensuring Nx cache directory structure exists..."
+mkdir -p .nx/cache/terminalOutputs
+chmod -R 755 .nx/cache 2>/dev/null || true
+echo "✅ Nx cache directory ready"
+
 # Start dev server
 exec npm run dev

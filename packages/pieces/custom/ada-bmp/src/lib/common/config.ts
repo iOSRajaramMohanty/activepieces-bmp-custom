@@ -75,9 +75,15 @@ export const API_ENDPOINTS = {
   
   /**
    * Send bulk message endpoint
-   * POST /message/bulk
+   * POST /contact-category/bulkmessage
    */
-  sendBulkMessage: () => `${getBaseUrl()}/message/bulk`,
+  sendBulkMessage: () => `${getBaseUrl()}/contact-category/bulkmessage`,
+  
+  /**
+   * Get templates for a specific account
+   * GET /account/{accountId}/template
+   */
+  getTemplates: (accountId: string) => `${getBaseUrl()}/account/${accountId}/template`,
 };
 
 /**

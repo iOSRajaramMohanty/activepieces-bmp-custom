@@ -2,11 +2,12 @@ import { createAction, Property } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../../index';
 import { 
-  adaBmpChannel, 
+  adaBmpChannelForBulk, 
   adaBmpAccount, 
-  messageText,
   messageType,
   adaBmpContactCategory,
+  adaBmpTemplate,
+  adaBmpTemplateCategory,
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
@@ -19,21 +20,36 @@ export const sendBulkMessageAction = createAction({
   description: 'Send bulk messages through ADA BMP to WhatsApp, Facebook, Line, or Instagram using contact categories',
   props: {
     info: channelInfo,
-    channel: adaBmpChannel(true),
-    account: adaBmpAccount(true),
-    messageType: messageType,
+    channel: adaBmpChannelForBulk(true),
     contactCategory: adaBmpContactCategory(true),
-    message: messageText,
+    messageType: messageType,
+    account: adaBmpAccount(true),
+    templateCategory: adaBmpTemplateCategory,
+    template: adaBmpTemplate(false),
+    message: Property.LongText({
+      displayName: 'Message / OTP',
+      description: 'Message content. For AUTHENTICATION templates, enter the OTP value here.',
+      required: true,
+    }),
   },
   async run(context) {
     // Extract the actual token from the auth object
     const token = (context.auth as any).secret_text;
-    const { channel, account, messageType: msgType, contactCategory, message } = context.propsValue;
+    const { channel, account, messageType: msgType, contactCategory, templateCategory, template, message } = context.propsValue;
 
+    // Validate contact category
     if (!contactCategory) {
       return {
         success: false,
         error: 'Contact category is required.',
+      };
+    }
+
+    // Validate template category - only required when Message Type is "Send WA Template" (value: 'template')
+    if (msgType === 'template' && !templateCategory) {
+      return {
+        success: false,
+        error: 'Template Category is required when Message Type is "Send WA Template".',
       };
     }
 
@@ -84,24 +100,94 @@ export const sendBulkMessageAction = createAction({
         messageType: msgType,
       });
       
-      // Build request body based on message type
-      const requestBody: Record<string, any> = {
-        from: selectedAccount.accountNo,
-        platform: platformCode,
-        contactCategoryId: contactCategory,
-        type: msgType,
-        channel: 'BULK',
-      };
+      // Parse template data if provided
+      let templateData: { id: string; name: string; category: string; type?: string; isCallPermissionRequest?: boolean } | null = null;
+      if (template) {
+        try {
+          const parsed = JSON.parse(template as string);
+          templateData = parsed;
+        } catch (error) {
+          debugLog('Failed to parse template data', error);
+        }
+      }
 
-      // Add message content based on type
-      if (msgType === 'text') {
-        requestBody.text = message;
-      } else if (msgType === 'media') {
-        requestBody.text = message;
-        // Media URL should be added separately if needed
+      // Build request body based on message type and template category
+      let requestBody: Record<string, any>;
+
+      // Check if this is a MARKETING/UTILITY template with call permission request
+      const isMarketingOrUtility = templateData && (templateData.category === 'MARKETING' || templateData.category === 'UTILITY');
+      const hasCallPermissionRequest = templateData?.isCallPermissionRequest === true;
+      
+      if (isMarketingOrUtility && hasCallPermissionRequest && templateData) {
+        // Use MARKETING/UTILITY template format with call permission request
+        requestBody = {
+          from: selectedAccount.accountNo,
+          to: [contactCategory], // API expects array, but we only have one value
+          type: 'template',
+          buttons: [],
+          templateLang: 'en',
+          templateName: templateData.name,
+          headerType: 'TEXT',
+          platform: platformCode,
+          channel: 'CONTACT',
+          payload: null,
+          tag2: 'Send bulk to contact category',
+        };
+
+        debugLog('Using MARKETING/UTILITY template format with call permission', { 
+          templateName: templateData.name,
+          category: templateData.category,
+        });
+      } else if (templateData && templateData.category === 'AUTHENTICATION') {
+        // Use AUTHENTICATION template format with OTP value
+        const otpValue = message || '';
+
+        requestBody = {
+          from: selectedAccount.accountNo,
+          to: [contactCategory], // API expects array, but we only have one value
+          type: 'template',
+          buttons: [null,null],
+          templateData: [otpValue],
+          templateLang: 'en',
+          templateName: templateData.name,
+          templateButton: [[otpValue],[]],
+          headerType: 'TEXT',
+          platform: platformCode,
+          channel: 'CONTACT',
+          payload: ["",""],
+          tag2: 'Send bulk to contact category',
+        };
+
+        debugLog('Using AUTHENTICATION template format', { 
+          templateName: templateData.name,
+          otpValue: otpValue ? '[REDACTED]' : '[EMPTY]',
+        });
       } else {
-        // For button, list, template, catalog - message text is typically still used
-        requestBody.text = message;
+        // Use standard message format
+        requestBody = {
+          from: selectedAccount.accountNo,
+          to: [contactCategory], // API expects array, but we only have one value
+          type: msgType,
+          channel: 'CONTACT', // Channel type for bulk messages via contact category
+          platform: platformCode,
+          tag2: 'Send bulk to contact category',
+        };
+
+        // Add template ID if provided (non-AUTHENTICATION templates)
+        if (templateData) {
+          requestBody.templateId = templateData.id;
+        }
+
+        // Add message content based on type
+        if (msgType === 'text') {
+          requestBody.text = message;
+        } else if (msgType === 'media') {
+          requestBody.text = message;
+          // Media URL should be added separately if needed
+        } else {
+          // For button, list, template, catalog - message text is typically still used
+          requestBody.text = message;
+        }
       }
 
       const response = await httpClient.sendRequest({
