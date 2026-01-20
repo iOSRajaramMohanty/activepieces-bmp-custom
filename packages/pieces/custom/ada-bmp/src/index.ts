@@ -11,6 +11,7 @@ import {
 import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
 import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
+import { receiveWebhook } from './lib/triggers/receive-webhook';
 import { API_ENDPOINTS, getBaseUrl, debugLog } from './lib/common/config';
 
 export const adaBmpAuth = PieceAuth.SecretText({
@@ -109,5 +110,7 @@ export const adaBmp = createPiece({
       },
     }),
   ],
-  triggers: [],
+  triggers: [
+    receiveWebhook,
+  ],
 });

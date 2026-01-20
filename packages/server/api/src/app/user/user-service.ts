@@ -265,8 +265,8 @@ export const userService = {
     },
 
     isUserPrivileged(user: User): boolean {
-        // Owners, Admins, and Operators are privileged and can see all projects in their platform
-        return user.platformRole === PlatformRole.OWNER || user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OPERATOR
+        // Only OWNER and SUPER_ADMIN are privileged and can see all projects in their platform without filters
+        return user.platformRole === PlatformRole.OWNER || user.platformRole === PlatformRole.SUPER_ADMIN
     },
 }
 

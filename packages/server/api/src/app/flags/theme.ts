@@ -65,7 +65,7 @@ export function generateTheme({
 
 export const defaultTheme = generateTheme({
     primaryColor: '#6e41e2',
-    websiteName: 'Activepieces',
+    websiteName: 'ADA Integration',
     fullLogoUrl: '/ada-logo.png',
     favIconUrl: 'https://cdn.activepieces.com/brand/favicon.ico',
     logoIconUrl: '/ada-logo.png',

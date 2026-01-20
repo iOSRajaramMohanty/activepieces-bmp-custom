@@ -31,12 +31,12 @@ export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
     }, async (request) => {
-        // Get all projects the user can access (including admin's personal projects for operators/members)
+        // Get all projects the user can access (filtered by role: OWNER sees all, ADMIN sees only their own, OPERATOR/MEMBER see only TEAM projects)
         const user = await userService.getOneOrFail({ id: request.principal.id })
         const projects = await projectService.getAllForUser({
             platformId: request.principal.platform.id,
             userId: request.principal.id,
-            isPrivileged: userService.isUserPrivileged(user),
+            platformRole: user.platformRole,
         })
         return paginationHelper.createPage(projects, null)
     })

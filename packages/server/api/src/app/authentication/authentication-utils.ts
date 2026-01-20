@@ -83,7 +83,7 @@ export const authenticationUtils = {
         const projects = await projectService.getAllForUser({
             platformId: params.platformId,
             userId: params.userId,
-            isPrivileged: userService.isUserPrivileged(user),
+            platformRole: user.platformRole,
         })
         const project = isNil(params.projectId) ? projects?.[0] : projects.find((project) => project.id === params.projectId)
         if (isNil(project)) {

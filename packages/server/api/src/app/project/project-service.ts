@@ -159,7 +159,7 @@ export const projectService = {
         const projects = await this.getAllForUser({
             platformId: user.platformId,
             userId,
-            isPrivileged: userService.isUserPrivileged(user),
+            platformRole: user.platformRole,
         })
         if (isNil(projects) || projects.length === 0) {
             throw new ActivepiecesError({
@@ -231,8 +231,15 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
     params: ApplyProjectsAccessFiltersParams,
 ): Promise<void> {
-    const { platformId, userId, isPrivileged } = params
-    if (isPrivileged) {
+    const { platformId, userId, platformRole, isPrivileged } = params
+    
+    // If isPrivileged is true (from EE code), don't apply filters - user can see all projects
+    if (isPrivileged === true) {
+        return
+    }
+    
+    // OWNER can see all projects - no filtering needed
+    if (platformRole === PlatformRole.OWNER || platformRole === PlatformRole.SUPER_ADMIN) {
         return
     }
 
@@ -241,24 +248,33 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     const platformOwnerId = platform.ownerId
 
     queryBuilder.andWhere(new Brackets(qb => {
-        qb.where(
-            // User's own personal projects
-            'project."ownerId" = :userId AND project.type = :personalType',
-            { userId, personalType: ProjectType.PERSONAL },
-        ).orWhere(
-            // Platform owner's personal projects (visible to all)
-            'project."ownerId" = :platformOwnerId AND project.type = :personalType',
-            { platformOwnerId, personalType: ProjectType.PERSONAL },
-        ).orWhere(
-            // Admin's personal projects (visible to all platform members)
-            // This makes all admin personal projects visible to operators/members
-            'project."ownerId" IN (SELECT id FROM "user" WHERE "platformId" = :platformId AND "platformRole" = :adminRole) AND project.type = :personalType',
-            { platformId, adminRole: 'ADMIN', personalType: ProjectType.PERSONAL },
-        ).orWhere(
-            // Projects where user is a member (TEAM projects)
-            'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
-            { userId, platformId },
-        )
+        if (platformRole === PlatformRole.ADMIN) {
+            // ADMIN: Can see their own personal projects + TEAM projects they're members of
+            qb.where(
+                // Admin's own personal projects
+                'project."ownerId" = :userId AND project.type = :personalType',
+                { userId, personalType: ProjectType.PERSONAL },
+            ).orWhere(
+                // Platform owner's personal projects (visible to all)
+                'project."ownerId" = :platformOwnerId AND project.type = :personalType',
+                { platformOwnerId, personalType: ProjectType.PERSONAL },
+            ).orWhere(
+                // TEAM projects where admin is a member
+                'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
+                { userId, platformId },
+            )
+        } else {
+            // OPERATOR/MEMBER: Can only see TEAM projects they're members of + platform owner's projects
+            qb.where(
+                // Platform owner's personal projects (visible to all)
+                'project."ownerId" = :platformOwnerId AND project.type = :personalType',
+                { platformOwnerId, personalType: ProjectType.PERSONAL },
+            ).orWhere(
+                // TEAM projects where user is a member
+                'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
+                { userId, platformId },
+            )
+        }
     }))
 }
 async function assertExternalIdIsUnique(externalId: string | undefined | null, projectId: ProjectId): Promise<void> {
@@ -282,7 +298,7 @@ async function assertExternalIdIsUnique(externalId: string | undefined | null, p
 type GetAllForUserParams = {
     platformId: string
     userId: string
-    isPrivileged: boolean
+    platformRole: PlatformRole
     displayName?: string
 }
 
@@ -341,5 +357,6 @@ type NewProject = Omit<Project, 'created' | 'updated' | 'deleted'>
 type ApplyProjectsAccessFiltersParams = {
     platformId: string
     userId: string
-    isPrivileged: boolean
+    platformRole?: PlatformRole
+    isPrivileged?: boolean
 }
