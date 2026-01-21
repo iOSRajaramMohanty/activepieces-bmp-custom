@@ -113,6 +113,10 @@ export const userIdentityService = (log: FastifyBaseLogger) => ({
     async update(id: string, params: UpdateParams): Promise<void> {
         await userIdentityRepository().update(id, params)
     },
+    async delete(params: DeleteParams): Promise<void> {
+        log.info({ identityId: params.id }, 'Deleting user identity')
+        await userIdentityRepository().delete({ id: params.id })
+    },
 })
 
 
@@ -132,6 +136,10 @@ type UpdatePasswordParams = {
 
 type UpdateParams = {
     imageUrl?: string | null
+}
+
+type DeleteParams = {
+    id: string
 }
 
 type VerifyIdentityPasswordParams = {

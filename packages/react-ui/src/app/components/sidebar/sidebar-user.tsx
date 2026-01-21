@@ -214,15 +214,23 @@ function SidebarPlatformAdminButton() {
   const showPlatformAdminDashboard = useIsPlatformAdmin();
   const { embedState } = useEmbedding();
   const navigate = useNavigate();
+  const { data: user } = userHooks.useCurrentUser();
 
   if (embedState.isEmbedded || !showPlatformAdminDashboard) {
     return null;
   }
 
+  // Determine the default route based on user role
+  // ADMIN (sub-owner) should land on /platform/users to manage their operators/members
+  // OWNER (tenant) should land on /platform/projects to view all admins' projects
+  const defaultPlatformRoute = user?.platformRole === PlatformRole.ADMIN 
+    ? '/platform/users' 
+    : '/platform/projects';
+
   return (
     <DropdownMenuGroup>
       <DropdownMenuItem
-        onClick={() => navigate('/platform/projects')}
+        onClick={() => navigate(defaultPlatformRoute)}
         className="w-full flex items-center justify-center relative"
       >
         <div className={`w-full flex items-center gap-2`}>

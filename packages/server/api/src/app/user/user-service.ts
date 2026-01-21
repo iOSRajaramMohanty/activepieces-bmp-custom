@@ -22,6 +22,7 @@ import {
 import dayjs from 'dayjs'
 import { In } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
+import { databaseConnection } from '../database/database-connection'
 import { repoFactory } from '../core/db/repo-factory'
 import { platformProjectService } from '../ee/projects/platform-project-service'
 import { projectMemberRepo } from '../ee/projects/project-role/project-role.service'
@@ -112,7 +113,7 @@ export const userService = {
 
         return this.getMetaInformation({ id })
     },
-    async list({ platformId, externalId, cursorRequest, limit }: ListParams): Promise<SeekPage<UserWithMetaInformation>> {
+    async list({ platformId, externalId, cursorRequest, limit, currentUserId, currentUserRole }: ListParams): Promise<SeekPage<UserWithMetaInformation>> {
         const decodedCursor = paginationHelper.decodeCursor(cursorRequest)
         const paginator = buildPaginator({
             entity: UserEntity,
@@ -122,10 +123,48 @@ export const userService = {
                 beforeCursor: decodedCursor.previousCursor,
             },
         })
-        const { data, cursor } = await paginator.paginate(userRepo().createQueryBuilder('user').where({
+        
+        const queryBuilder = userRepo().createQueryBuilder('user').where({
             platformId,
             ...spreadIfDefined('externalId', externalId),
-        }))
+        })
+        
+        // Apply role-based filtering for user list visibility
+        // OWNER (tenant): Can see all users in the platform
+        // ADMIN (sub-owner): Can only see users who are members of their personal project (their operators/members)
+        // OPERATOR/MEMBER: Should not access this endpoint (controlled by security)
+        if (currentUserRole === PlatformRole.ADMIN && currentUserId) {
+            // ADMIN can only see:
+            // 1. Themselves
+            // 2. OPERATORS/MEMBERS who are members of their personal project
+            
+            // First, get the admin's personal project
+            const adminProject = await projectService.getOneByOwnerAndPlatform({
+                ownerId: currentUserId,
+                platformId,
+            })
+            
+            if (adminProject) {
+                // Get user IDs who are members of this project
+                const projectMemberUserIds = await databaseConnection().createQueryBuilder()
+                    .select('pm."userId"')
+                    .from('project_member', 'pm')
+                    .where('pm."projectId" = :projectId', { projectId: adminProject.id })
+                    .getRawMany()
+                
+                const memberUserIds = projectMemberUserIds.map((pm: any) => pm.userId)
+                
+                // Filter to show only: the admin themselves + their project members
+                queryBuilder.andWhere('user.id IN (:...userIds)', { 
+                    userIds: [currentUserId, ...memberUserIds] 
+                })
+            } else {
+                // If admin has no project, only show themselves
+                queryBuilder.andWhere('user.id = :currentUserId', { currentUserId })
+            }
+        }
+        
+        const { data, cursor } = await paginator.paginate(queryBuilder)
 
         const usersWithMetaInformation = await Promise.all(data.map(this.getMetaInformation))
         return paginationHelper.createPage<UserWithMetaInformation>(usersWithMetaInformation, cursor)
@@ -182,37 +221,42 @@ export const userService = {
             return
         }
 
-        // If deleting an ADMIN, also delete all OPERATOR and MEMBER users in the same platform
+        // If deleting an ADMIN (sub-owner), delete ONLY their personal project and associated data
+        // Do NOT delete other ADMINs or their operators/members - each ADMIN is isolated
         if (userToDelete.platformRole === PlatformRole.ADMIN) {
-            const operatorsAndMembers = await userRepo().find({
-                where: {
-                    platformId,
-                    platformRole: In([PlatformRole.OPERATOR, PlatformRole.MEMBER]),
-                },
+            // Get the admin's personal project
+            const adminProject = await projectService.getOneByOwnerAndPlatform({
+                ownerId: id,
+                platformId,
             })
 
-            // Delete all operators and members first
-            for (const user of operatorsAndMembers) {
+            // If the admin has a personal project, delete it and all associated data
+            if (adminProject) {
+                // This will cascade delete all flows, connections, and other project data
                 await platformProjectService(system.globalLogger()).deletePersonalProjectForUser({
-                    userId: user.id,
-                    platformId,
-                })
-                await userRepo().delete({
-                    id: user.id,
+                    userId: id,
                     platformId,
                 })
             }
         }
 
-        // Delete the admin user
-        await platformProjectService(system.globalLogger()).deletePersonalProjectForUser({
-            userId: id,
-            platformId,
-        })
+        // Store the identityId before deleting the user
+        const identityId = userToDelete.identityId
+
+        // Delete the user record (ADMIN, OPERATOR, or MEMBER)
+        // IMPORTANT about what gets deleted:
+        // - flows created by the user - flows belong to the project, not the user (NOT deleted)
+        // - project_member entries are automatically CASCADE deleted by the database
         await userRepo().delete({
             id,
             platformId,
         })
+
+        // Also delete the user_identity (email/password) so the user is completely purged
+        // This means the email can be re-invited and will require setting a new password
+        if (identityId) {
+            await userIdentityService(system.globalLogger()).delete({ id: identityId })
+        }
     },
 
     async getByPlatformRole(id: PlatformId, role: PlatformRole): Promise<UserSchema[]> {
@@ -306,6 +350,8 @@ type ListParams = {
     externalId?: string
     cursorRequest: Cursor
     limit?: number
+    currentUserId?: UserId
+    currentUserRole?: PlatformRole
 }
 
 type GetOneByIdentityIdOnlyParams = {

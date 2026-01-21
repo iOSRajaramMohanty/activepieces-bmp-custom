@@ -37,6 +37,8 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
 
     app.post('/', UpsertUserInvitationRequestParams, async (request, reply) => {
         const { email, type } = request.body
+        let targetProjectId: string | null = null
+        
         switch (type) {
             case InvitationType.PROJECT:
                 await projectMustBeTeamType.call(app, request, reply)
@@ -55,6 +57,33 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                             },
                         })
                     }
+                    
+                    // If ADMIN is inviting OPERATOR/MEMBER, store the admin's personal project ID
+                    // This ensures the invited user is added to the correct admin's project
+                    if (user.platformRole === PlatformRole.ADMIN && 
+                        (request.body.platformRole === PlatformRole.OPERATOR || request.body.platformRole === PlatformRole.MEMBER)) {
+                        const adminProject = await projectService.getOneByOwnerAndPlatform({
+                            ownerId: user.id,
+                            platformId: request.principal.platform.id,
+                        })
+                        if (adminProject) {
+                            targetProjectId = adminProject.id
+                            request.log.info({ 
+                                adminId: user.id,
+                                projectId: adminProject.id,
+                                projectName: adminProject.displayName,
+                                inviteeEmail: email,
+                                inviteeRole: request.body.platformRole
+                            }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - storing admin\'s project ID for correct assignment')
+                        } else {
+                            throw new ActivepiecesError({
+                                code: ErrorCode.ENTITY_NOT_FOUND,
+                                params: {
+                                    message: 'Admin does not have a personal project. Cannot invite users.',
+                                },
+                            })
+                        }
+                    }
                 } else {
                     // For SERVICE principal, use EE hook
                     await platformMustBeOwnedByCurrentUser.call(app, request, reply)
@@ -70,7 +99,8 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             type,
             platformId,
             platformRole: type === InvitationType.PROJECT ? null : request.body.platformRole,
-            projectId: type === InvitationType.PLATFORM ? null : request.body.projectId,
+            // For PLATFORM invitations from ADMIN to OPERATOR/MEMBER, store the admin's project ID
+            projectId: type === InvitationType.PLATFORM ? targetProjectId : request.body.projectId,
             projectRoleId: type === InvitationType.PLATFORM ? null : projectRole?.id ?? null,
             invitationExpirySeconds: dayjs.duration(1, 'day').asSeconds(),
             status,
@@ -83,9 +113,30 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             await projectMustBeTeamType.call(app, request, reply)
         }
         const projectId = await getProjectIdAndAssertPermission(app, request, reply, request.principal, request.query)
+        
+        // For PLATFORM invitations, ADMINs should only see invitations for their own project
+        let filterProjectId = request.query.type === InvitationType.PROJECT ? projectId : null
+        if (request.query.type === InvitationType.PLATFORM && request.principal.type === PrincipalType.USER) {
+            const user = await userService.getOneOrFail({ id: request.principal.id })
+            if (user.platformRole === PlatformRole.ADMIN) {
+                // Get admin's personal project to filter invitations
+                const adminProject = await projectService.getOneByOwnerAndPlatform({
+                    ownerId: user.id,
+                    platformId: request.principal.platform.id,
+                })
+                if (adminProject) {
+                    filterProjectId = adminProject.id
+                    request.log.info({ 
+                        adminId: user.id,
+                        projectId: adminProject.id 
+                    }, '[GET /user-invitations] Filtering PLATFORM invitations for ADMIN to show only their project invitations')
+                }
+            }
+        }
+        
         const invitations = await userInvitationsService(request.log).list({
             platformId: request.principal.platform.id,
-            projectId: request.query.type === InvitationType.PROJECT ? projectId : null,
+            projectId: filterProjectId,
             type: request.query.type,
             status: request.query.status,
             cursor: request.query.cursor ?? null,

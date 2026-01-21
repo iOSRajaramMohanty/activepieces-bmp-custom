@@ -58,6 +58,66 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                         platformId: invitation.platformId,
                         platformRole: invitation.platformRole,
                     })
+                    
+                    // If the invited user is an OPERATOR or MEMBER, they need to be added to an ADMIN's personal project
+                    // The projectId in the invitation was set during invitation creation by the admin
+                    if (invitation.platformRole === PlatformRole.OPERATOR || invitation.platformRole === PlatformRole.MEMBER) {
+                        log.info({ 
+                            userId: user.id, 
+                            email, 
+                            platformRole: invitation.platformRole,
+                            platformId: invitation.platformId,
+                            invitationProjectId: invitation.projectId
+                        }, '[provisionUserInvitation] OPERATOR/MEMBER needs project access')
+                        
+                        // Use the projectId stored in the invitation (set by the admin who created the invitation)
+                        if (isNil(invitation.projectId)) {
+                            log.error({ 
+                                platformId: invitation.platformId,
+                                userEmail: email,
+                                invitationId: invitation.id 
+                            }, '[provisionUserInvitation] No projectId in invitation - cannot determine which admin\'s project to use')
+                            throw new ActivepiecesError({
+                                code: ErrorCode.ENTITY_NOT_FOUND,
+                                params: {
+                                    message: 'Invitation is missing project information. Cannot add OPERATOR/MEMBER to project.',
+                                },
+                            })
+                        }
+                        
+                        // Get the project to verify it exists and get its details
+                        const targetProject = await projectService.getOneOrThrow(invitation.projectId)
+                        
+                        log.info({
+                            email,
+                            projectId: targetProject.id,
+                            projectName: targetProject.displayName,
+                            projectOwnerId: targetProject.ownerId
+                        }, '[provisionUserInvitation] Adding OPERATOR/MEMBER to the admin\'s project specified in invitation')
+                        
+                        // Get the default project role for OPERATOR/MEMBER
+                        // OPERATOR -> Operator project role, MEMBER -> Viewer project role
+                        const projectRoleName = invitation.platformRole === PlatformRole.OPERATOR ? 'Operator' : 'Viewer'
+                        const defaultProjectRole = await projectRoleService.getOneOrThrow({
+                            name: projectRoleName,
+                            platformId: invitation.platformId,
+                        })
+                        
+                        // Add the user as a member to the specified admin's personal project
+                        await projectMemberService(log).upsert({
+                            projectId: targetProject.id,
+                            userId: user.id,
+                            projectRoleName: defaultProjectRole.name,
+                        })
+                        
+                        log.info({ 
+                            userId: user.id,
+                            email,
+                            projectId: targetProject.id,
+                            projectName: targetProject.displayName,
+                            projectOwnerId: targetProject.ownerId
+                        }, '[provisionUserInvitation] Successfully added OPERATOR/MEMBER to the correct admin\'s personal project')
+                    }
                     break
                 }
                 case InvitationType.PROJECT: {
@@ -122,7 +182,9 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             platformId,
             projectRoleId: type === InvitationType.PLATFORM ? undefined : projectRoleId!,
             platformRole: type === InvitationType.PROJECT ? undefined : platformRole!,
-            projectId: type === InvitationType.PLATFORM ? undefined : projectId!,
+            // For PLATFORM invitations, projectId can be set when ADMIN invites OPERATOR/MEMBER
+            // For PROJECT invitations, projectId is always required
+            projectId: type === InvitationType.PROJECT ? projectId! : (projectId ?? undefined),
         }, ['email', 'platformId', 'projectId'])
         
         // Verify the invitation was saved correctly

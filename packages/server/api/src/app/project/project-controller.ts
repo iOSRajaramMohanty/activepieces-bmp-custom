@@ -38,7 +38,11 @@ export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
             userId: request.principal.id,
             platformRole: user.platformRole,
         })
-        return paginationHelper.createPage(projects, null)
+        
+        // Add analytics (member counts) to each project for CE mode
+        const projectsWithAnalytics = await projectService.enrichProjectsWithAnalytics(projects)
+        
+        return paginationHelper.createPage(projectsWithAnalytics, null)
     })
 }
 

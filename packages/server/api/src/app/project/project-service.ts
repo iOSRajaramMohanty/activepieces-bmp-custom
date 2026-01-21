@@ -29,15 +29,16 @@ export const projectRepo = repoFactory(ProjectEntity)
 
 export const projectService = {
     async create(params: CreateParams): Promise<Project> {
-        // Validate: If creating a PERSONAL project, ensure the owner is an ADMIN
-        // Operators, Members, and Owners should not have personal projects
+        // Validate: If creating a PERSONAL project, ensure the owner is an ADMIN (sub-owner)
+        // Platform OWNER (tenant) should NOT have personal projects - they can only view their ADMINs' projects
+        // Operators and Members also cannot have personal projects
         if (params.type === ProjectType.PERSONAL && !isNil(params.ownerId)) {
             const owner = await userService.getOneOrFail({ id: params.ownerId })
-            if (owner.platformRole !== PlatformRole.ADMIN && owner.platformRole !== PlatformRole.SUPER_ADMIN) {
+            if (owner.platformRole !== PlatformRole.ADMIN) {
                 throw new ActivepiecesError({
                     code: ErrorCode.AUTHORIZATION,
                     params: {
-                        message: 'Only Admins can create personal projects. Operators, Members, and Owners cannot create projects.',
+                        message: 'Only Admins (sub-owners) can create personal projects. Platform Owner (tenant), Operators, and Members cannot create personal projects.',
                     },
                 })
             }
@@ -192,6 +193,34 @@ export const projectService = {
 
         return queryBuilder.getMany()
     },
+    
+    async enrichProjectsWithAnalytics(projects: Project[]): Promise<any[]> {
+        if (projects.length === 0) return []
+        
+        // Count project members for each project
+        const projectIds = projects.map(p => p.id)
+        const memberCounts = await projectRepo()
+            .createQueryBuilder('project')
+            .select('project.id', 'projectId')
+            .addSelect('COUNT(DISTINCT pm."userId")', 'memberCount')
+            .leftJoin('project_member', 'pm', 'pm."projectId" = project.id')
+            .where('project.id IN (:...projectIds)', { projectIds })
+            .groupBy('project.id')
+            .getRawMany()
+        
+        const memberCountMap = new Map(memberCounts.map(r => [r.projectId, parseInt(r.memberCount) || 0]))
+        
+        // Return projects with analytics
+        return projects.map(project => ({
+            ...project,
+            analytics: {
+                totalUsers: memberCountMap.get(project.id) || 0,
+                activeUsers: 0, // Not calculated in CE mode
+                totalFlows: 0, // Not calculated in CE mode
+                activeFlows: 0, // Not calculated in CE mode
+            },
+        }))
+    },
     async userHasProjects(params: GetAllForUserParams): Promise<boolean> {
         assertNotNullOrUndefined(params.platformId, 'platformId is undefined')
         
@@ -238,38 +267,29 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
         return
     }
     
-    // OWNER can see all projects - no filtering needed
+    // OWNER (tenant) can see all ADMINs' personal projects in their platform
+    // OWNER should NOT have their own personal projects - they only view their sub-owners' projects
     if (platformRole === PlatformRole.OWNER || platformRole === PlatformRole.SUPER_ADMIN) {
         return
     }
 
-    // Get platform owner ID to make their personal projects visible to all
-    const platform = await platformService.getOneOrThrow(platformId)
-    const platformOwnerId = platform.ownerId
-
     queryBuilder.andWhere(new Brackets(qb => {
         if (platformRole === PlatformRole.ADMIN) {
-            // ADMIN: Can see their own personal projects + TEAM projects they're members of
+            // ADMIN (sub-owner): Can see ONLY their own personal projects + TEAM projects they're members of
+            // They CANNOT see other ADMINs' personal projects
             qb.where(
                 // Admin's own personal projects
                 'project."ownerId" = :userId AND project.type = :personalType',
                 { userId, personalType: ProjectType.PERSONAL },
-            ).orWhere(
-                // Platform owner's personal projects (visible to all)
-                'project."ownerId" = :platformOwnerId AND project.type = :personalType',
-                { platformOwnerId, personalType: ProjectType.PERSONAL },
             ).orWhere(
                 // TEAM projects where admin is a member
                 'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
                 { userId, platformId },
             )
         } else {
-            // OPERATOR/MEMBER: Can only see TEAM projects they're members of + platform owner's projects
+            // OPERATOR/MEMBER: Can only see TEAM projects they're members of
+            // They work within their ADMIN's personal projects
             qb.where(
-                // Platform owner's personal projects (visible to all)
-                'project."ownerId" = :platformOwnerId AND project.type = :personalType',
-                { platformOwnerId, personalType: ProjectType.PERSONAL },
-            ).orWhere(
                 // TEAM projects where user is a member
                 'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
                 { userId, platformId },

@@ -110,33 +110,22 @@ export default function OwnerDashboard() {
     // Filter by current platform - owners are privileged so they see all projects in their platform
     const filteredProjects = projectsData.filter((project) => project.platformId === platform?.id);
     
-    // Calculate user count for each project
-    // For PERSONAL projects owned by admins: count = 1 (admin owner) + all platform members (operators, members)
+    // Backend analytics.totalUsers counts project_member entries (doesn't include owner)
+    // Add 1 for the project owner to get accurate total
     return filteredProjects.map((project) => {
-      let userCount = project.analytics?.totalUsers || 0;
-      
-      // For PERSONAL projects, calculate users who have access
-      if (project.type === ProjectType.PERSONAL && project.ownerId) {
-        // Find the owner
-        const owner = platformUsers.find((u) => u.id === project.ownerId);
-        if (owner) {
-          // Count = 1 (owner) + all operators and members in the platform
-          const operatorsAndMembers = platformUsers.filter(
-            (u) => u.platformRole === PlatformRole.OPERATOR || u.platformRole === PlatformRole.MEMBER
-          ).length;
-          userCount = 1 + operatorsAndMembers;
-        }
-      }
-      
+      const memberCount = project.analytics?.totalUsers || 0;
       return {
         ...project,
         analytics: {
           ...project.analytics,
-          totalUsers: userCount,
+          totalUsers: memberCount + 1, // Add 1 for owner
+          activeUsers: project.analytics?.activeUsers || 0,
+          totalFlows: project.analytics?.totalFlows || 0,
+          activeFlows: project.analytics?.activeFlows || 0,
         },
       };
     });
-  }, [projectsData, platform, platformUsers]);
+  }, [projectsData, platform]);
 
   // Fetch flows for all projects in the platform
   const { data: flowsData, isLoading: flowsLoading } = useQuery<PopulatedFlow[], Error>({
@@ -509,28 +498,28 @@ export default function OwnerDashboard() {
                           )}
                           {/* Delete button for ADMIN users only */}
                           {canDelete && (
-                            <ConfirmationDeleteDialog
-                              title={t('Delete Admin Account')}
-                              message={
-                                totalChildUsers > 0
-                                  ? t(
-                                      'Are you sure you want to delete admin "{{email}}"? This will also permanently delete all {{count}} operator(s) and member(s) associated with this admin account.',
-                                      {
-                                        email: row.original.email,
-                                        count: totalChildUsers,
-                                      },
-                                    )
-                                  : t(
-                                      'Are you sure you want to delete admin "{{email}}"?',
-                                      { email: row.original.email },
-                                    )
-                              }
-                              entityName={`${t('Admin')} ${row.original.email}`}
-                              mutationFn={async () => {
-                                deleteUserMutation.mutate(row.original.id);
-                              }}
-                            >
-                              <Tooltip>
+                            <Tooltip>
+                              <ConfirmationDeleteDialog
+                                title={t('Delete Admin Account')}
+                                message={
+                                  totalChildUsers > 0
+                                    ? t(
+                                        'Are you sure you want to delete admin "{{email}}"? This will also permanently delete all {{count}} operator(s) and member(s) associated with this admin account.',
+                                        {
+                                          email: row.original.email,
+                                          count: totalChildUsers,
+                                        },
+                                      )
+                                    : t(
+                                        'Are you sure you want to delete admin "{{email}}"?',
+                                        { email: row.original.email },
+                                      )
+                                }
+                                entityName={`${t('Admin')} ${row.original.email}`}
+                                mutationFn={async () => {
+                                  deleteUserMutation.mutate(row.original.id);
+                                }}
+                              >
                                 <TooltipTrigger asChild>
                                   <Button
                                     loading={deleteUserMutation.isPending}
@@ -540,11 +529,11 @@ export default function OwnerDashboard() {
                                     <Trash className="size-4 text-destructive" />
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent side="bottom">
-                                  {t('Delete admin account')}
-                                </TooltipContent>
-                              </Tooltip>
-                            </ConfirmationDeleteDialog>
+                              </ConfirmationDeleteDialog>
+                              <TooltipContent side="bottom">
+                                {t('Delete admin account')}
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       );

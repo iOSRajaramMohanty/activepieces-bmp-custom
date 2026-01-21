@@ -262,39 +262,61 @@ export default function UsersPage() {
               );
             },
             (row) => {
+              const isAdmin = row.platformRole === PlatformRole.ADMIN;
+              const isActive = row.status === UserStatus.ACTIVE;
+              
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
                     <TooltipTrigger>
-                      <Button
-                        disabled={
-                          isUpdatingStatus ||
-                          row.platformRole === PlatformRole.ADMIN
-                        }
-                        variant="ghost"
-                        className="size-8 p-0"
-                        loading={isUpdatingStatus}
-                        onClick={() => {
-                          updateUserStatus({
-                            userId: row.id,
-                            status:
-                              row.status === UserStatus.ACTIVE
-                                ? UserStatus.INACTIVE
-                                : UserStatus.ACTIVE,
-                          });
-                        }}
-                      >
-                        {row.status === UserStatus.ACTIVE ? (
-                          <CircleMinus className="size-4" />
-                        ) : (
-                          <RotateCcw className="size-4" />
-                        )}
-                      </Button>
+                      {!isAdmin ? (
+                        <ConfirmationDeleteDialog
+                          title={isActive ? t('Deactivate User') : t('Activate User')}
+                          message={
+                            isActive
+                              ? t('Are you sure you want to deactivate this user? They will not be able to log in.')
+                              : t('Are you sure you want to activate this user? They will be able to log in.')
+                          }
+                          entityName={`${t('User')} ${row.email}`}
+                          mutationFn={async () => {
+                            updateUserStatus({
+                              userId: row.id,
+                              status: isActive ? UserStatus.INACTIVE : UserStatus.ACTIVE,
+                            });
+                          }}
+                          buttonText={isActive ? t('Deactivate') : t('Activate')}
+                        >
+                          <Button
+                            disabled={isUpdatingStatus}
+                            variant="ghost"
+                            className="size-8 p-0"
+                            loading={isUpdatingStatus}
+                          >
+                            {isActive ? (
+                              <CircleMinus className="size-4" />
+                            ) : (
+                              <RotateCcw className="size-4" />
+                            )}
+                          </Button>
+                        </ConfirmationDeleteDialog>
+                      ) : (
+                        <Button
+                          disabled={true}
+                          variant="ghost"
+                          className="size-8 p-0"
+                        >
+                          {isActive ? (
+                            <CircleMinus className="size-4" />
+                          ) : (
+                            <RotateCcw className="size-4" />
+                          )}
+                        </Button>
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      {row.platformRole === PlatformRole.ADMIN
+                      {isAdmin
                         ? t('Admin cannot be deactivated')
-                        : row.status === UserStatus.ACTIVE
+                        : isActive
                         ? t('Deactivate user')
                         : t('Activate user')}
                     </TooltipContent>

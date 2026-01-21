@@ -21,12 +21,17 @@ export const platformUserController: FastifyPluginAsyncTypebox = async (app) => 
     app.get('/', ListUsersRequest, async (req) => {
         const platformId = req.principal.platform.id
         assertNotNullOrUndefined(platformId, 'platformId')
+        
+        // Get the current user to determine their role
+        const currentUser = await userService.getOneOrFail({ id: req.principal.id })
 
         return userService.list({
             platformId,
             externalId: req.query.externalId,
             cursorRequest: req.query.cursor ?? null,
             limit: req.query.limit ?? 10,
+            currentUserId: req.principal.id,
+            currentUserRole: currentUser.platformRole,
         })
     })
 

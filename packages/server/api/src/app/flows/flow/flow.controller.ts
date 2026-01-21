@@ -63,14 +63,14 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                 })
             }
             
-            // Check if user is platform owner (cannot create flows unless switched to admin)
+            // Check if user is platform owner (tenant) - they cannot create flows
             if (user.platformRole === PlatformRole.OWNER) {
-                // Platform owner cannot create flows in their own account
-                // (They can only create flows when switched to an admin account)
+                // Platform owner (tenant) can only VIEW their admins' (sub-owners') projects and flows
+                // They cannot create flows themselves. Switch to an admin (sub-owner) account to create flows.
                 throw new ActivepiecesError({
                     code: ErrorCode.AUTHORIZATION,
                     params: {
-                        message: 'Platform owner cannot create flows. Switch to an admin account to create flows.',
+                        message: 'Platform owner (tenant) cannot create flows. Only admins (sub-owners) can create flows. Switch to an admin account to create flows.',
                     },
                 })
             }
