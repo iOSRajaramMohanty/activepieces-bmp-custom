@@ -1,7 +1,8 @@
+import { Provider } from '@radix-ui/react-tooltip';
 import { useQuery } from '@tanstack/react-query';
 
 import { aiProviderApi } from '@/features/platform-admin/lib/ai-provider-api';
-import { AIProviderModel, isNil } from '@activepieces/shared';
+import { AIProviderModel, AIProviderName, isNil } from '@activepieces/shared';
 
 type Provider =
   | 'activepieces'
@@ -18,9 +19,9 @@ type AIModelType = 'text' | 'image';
 const OPENAI_MODELS = ['gpt-5.2', 'gpt-5.1', 'gpt-5-mini'] as const;
 
 const ANTHROPIC_MODELS = [
-  'claude-sonnet-4-5-20250929',
-  'claude-opus-4-5-20251101',
-  'claude-haiku-4-5-20251001',
+  'claude-sonnet-4.5',
+  'claude-opus-4.5',
+  'claude-haiku-4.5',
 ] as const;
 
 const GOOGLE_MODELS = [
@@ -35,7 +36,13 @@ const ALLOWED_MODELS_BY_PROVIDER: Partial<Record<Provider, readonly string[]>> =
     openai: OPENAI_MODELS,
     anthropic: ANTHROPIC_MODELS,
     google: GOOGLE_MODELS,
-    activepieces: [...OPENAI_MODELS, ...ANTHROPIC_MODELS, ...GOOGLE_MODELS],
+    activepieces: [
+      ...OPENAI_MODELS.map((model) => `${AIProviderName.OPENAI}/${model}`),
+      ...ANTHROPIC_MODELS.map(
+        (model) => `${AIProviderName.ANTHROPIC}/${model}`,
+      ),
+      ...GOOGLE_MODELS.map((model) => `${AIProviderName.GOOGLE}/${model}`),
+    ],
   };
 
 function getAllowedModelsForProvider(

@@ -247,6 +247,7 @@ export const userService = {
             created: user.created,
             updated: user.updated,
             lastActiveDate: user.lastActiveDate,
+            imageUrl: identity.imageUrl,
         }
     },
 

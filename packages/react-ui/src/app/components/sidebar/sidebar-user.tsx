@@ -102,6 +102,7 @@ export function SidebarUser() {
                     <UserAvatar
                       name={user.firstName + ' ' + user.lastName}
                       email={user.email}
+                      imageUrl={user.imageUrl}
                       size={28}
                       disableTooltip={true}
                     />
@@ -122,6 +123,7 @@ export function SidebarUser() {
                   <UserAvatar
                     name={user.firstName + ' ' + user.lastName}
                     email={user.email}
+                    imageUrl={user.imageUrl}
                     size={32}
                     disableTooltip={true}
                   />
@@ -146,6 +148,7 @@ export function SidebarUser() {
                 <UserAvatar
                   name={user.firstName + ' ' + user.lastName}
                   email={user.email}
+                  imageUrl={user.imageUrl}
                   size={32}
                   disableTooltip={true}
                 />
@@ -219,7 +222,7 @@ function SidebarPlatformAdminButton() {
   return (
     <DropdownMenuGroup>
       <DropdownMenuItem
-        onClick={() => navigate('/platform')}
+        onClick={() => navigate('/platform/projects')}
         className="w-full flex items-center justify-center relative"
       >
         <div className={`w-full flex items-center gap-2`}>

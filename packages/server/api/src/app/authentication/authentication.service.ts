@@ -268,6 +268,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 provider: params.provider,
                 platformId: null,
                 password: await cryptoUtils.generateRandomPassword(),
+                imageUrl: params.imageUrl,
             })
         }
         if (isNil(userIdentity)) {
@@ -280,6 +281,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 provider: params.provider,
                 platformId,
                 password: await cryptoUtils.generateRandomPassword(),
+                imageUrl: params.imageUrl,
             })
         }
         const user = await userService.getOrCreateWithProject({
@@ -462,6 +464,7 @@ type FederatedAuthnParams = {
     trackEvents: boolean
     provider: UserIdentityProvider
     predefinedPlatformId: string | null
+    imageUrl?: string
 }
 
 type SignUpParams = {
@@ -473,6 +476,7 @@ type SignUpParams = {
     trackEvents: boolean
     newsLetter: boolean
     provider: UserIdentityProvider
+    imageUrl?: string
 }
 
 type SignInWithPasswordParams = {
