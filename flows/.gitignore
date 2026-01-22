@@ -1,0 +1,27 @@
+# Flow version control .gitignore
+
+# Never commit sensitive data
+*.env
+*secrets.json
+*credentials.json
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Flow JSON files are OK to commit
+# They only contain connection names, not credentials
+!*.json

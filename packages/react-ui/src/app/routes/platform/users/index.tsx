@@ -12,7 +12,10 @@ import {
   Shield,
   Clock,
   Activity,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
@@ -37,9 +40,97 @@ import { PlatformRole, UserStatus } from '@activepieces/shared';
 import { UpdateUserDialog } from './update-user-dialog';
 
 export default function UsersPage() {
-  const { data, isLoading, refetch } = platformUserHooks.useUsers();
+  const { data: rawData, isLoading, refetch } = platformUserHooks.useUsers();
   const { data: currentUser } = userHooks.useCurrentUser();
   const currentUserId = authenticationSession.getCurrentUserId();
+
+  // Group users by organization name (from API or extracted from name)
+  const userGroups = useMemo(() => {
+    if (!rawData?.data) return {};
+    
+    const groups: Record<string, typeof rawData.data> = {};
+    
+    rawData.data.forEach((user) => {
+      // Use organizationName from API (from organization table)
+      // This is the primary source - dynamically fetched from database
+      let orgName = user.organizationName;
+      
+      // Only fallback to extraction if organizationName is not available
+      if (!orgName) {
+        const fullName = `${user.firstName} ${user.lastName}`.trim();
+        const orgMatch = fullName.match(/^([A-Z]+)\s/);
+        orgName = orgMatch ? orgMatch[1] : 'Other';
+      }
+      
+      // Final fallback to "Other" if still no organization
+      if (!orgName) {
+        orgName = 'Other';
+      }
+      
+      if (!groups[orgName]) {
+        groups[orgName] = [];
+      }
+      groups[orgName].push(user);
+    });
+    
+    // Sort users within each group: Dev admin -> Dev operators -> Staging admin -> Staging operators -> Production admin -> Production operators
+    Object.keys(groups).forEach((orgName) => {
+      groups[orgName].sort((a, b) => {
+        // Get environment from API response (from organization_environment table)
+        const aEnv = (a as any).environment || '';
+        const bEnv = (b as any).environment || '';
+        
+        // Define environment order (Dev, Staging, Production)
+        const envOrder: Record<string, number> = { 
+          'Dev': 1, 
+          'Staging': 2, 
+          'Production': 3,
+          '': 99  // Users without environment go last
+        };
+        
+        const aEnvOrder = envOrder[aEnv] || 99;
+        const bEnvOrder = envOrder[bEnv] || 99;
+        
+        // Define role order within each environment
+        const roleOrder: Record<string, number> = {
+          [PlatformRole.OWNER]: 0,
+          [PlatformRole.ADMIN]: 1,
+          [PlatformRole.OPERATOR]: 2,
+          [PlatformRole.MEMBER]: 3,
+        };
+        
+        const aRoleOrder = roleOrder[a.platformRole] || 99;
+        const bRoleOrder = roleOrder[b.platformRole] || 99;
+        
+        // Create a composite sort key: environment * 10 + role
+        // This ensures: Dev Admin (11), Dev Operator (12), Staging Admin (21), Staging Operator (22), etc.
+        const aComposite = aEnvOrder * 10 + aRoleOrder;
+        const bComposite = bEnvOrder * 10 + bRoleOrder;
+        
+        return aComposite - bComposite;
+      });
+    });
+    
+    return groups;
+  }, [rawData]);
+
+  // Expand/collapse state for each organization group
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    if (rawData?.data) {
+      Object.keys(userGroups).forEach((org) => {
+        initial[org] = true; // All expanded by default
+      });
+    }
+    return initial;
+  });
+  
+  const toggleGroup = (orgName: string) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [orgName]: !prev[orgName],
+    }));
+  };
 
   const { mutate: deleteUser, isPending: isDeleting } = useMutation({
     mutationKey: ['delete-user'],
@@ -93,28 +184,87 @@ export default function UsersPage() {
             'Manage, delete, activate and deactivate users on platform',
           )}
         />
-        <DataTable
-          emptyStateTextTitle={t('No users found')}
-          emptyStateTextDescription={t('Start inviting users to your project')}
-          emptyStateIcon={<User className="size-14" />}
-          columns={[
-            {
-              accessorKey: 'email',
-              size: 200,
-              header: ({ column }) => (
-                <DataTableColumnHeader
-                  column={column}
-                  title={t('Email')}
-                  icon={Mail}
-                />
-              ),
-              cell: ({ row }) => {
-                return <TruncatedColumnTextValue value={row.original.email} />;
-              },
-            },
+        {/* Organization Groups */}
+        <div className="space-y-4">
+          {Object.keys(userGroups).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <User className="size-14 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">{t('No users found')}</h3>
+              <p className="text-sm text-muted-foreground">{t('Start inviting users to your project')}</p>
+            </div>
+          ) : (
+            Object.entries(userGroups).map(([orgName, orgUsers]) => {
+              const isExpanded = expandedGroups[orgName] ?? true;
+              const admins = orgUsers.filter(u => u.platformRole === PlatformRole.ADMIN);
+              const nonAdmins = orgUsers.filter(u => u.platformRole !== PlatformRole.ADMIN);
+              
+              return (
+                <div key={orgName} className="border rounded-lg overflow-hidden">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleGroup(orgName)}
+                    className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? (
+                        <ChevronDown className="size-5" />
+                      ) : (
+                        <ChevronRight className="size-5" />
+                      )}
+                      <span className="font-semibold text-lg">{orgName} Group</span>
+                      <span className="text-sm text-muted-foreground">
+                        ({orgUsers.length} user{orgUsers.length !== 1 ? 's' : ''})
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      {admins.length > 0 && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          {admins.length} Admin{admins.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                      {nonAdmins.length > 0 && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          {nonAdmins.length} Member{nonAdmins.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  
+                  {/* Group Content */}
+                  {isExpanded && (
+                    <div className="p-4">
+                      <DataTable
+                        emptyStateTextTitle={t('No users')}
+                        emptyStateTextDescription={''}
+                        emptyStateIcon={<User className="size-14" />}
+                        columns={[
+                          {
+                            accessorKey: 'email',
+                            size: 220,
+                            header: ({ column }) => (
+                              <DataTableColumnHeader
+                                column={column}
+                                title={t('Email')}
+                                icon={Mail}
+                              />
+                            ),
+                            cell: ({ row }) => {
+                              // Get environment from API (from organization_environment table)
+                              const envName = (row.original as any).environment || 'N/A';
+                              
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                    {envName}
+                                  </span>
+                                  <TruncatedColumnTextValue value={row.original.email} />
+                                </div>
+                              );
+                            },
+                          },
             {
               accessorKey: 'name',
-              size: 150,
+              size: 200,
               header: ({ column }) => (
                 <DataTableColumnHeader
                   column={column}
@@ -123,10 +273,36 @@ export default function UsersPage() {
                 />
               ),
               cell: ({ row }) => {
+                const fullName = row.original.firstName + ' ' + row.original.lastName;
+                const role = row.original.platformRole;
+                
+                // Extract organization and environment info
+                const orgMatch = fullName.match(/^([A-Z]+)\s+(Dev|Staging|Production|Test)\s+(Admin|Operator|Member)/i);
+                const isSubMember = role === PlatformRole.OPERATOR || role === PlatformRole.MEMBER;
+                const hasGroupPrefix = orgMatch !== null;
+                
+                // Color coding by environment
+                let envColor = '';
+                if (hasGroupPrefix) {
+                  const env = orgMatch[2].toLowerCase();
+                  if (env === 'dev') envColor = 'text-blue-600 dark:text-blue-400';
+                  else if (env === 'staging') envColor = 'text-amber-600 dark:text-amber-400';
+                  else if (env === 'production') envColor = 'text-green-600 dark:text-green-400';
+                }
+                
                 return (
-                  <TruncatedColumnTextValue
-                    value={row.original.firstName + ' ' + row.original.lastName}
-                  />
+                  <div className="flex items-center gap-2">
+                    {isSubMember && hasGroupPrefix ? (
+                      <>
+                        <span className="text-muted-foreground text-sm">└─</span>
+                        <span className={`font-medium ${envColor}`}>{fullName}</span>
+                      </>
+                    ) : (
+                      <span className={hasGroupPrefix ? `font-semibold ${envColor}` : ''}>
+                        {fullName}
+                      </span>
+                    )}
+                  </div>
                 );
               },
             },
@@ -234,7 +410,7 @@ export default function UsersPage() {
               },
             },
           ]}
-          page={data}
+          page={{ data: orgUsers, next: null, previous: null }}
           hidePagination={true}
           isLoading={isLoading}
           actions={[
@@ -377,6 +553,13 @@ export default function UsersPage() {
             },
           ]}
         />
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </LockedFeatureGuard>
   );

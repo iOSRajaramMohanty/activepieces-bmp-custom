@@ -1,4 +1,4 @@
-import { ActivepiecesError, apId, assertEqual, assertNotNullOrUndefined, ErrorCode, InvitationStatus, InvitationType, isNil, Platform, PlatformRole, SeekPage, spreadIfDefined, User, UserInvitation, UserInvitationWithLink } from '@activepieces/shared'
+import { ActivepiecesError, apId, assertEqual, assertNotNullOrUndefined, ErrorCode, InvitationStatus, InvitationType, isNil, Platform, PlatformRole, ProjectType, SeekPage, spreadIfDefined, User, UserInvitation, UserInvitationWithLink } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { IsNull } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
@@ -14,6 +14,8 @@ import { paginationHelper } from '../helper/pagination/pagination-utils'
 import { platformService } from '../platform/platform.service'
 import { projectService } from '../project/project-service'
 import { userService } from '../user/user-service'
+import { organizationService } from '../organization/organization.service'
+import { organizationEnvironmentService } from '../organization/organization-environment.service'
 import { UserInvitationEntity } from './user-invitation.entity'
 
 const repo = repoFactory(UserInvitationEntity)
@@ -53,6 +55,73 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             switch (invitation.type) {
                 case InvitationType.PLATFORM: {
                     assertNotNullOrUndefined(invitation.platformRole, 'platformRole')
+                    
+                    // Handle ADMIN invitations with organization data
+                    if (invitation.platformRole === PlatformRole.ADMIN && invitation.organizationId && invitation.environment) {
+                        log.info({
+                            userId: user.id,
+                            email,
+                            organizationId: invitation.organizationId,
+                            environment: invitation.environment,
+                        }, '[provisionUserInvitation] Processing ADMIN invitation with organization')
+                        
+                        // Get organization details
+                        const organization = await organizationService.getById(invitation.organizationId)
+                        if (isNil(organization)) {
+                            throw new ActivepiecesError({
+                                code: ErrorCode.ENTITY_NOT_FOUND,
+                                params: {
+                                    message: 'Organization not found',
+                                },
+                            })
+                        }
+                        
+                        // Update user with platformRole and organizationId
+                        await userService.update({
+                            id: user.id,
+                            platformId: invitation.platformId,
+                            platformRole: invitation.platformRole,
+                        })
+                        
+                        // Update user entity with organizationId (using databaseConnection)
+                        const { UserEntity } = await import('../user/user-entity')
+                        await repoFactory(UserEntity)().update({ id: user.id }, { organizationId: invitation.organizationId })
+                        
+                        // Auto-create project for the admin with organization link
+                        const projectDisplayName = `${organization.name} ${invitation.environment} Project`
+                        const project = await projectService.create({
+                            displayName: projectDisplayName,
+                            ownerId: user.id,
+                            platformId: invitation.platformId,
+                            type: ProjectType.PERSONAL,
+                        })
+                        
+                        // Update project with organizationId (using databaseConnection)
+                        const { ProjectEntity } = await import('../project/project-entity')
+                        await repoFactory(ProjectEntity)().update({ id: project.id }, { organizationId: invitation.organizationId })
+                        
+                        // Update organization-environment record with admin and project
+                        await organizationEnvironmentService.upsert({
+                            organizationId: invitation.organizationId,
+                            environment: invitation.environment,
+                            adminUserId: user.id,
+                            projectId: project.id,
+                            platformId: invitation.platformId,
+                        })
+                        
+                        log.info({
+                            userId: user.id,
+                            email,
+                            projectId: project.id,
+                            projectName: project.displayName,
+                            organizationId: invitation.organizationId,
+                            environment: invitation.environment,
+                        }, '[provisionUserInvitation] Successfully created ADMIN with organization project')
+                        
+                        break
+                    }
+                    
+                    // Standard platform role update for non-organization ADMINs
                     await userService.update({
                         id: user.id,
                         platformId: invitation.platformId,
@@ -67,8 +136,9 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                             email, 
                             platformRole: invitation.platformRole,
                             platformId: invitation.platformId,
-                            invitationProjectId: invitation.projectId
-                        }, '[provisionUserInvitation] OPERATOR/MEMBER needs project access')
+                            invitationProjectId: invitation.projectId,
+                            invitationOrganizationId: invitation.organizationId
+                        }, '[provisionUserInvitation] OPERATOR/MEMBER needs project access and organization assignment')
                         
                         // Use the projectId stored in the invitation (set by the admin who created the invitation)
                         if (isNil(invitation.projectId)) {
@@ -87,6 +157,17 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                         
                         // Get the project to verify it exists and get its details
                         const targetProject = await projectService.getOneOrThrow(invitation.projectId)
+                        
+                        // If the invitation has an organizationId, assign it to the operator/member user
+                        if (!isNil(invitation.organizationId)) {
+                            const { UserEntity } = await import('../user/user-entity')
+                            await repoFactory(UserEntity)().update({ id: user.id }, { organizationId: invitation.organizationId })
+                            log.info({
+                                userId: user.id,
+                                email,
+                                organizationId: invitation.organizationId
+                            }, '[provisionUserInvitation] Assigned organizationId to OPERATOR/MEMBER user')
+                        }
                         
                         log.info({
                             email,
@@ -115,8 +196,9 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                             email,
                             projectId: targetProject.id,
                             projectName: targetProject.displayName,
-                            projectOwnerId: targetProject.ownerId
-                        }, '[provisionUserInvitation] Successfully added OPERATOR/MEMBER to the correct admin\'s personal project')
+                            projectOwnerId: targetProject.ownerId,
+                            organizationId: invitation.organizationId
+                        }, '[provisionUserInvitation] Successfully added OPERATOR/MEMBER to the correct admin\'s personal project and organization')
                     }
                     break
                 }
@@ -157,6 +239,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         type,
         projectRoleId,
         platformRole,
+        organizationId,
+        environment,
         invitationExpirySeconds,
         status,
     }: CreateParams): Promise<UserInvitationWithLink> {
@@ -170,6 +254,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 email, 
                 platformId, 
                 platformRole, 
+                organizationId,
+                environment,
                 type 
             }, '[createInvitation] Creating PLATFORM invitation with platformRole')
         }
@@ -185,6 +271,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             // For PLATFORM invitations, projectId can be set when ADMIN invites OPERATOR/MEMBER
             // For PROJECT invitations, projectId is always required
             projectId: type === InvitationType.PROJECT ? projectId! : (projectId ?? undefined),
+            organizationId: organizationId ?? undefined,
+            environment: environment as any ?? undefined,
         }, ['email', 'platformId', 'projectId'])
         
         // Verify the invitation was saved correctly
@@ -278,7 +366,9 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             invitationId, 
             platformId, 
             email: updatedInvitation.email,
-            status: updatedInvitation.status 
+            status: updatedInvitation.status,
+            organizationId: updatedInvitation.organizationId,
+            environment: updatedInvitation.environment,
         }, '[accept] Invitation status updated to ACCEPTED')
         
         const identity = await userIdentityService(log).getIdentityByEmail(invitation.email)
@@ -287,10 +377,54 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 registered: false,
             }
         }
-        const user = await userService.getOrCreateWithProject({
-            identity,
-            platformId: invitation.platformId,
-        })
+        
+        // For organization-based ADMIN invitations, skip auto-project creation
+        // The project will be created in provisionUserInvitation with proper naming
+        const isOrganizationAdminInvitation = 
+            invitation.type === InvitationType.PLATFORM &&
+            invitation.platformRole === PlatformRole.ADMIN &&
+            !isNil(invitation.organizationId) &&
+            !isNil(invitation.environment)
+        
+        let user: User
+        if (isOrganizationAdminInvitation) {
+            log.info({
+                email: invitation.email,
+                organizationId: invitation.organizationId,
+                environment: invitation.environment,
+            }, '[accept] Organization ADMIN invitation - skipping auto-project creation')
+            
+            // Get or create user WITHOUT automatic project creation
+            const existingUser = await userService.getOneByIdentityAndPlatform({
+                identityId: identity.id,
+                platformId: invitation.platformId,
+            })
+            
+            if (isNil(existingUser)) {
+                user = await userService.create({
+                    identityId: identity.id,
+                    platformId: invitation.platformId,
+                    platformRole: PlatformRole.ADMIN,
+                })
+                log.info({
+                    userId: user.id,
+                    email: invitation.email,
+                }, '[accept] Created new user for organization ADMIN (no auto-project)')
+            } else {
+                user = existingUser
+                log.info({
+                    userId: user.id,
+                    email: invitation.email,
+                }, '[accept] Using existing user for organization ADMIN')
+            }
+        } else {
+            // Standard flow: create user with project (for non-organization ADMINs)
+            user = await userService.getOrCreateWithProject({
+                identity,
+                platformId: invitation.platformId,
+            })
+        }
+        
         await this.provisionUserInvitation({
             email: invitation.email,
             user,
@@ -413,6 +547,8 @@ type CreateParams = {
     status: InvitationStatus
     type: InvitationType
     projectRoleId: string | null
+    organizationId: string | null
+    environment: string | null
     invitationExpirySeconds: number
 }
 

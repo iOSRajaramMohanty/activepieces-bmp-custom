@@ -142,21 +142,57 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             }
         }
         
-        const user = await userService.getOrCreateWithProject({
-            identity: userIdentity,
-            platformId: params.platformId,
-            platformRole: invitedPlatformRole,
-        })
+        // Check if this is an organization-based admin invitation
+        const isOrganizationAdminInvitation = platformInvitation &&
+            platformInvitation.platformRole === PlatformRole.ADMIN &&
+            !isNil(platformInvitation.organizationId) &&
+            !isNil(platformInvitation.environment)
         
-        log.info({ 
-            userId: user.id,
-            email: params.email,
-            createdPlatformRole: user.platformRole,
-            expectedPlatformRole: invitedPlatformRole,
-            wasExistingUser: !!existingUser
-        }, '[signUp] User created/retrieved with platform role')
+        let user: User
+        if (isOrganizationAdminInvitation) {
+            // For organization admins, create user WITHOUT auto-project creation
+            // The organization-specific project will be created during provisionUserInvitation
+            log.info({
+                email: params.email,
+                organizationId: platformInvitation.organizationId,
+                environment: platformInvitation.environment,
+            }, '[signUp] Organization ADMIN signup - skipping auto-project creation')
+            
+            if (existingUser) {
+                user = existingUser
+                log.info({
+                    userId: user.id,
+                    email: params.email,
+                }, '[signUp] Using existing user for organization ADMIN')
+            } else {
+                user = await userService.create({
+                    identityId: userIdentity.id,
+                    platformId: params.platformId,
+                    platformRole: invitedPlatformRole,
+                })
+                log.info({
+                    userId: user.id,
+                    email: params.email,
+                }, '[signUp] Created new user for organization ADMIN (no auto-project)')
+            }
+        } else {
+            // Standard flow: create user with generic project
+            user = await userService.getOrCreateWithProject({
+                identity: userIdentity,
+                platformId: params.platformId,
+                platformRole: invitedPlatformRole,
+            })
+            
+            log.info({ 
+                userId: user.id,
+                email: params.email,
+                createdPlatformRole: user.platformRole,
+                expectedPlatformRole: invitedPlatformRole,
+                wasExistingUser: !!existingUser
+            }, '[signUp] User created/retrieved with platform role')
+        }
         
-        // Provision invitation (this may update the role, but we already set it correctly)
+        // Provision invitation (this will create the organization-specific project for org admins)
         await userInvitationsService(log).provisionUserInvitation({
             email: params.email,
             user,

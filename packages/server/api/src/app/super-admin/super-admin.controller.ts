@@ -94,6 +94,8 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             SELECT 
                 p.*,
                 platform.name as "platformName",
+                org.name as "organizationName",
+                owner."organizationId",
                 ui.email as "ownerEmail",
                 ui."firstName" || ' ' || ui."lastName" as "ownerName",
                 (SELECT COUNT(*) FROM flow WHERE "projectId" = p.id) as "flowCount"
@@ -101,6 +103,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             LEFT JOIN platform ON p."platformId" = platform.id
             LEFT JOIN "user" owner ON p."ownerId" = owner.id
             LEFT JOIN user_identity ui ON owner."identityId" = ui.id
+            LEFT JOIN organization org ON owner."organizationId" = org.id
             WHERE p.deleted IS NULL
             AND owner."platformRole" != 'SUPER_ADMIN'
             ORDER BY p.created DESC
@@ -270,13 +273,28 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 u.created,
                 u."lastActiveDate",
                 u."platformId",
+                u."organizationId",
                 platform.name as "platformName",
+                org.name as "organizationName",
+                COALESCE(
+                    oe.environment,
+                    (
+                        SELECT oe2.environment 
+                        FROM project_member pm
+                        JOIN project p ON pm."projectId" = p.id
+                        JOIN organization_environment oe2 ON oe2."adminUserId" = p."ownerId"
+                        WHERE pm."userId" = u.id
+                        LIMIT 1
+                    )
+                ) as "environment",
                 ui.email,
                 ui."firstName",
                 ui."lastName"
             FROM "user" u
             LEFT JOIN user_identity ui ON u."identityId" = ui.id
             LEFT JOIN platform ON u."platformId" = platform.id
+            LEFT JOIN organization org ON u."organizationId" = org.id
+            LEFT JOIN organization_environment oe ON oe."adminUserId" = u.id
             WHERE u.id != $1
             ORDER BY u.created DESC
             LIMIT 100

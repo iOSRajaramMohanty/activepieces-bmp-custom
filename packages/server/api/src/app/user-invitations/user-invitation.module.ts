@@ -27,6 +27,8 @@ import { assertRoleHasPermission } from '../ee/authentication/project-role/rbac-
 import { projectRoleService } from '../ee/projects/project-role/project-role.service'
 import { projectService } from '../project/project-service'
 import { userService } from '../user/user-service'
+import { organizationService } from '../organization/organization.service'
+import { organizationEnvironmentService } from '../organization/organization-environment.service'
 import { userInvitationsService } from './user-invitation.service'
 
 export const invitationModule: FastifyPluginAsyncTypebox = async (app) => {
@@ -38,6 +40,8 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
     app.post('/', UpsertUserInvitationRequestParams, async (request, reply) => {
         const { email, type } = request.body
         let targetProjectId: string | null = null
+        let organizationId: string | null = null
+        let environment: string | null = null
         
         switch (type) {
             case InvitationType.PROJECT:
@@ -58,8 +62,51 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                         })
                     }
                     
-                    // If ADMIN is inviting OPERATOR/MEMBER, store the admin's personal project ID
-                    // This ensures the invited user is added to the correct admin's project
+                    // Handle organization and environment for ADMIN invitations from OWNER
+                    if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
+                        // Organization and environment are required for ADMIN invitations
+                        if (!request.body.organizationName || !request.body.environment) {
+                            throw new ActivepiecesError({
+                                code: ErrorCode.VALIDATION,
+                                params: {
+                                    message: 'Organization name and environment are required when inviting admins',
+                                },
+                            })
+                        }
+                        
+                        // Get or create organization
+                        const organization = await organizationService.getOrCreate({
+                            name: request.body.organizationName,
+                            platformId: request.principal.platform.id,
+                        })
+                        organizationId = organization.id
+                        environment = request.body.environment
+                        
+                        // Check if admin slot is available for this org-environment
+                        const availability = await organizationEnvironmentService.checkAdminAvailability({
+                            organizationId: organization.id,
+                            environment: request.body.environment,
+                        })
+                        
+                        if (!availability.available) {
+                            throw new ActivepiecesError({
+                                code: ErrorCode.VALIDATION,
+                                params: {
+                                    message: `Admin slot already taken for ${request.body.organizationName} ${request.body.environment} by ${availability.adminEmail}`,
+                                },
+                            })
+                        }
+                        
+                        request.log.info({
+                            organizationId: organization.id,
+                            organizationName: organization.name,
+                            environment: request.body.environment,
+                            inviteeEmail: email,
+                        }, '[POST /user-invitations] OWNER inviting ADMIN with organization')
+                    }
+                    
+                    // If ADMIN is inviting OPERATOR/MEMBER, store the admin's personal project ID and organizationId
+                    // This ensures the invited user is added to the correct admin's project and organization
                     if (user.platformRole === PlatformRole.ADMIN && 
                         (request.body.platformRole === PlatformRole.OPERATOR || request.body.platformRole === PlatformRole.MEMBER)) {
                         const adminProject = await projectService.getOneByOwnerAndPlatform({
@@ -68,13 +115,18 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                         })
                         if (adminProject) {
                             targetProjectId = adminProject.id
+                            // Also get the admin's organizationId to pass to the invitation
+                            if (user.organizationId) {
+                                organizationId = user.organizationId
+                            }
                             request.log.info({ 
                                 adminId: user.id,
                                 projectId: adminProject.id,
                                 projectName: adminProject.displayName,
+                                organizationId: organizationId,
                                 inviteeEmail: email,
                                 inviteeRole: request.body.platformRole
-                            }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - storing admin\'s project ID for correct assignment')
+                            }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - storing admin\'s project ID and organizationId for correct assignment')
                         } else {
                             throw new ActivepiecesError({
                                 code: ErrorCode.ENTITY_NOT_FOUND,
@@ -102,6 +154,8 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             // For PLATFORM invitations from ADMIN to OPERATOR/MEMBER, store the admin's project ID
             projectId: type === InvitationType.PLATFORM ? targetProjectId : request.body.projectId,
             projectRoleId: type === InvitationType.PLATFORM ? null : projectRole?.id ?? null,
+            organizationId,
+            environment,
             invitationExpirySeconds: dayjs.duration(1, 'day').asSeconds(),
             status,
         })

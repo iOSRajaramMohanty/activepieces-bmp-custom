@@ -53,6 +53,8 @@ import { TriggerSourceEntity } from '../trigger/trigger-source/trigger-source-en
 import { UserBadgeEntity } from '../user/badges/badge-entity'
 import { UserEntity } from '../user/user-entity'
 import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
+import { OrganizationEntity } from '../organization/organization.entity'
+import { OrganizationEnvironmentEntity } from '../organization/organization-environment.entity'
 import { createPGliteDataSource } from './pglite-connection'
 import { createPostgresDataSource } from './postgres-connection'
 
@@ -94,6 +96,8 @@ function getEntities(): EntitySchema<unknown>[] {
         TriggerSourceEntity,
         UserBadgeEntity,
         AccountSwitchingActivityEntity,
+        OrganizationEntity,
+        OrganizationEnvironmentEntity,
         // Enterprise
         ProjectMemberEntity,
         ProjectPlanEntity,

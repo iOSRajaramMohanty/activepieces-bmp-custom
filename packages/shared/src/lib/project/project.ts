@@ -63,6 +63,7 @@ export const Project = Type.Object({
     externalId: Type.Optional(Type.String()),
     releasesEnabled: Type.Boolean(),
     metadata: Nullable(Metadata),
+    organizationId: Nullable(Type.String()),
 })
 
 const projectAnalytics = Type.Object(
@@ -80,6 +81,7 @@ export const ProjectWithLimits = Type.Composite([
     Type.Object({
         plan: ProjectPlan,
         analytics: projectAnalytics,
+        organizationName: Nullable(Type.String()),
     }),
 
 ])

@@ -75,6 +75,10 @@ export const ProjectEntity = new EntitySchema<ProjectSchema>({
             type: 'jsonb',
             nullable: true,
         },
+        organizationId: {
+            type: String,
+            nullable: true,
+        },
     },
     indices: [
         {

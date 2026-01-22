@@ -1,6 +1,6 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { t } from 'i18next';
-import { CheckIcon, Package, Pencil, Plus, Trash } from 'lucide-react';
+import { CheckIcon, Package, Pencil, Plus, Trash, ChevronDown, ChevronRight } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,6 +59,72 @@ export default function ProjectsPage() {
 
   const { data: allProjects } =
     projectCollectionUtils.useAllPlatformProjects(filters);
+
+  // Group projects by organization (from organization table via API)
+  const projectGroups = useMemo(() => {
+    if (!allProjects) return {};
+    
+    const groups: Record<string, typeof allProjects> = {};
+    
+    allProjects.forEach((project) => {
+      // Use organizationName from API (from organization table)
+      // This is the primary source - dynamically fetched from database
+      let orgName = (project as any).organizationName;
+      
+      // Only fallback to extraction if organizationName is not available
+      if (!orgName) {
+        const displayName = project.displayName;
+        const orgMatch = displayName.match(/^([A-Z]+)\s/);
+        orgName = orgMatch ? orgMatch[1] : 'Other';
+      }
+      
+      // Final fallback to "Other" if still no organization
+      if (!orgName) {
+        orgName = 'Other';
+      }
+      
+      if (!groups[orgName]) {
+        groups[orgName] = [];
+      }
+      groups[orgName].push(project);
+    });
+    
+    // Sort projects within each group by environment
+    Object.keys(groups).forEach((orgName) => {
+      groups[orgName].sort((a, b) => {
+        const envOrder: Record<string, number> = { 'Dev': 1, 'Staging': 2, 'Production': 3 };
+        const aEnv = a.displayName.match(/\s(Dev|Staging|Production)/i)?.[1];
+        const bEnv = b.displayName.match(/\s(Dev|Staging|Production)/i)?.[1];
+        
+        if (aEnv && bEnv) {
+          const aOrder = envOrder[aEnv] || 99;
+          const bOrder = envOrder[bEnv] || 99;
+          return aOrder - bOrder;
+        }
+        return a.displayName.localeCompare(b.displayName);
+      });
+    });
+    
+    return groups;
+  }, [allProjects]);
+
+  // Expand/collapse state for project groups
+  const [expandedProjectGroups, setExpandedProjectGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    if (allProjects) {
+      Object.keys(projectGroups).forEach((org) => {
+        initial[org] = true; // All expanded by default
+      });
+    }
+    return initial;
+  });
+  
+  const toggleProjectGroup = (orgName: string) => {
+    setExpandedProjectGroups((prev) => ({
+      ...prev,
+      [orgName]: !prev[orgName],
+    }));
+  };
 
   const [selectedRows, setSelectedRows] = useState<ProjectWithLimits[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -306,44 +372,84 @@ export default function ProjectsPage() {
             </Button>
           </NewProjectDialog>
         </DashboardPageHeader>
-        <DataTable
-          emptyStateTextTitle={t('No projects found')}
-          emptyStateTextDescription={t(
-            'Start by creating projects to manage your automation teams',
+        {/* Organization Groups */}
+        <div className="space-y-4">
+          {Object.keys(projectGroups).length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Package className="size-14 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">{t('No projects found')}</h3>
+              <p className="text-sm text-muted-foreground">{t('Start by creating projects to manage your automation teams')}</p>
+            </div>
+          ) : (
+            Object.entries(projectGroups).map(([orgName, orgProjects]) => {
+              const isExpanded = expandedProjectGroups[orgName] ?? true;
+              
+              return (
+                <div key={orgName} className="border rounded-lg overflow-hidden">
+                  {/* Group Header */}
+                  <button
+                    onClick={() => toggleProjectGroup(orgName)}
+                    className="w-full flex items-center justify-between p-4 bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? (
+                        <ChevronDown className="size-5" />
+                      ) : (
+                        <ChevronRight className="size-5" />
+                      )}
+                            <span className="font-semibold text-lg">{orgName} Group</span>
+                            <span className="text-sm text-muted-foreground">
+                              ({orgProjects.length} project{orgProjects.length !== 1 ? 's' : ''})
+                            </span>
+                    </div>
+                  </button>
+                  
+                  {/* Group Content */}
+                  {isExpanded && (
+                    <div className="p-4">
+                      <DataTable
+                        emptyStateTextTitle={t('No projects')}
+                        emptyStateTextDescription={''}
+                        emptyStateIcon={<Package className="size-14" />}
+                        onRowClick={async (project) => {
+                          await projectCollectionUtils.setCurrentProject(project.id);
+                          navigate('/');
+                        }}
+                        filters={[
+                          {
+                            type: 'input',
+                            title: t('Name'),
+                            accessorKey: 'displayName',
+                            icon: CheckIcon,
+                          },
+                          {
+                            type: 'select',
+                            title: t('Type'),
+                            accessorKey: 'type',
+                            options: Object.values(ProjectType).map((type) => {
+                              return {
+                                label:
+                                  formatUtils.convertEnumToHumanReadable(type) + ' Project',
+                                value: type,
+                              };
+                            }),
+                            icon: CheckIcon,
+                          },
+                        ]}
+                        columns={columnsWithCheckbox}
+                        page={{ data: orgProjects, next: null, previous: null }}
+                        isLoading={false}
+                        clientPagination={true}
+                        bulkActions={bulkActions}
+                        actions={actions}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
-          emptyStateIcon={<Package className="size-14" />}
-          onRowClick={async (project) => {
-            await projectCollectionUtils.setCurrentProject(project.id);
-            navigate('/');
-          }}
-          filters={[
-            {
-              type: 'input',
-              title: t('Name'),
-              accessorKey: 'displayName',
-              icon: CheckIcon,
-            },
-            {
-              type: 'select',
-              title: t('Type'),
-              accessorKey: 'type',
-              options: Object.values(ProjectType).map((type) => {
-                return {
-                  label:
-                    formatUtils.convertEnumToHumanReadable(type) + ' Project',
-                  value: type,
-                };
-              }),
-              icon: CheckIcon,
-            },
-          ]}
-          columns={columnsWithCheckbox}
-          page={{ data: allProjects, next: null, previous: null }}
-          isLoading={false}
-          clientPagination={true}
-          bulkActions={bulkActions}
-          actions={actions}
-        />
+        </div>
         <EditProjectDialog
           open={editDialogOpen}
           onClose={() => {

@@ -37,6 +37,14 @@ export const UserInvitationEntity = new EntitySchema<UserInvitationSchema>({
             type: String,
             nullable: true,
         },
+        organizationId: {
+            type: String,
+            nullable: true,
+        },
+        environment: {
+            type: String,
+            nullable: true,
+        },
     },
     indices: [
         {

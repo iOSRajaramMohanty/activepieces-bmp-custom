@@ -73,6 +73,7 @@ import { tagsModule } from './pieces/tags/tags-module'
 import { platformModule } from './platform/platform.module'
 import { projectHooks } from './project/project-hooks'
 import { projectModule } from './project/project-module'
+import { organizationModule } from './organization/organization.module'
 import { superAdminModule } from './super-admin/super-admin.module'
 import { storeEntryModule } from './store-entry/store-entry.module'
 import { tablesModule } from './tables/tables.module'
@@ -198,6 +199,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(authenticationModule)
     await app.register(triggerModule)
     await app.register(platformModule)
+    await app.register(organizationModule)
     await app.register(superAdminModule)
     await app.register(humanInputModule)
     await app.register(tagsModule)

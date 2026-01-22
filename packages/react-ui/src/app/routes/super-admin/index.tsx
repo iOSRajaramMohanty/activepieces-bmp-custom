@@ -13,8 +13,11 @@ import {
   Trash2,
   AlertTriangle,
   ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  Tag,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
 import { Button } from '@/components/ui/button';
@@ -100,6 +103,187 @@ export default function SuperAdminDashboard() {
       });
     },
   });
+
+  // Group users by Platform -> Organization
+  const userGroups = useMemo(() => {
+    if (!users) return {};
+    
+    const platformGroups: Record<string, Record<string, typeof users>> = {};
+    
+    users.forEach((user) => {
+      const platformName = user.platformName || 'Unknown Platform';
+      const orgName = user.organizationName || 'Other';
+      
+      if (!platformGroups[platformName]) {
+        platformGroups[platformName] = {};
+      }
+      
+      if (!platformGroups[platformName][orgName]) {
+        platformGroups[platformName][orgName] = [];
+      }
+      
+      platformGroups[platformName][orgName].push(user);
+    });
+    
+    // Sort users within each org group by environment and role
+    Object.keys(platformGroups).forEach((platformName) => {
+      Object.keys(platformGroups[platformName]).forEach((orgName) => {
+        platformGroups[platformName][orgName].sort((a, b) => {
+          // Get environment from API response
+          const aEnv = a.environment || '';
+          const bEnv = b.environment || '';
+          
+          // Define environment order
+          const envOrder: Record<string, number> = { 
+            'Dev': 1, 
+            'Staging': 2, 
+            'Production': 3,
+            '': 99
+          };
+          
+          const aEnvOrder = envOrder[aEnv] || 99;
+          const bEnvOrder = envOrder[bEnv] || 99;
+          
+          // Define role order
+          const roleOrder: Record<string, number> = {
+            'OWNER': 0,
+            'ADMIN': 1,
+            'OPERATOR': 2,
+            'MEMBER': 3,
+          };
+          
+          const aRoleOrder = roleOrder[a.platformRole] || 99;
+          const bRoleOrder = roleOrder[b.platformRole] || 99;
+          
+          // Composite sort key: environment * 10 + role
+          const aComposite = aEnvOrder * 10 + aRoleOrder;
+          const bComposite = bEnvOrder * 10 + bRoleOrder;
+          
+          return aComposite - bComposite;
+        });
+      });
+    });
+    
+    return platformGroups;
+  }, [users]);
+
+  // Expand/collapse state for platform groups
+  const [expandedPlatformGroups, setExpandedPlatformGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(userGroups).forEach((platform) => {
+      initial[platform] = true;
+    });
+    return initial;
+  });
+
+  // Expand/collapse state for organization groups within platforms
+  const [expandedOrgGroups, setExpandedOrgGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(userGroups).forEach((platform) => {
+      Object.keys(userGroups[platform]).forEach((org) => {
+        initial[`${platform}-${org}`] = true;
+      });
+    });
+    return initial;
+  });
+
+  const togglePlatformGroup = (platformName: string) => {
+    setExpandedPlatformGroups((prev) => ({
+      ...prev,
+      [platformName]: !prev[platformName],
+    }));
+  };
+
+  const toggleOrgGroup = (platformName: string, orgName: string) => {
+    setExpandedOrgGroups((prev) => ({
+      ...prev,
+      [`${platformName}-${orgName}`]: !prev[`${platformName}-${orgName}`],
+    }));
+  };
+
+  // Group projects by Platform -> Organization
+  const projectGroups = useMemo(() => {
+    if (!projects) return {};
+    
+    const platformGroups: Record<string, Record<string, typeof projects>> = {};
+    
+    projects.forEach((project) => {
+      const platformName = project.platformName || 'Unknown Platform';
+      const orgName = project.organizationName || 'Other';
+      
+      if (!platformGroups[platformName]) {
+        platformGroups[platformName] = {};
+      }
+      
+      if (!platformGroups[platformName][orgName]) {
+        platformGroups[platformName][orgName] = [];
+      }
+      
+      platformGroups[platformName][orgName].push(project);
+    });
+    
+    // Sort projects within each org group by displayName
+    Object.keys(platformGroups).forEach((platformName) => {
+      Object.keys(platformGroups[platformName]).forEach((orgName) => {
+        platformGroups[platformName][orgName].sort((a, b) => {
+          // Extract environment from project displayName
+          const aEnvMatch = a.displayName.match(/(Dev|Staging|Production)/i);
+          const bEnvMatch = b.displayName.match(/(Dev|Staging|Production)/i);
+          
+          const envOrder: Record<string, number> = { 
+            'Dev': 1, 
+            'Staging': 2, 
+            'Production': 3
+          };
+          
+          const aEnvOrder = aEnvMatch ? (envOrder[aEnvMatch[1]] || 99) : 99;
+          const bEnvOrder = bEnvMatch ? (envOrder[bEnvMatch[1]] || 99) : 99;
+          
+          if (aEnvOrder !== bEnvOrder) {
+            return aEnvOrder - bEnvOrder;
+          }
+          
+          return a.displayName.localeCompare(b.displayName);
+        });
+      });
+    });
+    
+    return platformGroups;
+  }, [projects]);
+
+  // Expand/collapse state for platform groups in projects tab
+  const [expandedProjectPlatformGroups, setExpandedProjectPlatformGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(projectGroups).forEach((platform) => {
+      initial[platform] = true;
+    });
+    return initial;
+  });
+
+  // Expand/collapse state for organization groups within platforms in projects tab
+  const [expandedProjectOrgGroups, setExpandedProjectOrgGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(projectGroups).forEach((platform) => {
+      Object.keys(projectGroups[platform]).forEach((org) => {
+        initial[`${platform}-${org}`] = true;
+      });
+    });
+    return initial;
+  });
+
+  const toggleProjectPlatformGroup = (platformName: string) => {
+    setExpandedProjectPlatformGroups((prev) => ({
+      ...prev,
+      [platformName]: !prev[platformName],
+    }));
+  };
+
+  const toggleProjectOrgGroup = (platformName: string, orgName: string) => {
+    setExpandedProjectOrgGroups((prev) => ({
+      ...prev,
+      [`${platformName}-${orgName}`]: !prev[`${platformName}-${orgName}`],
+    }));
+  };
 
   const switchToTenantMutation = useMutation({
     mutationFn: (platformId: string) => superAdminApi.switchToTenant(platformId),
@@ -482,18 +666,111 @@ export default function SuperAdminDashboard() {
 
         {/* Users Tab */}
         <TabsContent value="users" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('All Users')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                emptyStateTextTitle={t('No users found')}
-                emptyStateTextDescription={t(
-                  'There are no users in the system',
-                )}
-                emptyStateIcon={<Users className="size-14" />}
-                columns={[
+          {usersLoading ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center text-muted-foreground">{t('Loading users...')}</div>
+              </CardContent>
+            </Card>
+          ) : Object.keys(userGroups).length === 0 ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center">
+                  <Users className="size-14 mx-auto mb-2 text-muted-foreground" />
+                  <p className="font-semibold">{t('No users found')}</p>
+                  <p className="text-sm text-muted-foreground">{t('There are no users in the system')}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(userGroups).map(([platformName, orgGroups]) => {
+                const platformUserCount = Object.values(orgGroups).reduce((sum, users) => sum + users.length, 0);
+                const isPlatformExpanded = expandedPlatformGroups[platformName];
+                
+                return (
+                  <Card key={platformName}>
+                    <CardHeader
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => togglePlatformGroup(platformName)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isPlatformExpanded ? (
+                            <ChevronDown className="size-4" />
+                          ) : (
+                            <ChevronRight className="size-4" />
+                          )}
+                          <Building2 className="size-4" />
+                          <CardTitle className="text-lg">
+                            {platformName} {t('Platform')}
+                          </CardTitle>
+                          <span className="text-sm text-muted-foreground">
+                            ({platformUserCount} {t('users')})
+                          </span>
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    {isPlatformExpanded && (
+                      <CardContent className="space-y-6">
+                        {Object.entries(orgGroups).map(([orgName, orgUsers]) => {
+                          const isOrgExpanded = expandedOrgGroups[`${platformName}-${orgName}`];
+                          const adminCount = orgUsers.filter(u => u.platformRole === 'ADMIN').length;
+                          const operatorCount = orgUsers.filter(u => u.platformRole === 'OPERATOR').length;
+                          const memberCount = orgUsers.filter(u => u.platformRole === 'MEMBER').length;
+                          const ownerCount = orgUsers.filter(u => u.platformRole === 'OWNER').length;
+                          
+                          return (
+                            <div key={`${platformName}-${orgName}`} className="border rounded-lg">
+                              <div
+                                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => toggleOrgGroup(platformName, orgName)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {isOrgExpanded ? (
+                                    <ChevronDown className="size-4" />
+                                  ) : (
+                                    <ChevronRight className="size-4" />
+                                  )}
+                                  <span className="font-semibold">
+                                    {orgName} {t('Group')}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    ({orgUsers.length} {t('users')})
+                                  </span>
+                                </div>
+                                <div className="flex gap-2">
+                                  {ownerCount > 0 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800">
+                                      {ownerCount} {ownerCount === 1 ? t('Owner') : t('Owners')}
+                                    </span>
+                                  )}
+                                  {adminCount > 0 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                      {adminCount} {adminCount === 1 ? t('Admin') : t('Admins')}
+                                    </span>
+                                  )}
+                                  {operatorCount > 0 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                      {operatorCount} {operatorCount === 1 ? t('Operator') : t('Operators')}
+                                    </span>
+                                  )}
+                                  {memberCount > 0 && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                      {memberCount} {memberCount === 1 ? t('Member') : t('Members')}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {isOrgExpanded && (
+                                <div className="border-t">
+                                  <DataTable
+                                    emptyStateTextTitle={t('No users')}
+                                    emptyStateTextDescription={t('This organization has no users')}
+                                    emptyStateIcon={<Users className="size-14" />}
+                                    columns={[
                   {
                     accessorKey: 'email',
                     size: 200,
@@ -505,8 +782,14 @@ export default function SuperAdminDashboard() {
                       />
                     ),
                     cell: ({ row }) => {
+                      const envName = row.original.environment || 'N/A';
                       return (
-                        <TruncatedColumnTextValue value={row.original.email} />
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                            {envName}
+                          </span>
+                          <TruncatedColumnTextValue value={row.original.email} />
+                        </div>
                       );
                     },
                   },
@@ -524,24 +807,6 @@ export default function SuperAdminDashboard() {
                       return (
                         <TruncatedColumnTextValue
                           value={`${row.original.firstName} ${row.original.lastName}`}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: 'platformName',
-                    size: 180,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Platform')}
-                        icon={Building2}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <TruncatedColumnTextValue
-                          value={row.original.platformName}
                         />
                       );
                     },
@@ -720,136 +985,207 @@ export default function SuperAdminDashboard() {
                           </Dialog>
                         </div>
                       );
-                    },
-                  },
-                ]}
-                page={{
-                  data: users ?? [],
-                  next: null,
-                  previous: null,
-                }}
-                hidePagination={true}
-                isLoading={usersLoading}
-              />
-            </CardContent>
-          </Card>
+                                    },
+                                  },
+                                    ]}
+                                    page={{
+                                      data: orgUsers,
+                                      next: null,
+                                      previous: null,
+                                    }}
+                                    hidePagination={true}
+                                    isLoading={false}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
+
 
         {/* Projects Tab */}
         <TabsContent value="projects" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('All Projects')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                emptyStateTextTitle={t('No projects found')}
-                emptyStateTextDescription={t(
-                  'There are no projects in the system',
-                )}
-                emptyStateIcon={<FolderKanban className="size-14" />}
-                columns={[
-                  {
-                    accessorKey: 'displayName',
-                    size: 200,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Project Name')}
-                        icon={FolderKanban}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <TruncatedColumnTextValue
-                          value={row.original.displayName}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: 'platformName',
-                    size: 180,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Platform')}
-                        icon={Building2}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <TruncatedColumnTextValue
-                          value={row.original.platformName}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: 'ownerEmail',
-                    size: 200,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Owner Email')}
-                        icon={Mail}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <TruncatedColumnTextValue
-                          value={row.original.ownerEmail}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: 'flowCount',
-                    size: 100,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Flows')}
-                        icon={TrendingUp}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <div className="text-center">
-                          {row.original.flowCount}
+          {projectsLoading ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center text-muted-foreground">{t('Loading projects...')}</div>
+              </CardContent>
+            </Card>
+          ) : Object.keys(projectGroups).length === 0 ? (
+            <Card>
+              <CardContent className="py-8">
+                <div className="text-center">
+                  <FolderKanban className="size-14 mx-auto mb-2 text-muted-foreground" />
+                  <p className="font-semibold">{t('No projects found')}</p>
+                  <p className="text-sm text-muted-foreground">{t('There are no projects in the system')}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(projectGroups).map(([platformName, orgGroups]) => {
+                const platformProjectCount = Object.values(orgGroups).reduce((sum, projects) => sum + projects.length, 0);
+                const isPlatformExpanded = expandedProjectPlatformGroups[platformName];
+                
+                return (
+                  <Card key={platformName}>
+                    <CardHeader
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => toggleProjectPlatformGroup(platformName)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isPlatformExpanded ? (
+                            <ChevronDown className="size-4" />
+                          ) : (
+                            <ChevronRight className="size-4" />
+                          )}
+                          <Building2 className="size-4" />
+                          <CardTitle className="text-lg">
+                            {platformName} {t('Platform')}
+                          </CardTitle>
+                          <span className="text-sm text-muted-foreground">
+                            ({platformProjectCount} {t('projects')})
+                          </span>
                         </div>
-                      );
-                    },
-                  },
-                  {
-                    accessorKey: 'created',
-                    size: 150,
-                    header: ({ column }) => (
-                      <DataTableColumnHeader
-                        column={column}
-                        title={t('Created')}
-                        icon={Calendar}
-                      />
-                    ),
-                    cell: ({ row }) => {
-                      return (
-                        <div className="text-left">
-                          <FormattedDate date={new Date(row.original.created)} />
-                        </div>
-                      );
-                    },
-                  },
-                ]}
-                page={{
-                  data: projects ?? [],
-                  next: null,
-                  previous: null,
-                }}
-                hidePagination={true}
-                isLoading={projectsLoading}
-              />
-            </CardContent>
-          </Card>
+                      </div>
+                    </CardHeader>
+
+                    {isPlatformExpanded && (
+                      <CardContent className="space-y-6">
+                        {Object.entries(orgGroups).map(([orgName, orgProjects]) => {
+                          const isOrgExpanded = expandedProjectOrgGroups[`${platformName}-${orgName}`];
+                          
+                          return (
+                            <div key={`${platformName}-${orgName}`} className="border rounded-lg">
+                              <div
+                                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                                onClick={() => toggleProjectOrgGroup(platformName, orgName)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {isOrgExpanded ? (
+                                    <ChevronDown className="size-4" />
+                                  ) : (
+                                    <ChevronRight className="size-4" />
+                                  )}
+                                  <span className="font-semibold">
+                                    {orgName} {t('Group')}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    ({orgProjects.length} {t('projects')})
+                                  </span>
+                                </div>
+                              </div>
+
+                              {isOrgExpanded && (
+                                <div className="border-t">
+                                  <DataTable
+                                    emptyStateTextTitle={t('No projects')}
+                                    emptyStateTextDescription={t('This organization has no projects')}
+                                    emptyStateIcon={<FolderKanban className="size-14" />}
+                                    columns={[
+                                      {
+                                        accessorKey: 'displayName',
+                                        size: 250,
+                                        header: ({ column }) => (
+                                          <DataTableColumnHeader
+                                            column={column}
+                                            title={t('Project Name')}
+                                            icon={FolderKanban}
+                                          />
+                                        ),
+                                        cell: ({ row }) => {
+                                          // Extract environment from project displayName
+                                          const envMatch = row.original.displayName.match(/(Dev|Staging|Production)/i);
+                                          const envName = envMatch ? envMatch[1] : 'N/A';
+                                          
+                                          return (
+                                            <div className="flex items-center gap-2">
+                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
+                                                {envName}
+                                              </span>
+                                              <TruncatedColumnTextValue
+                                                value={row.original.displayName}
+                                              />
+                                            </div>
+                                          );
+                                        },
+                                      },
+                                      {
+                                        accessorKey: 'ownerEmail',
+                                        size: 200,
+                                        header: ({ column }) => (
+                                          <DataTableColumnHeader
+                                            column={column}
+                                            title={t('Owner Email')}
+                                            icon={Mail}
+                                          />
+                                        ),
+                                        cell: ({ row }) => (
+                                          <TruncatedColumnTextValue
+                                            value={row.original.ownerEmail}
+                                          />
+                                        ),
+                                      },
+                                      {
+                                        accessorKey: 'flowCount',
+                                        size: 100,
+                                        header: ({ column }) => (
+                                          <DataTableColumnHeader
+                                            column={column}
+                                            title={t('Flows')}
+                                            icon={TrendingUp}
+                                          />
+                                        ),
+                                        cell: ({ row }) => (
+                                          <div className="text-center">
+                                            {row.original.flowCount}
+                                          </div>
+                                        ),
+                                      },
+                                      {
+                                        accessorKey: 'created',
+                                        size: 150,
+                                        header: ({ column }) => (
+                                          <DataTableColumnHeader
+                                            column={column}
+                                            title={t('Created')}
+                                            icon={Calendar}
+                                          />
+                                        ),
+                                        cell: ({ row }) => (
+                                          <FormattedDate date={new Date(row.original.created)} />
+                                        ),
+                                      },
+                                    ]}
+                                    page={{
+                                      data: orgProjects,
+                                      next: null,
+                                      previous: null,
+                                    }}
+                                    hidePagination={true}
+                                    isLoading={false}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* Account Switching Activities Tab */}

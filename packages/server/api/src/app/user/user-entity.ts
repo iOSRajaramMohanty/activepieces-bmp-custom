@@ -35,6 +35,10 @@ export const UserEntity = new EntitySchema<UserSchema>({
             type: 'timestamp with time zone',
             nullable: true,
         },
+        organizationId: {
+            type: String,
+            nullable: true,
+        },
     },
     indices: [
         {

@@ -16,9 +16,11 @@ import {
     spreadIfDefined,
     UserId,
 } from '@activepieces/shared'
-import { Brackets, IsNull, Not, ObjectLiteral, SelectQueryBuilder } from 'typeorm'
+import { Brackets, IsNull, Not, ObjectLiteral, SelectQueryBuilder, In } from 'typeorm'
 import { repoFactory } from '../core/db/repo-factory'
 import { distributedStore } from '../database/redis-connections'
+import { databaseConnection } from '../database/database-connection'
+import { OrganizationEntity } from '../organization/organization.entity'
 import { system } from '../helper/system/system'
 import { platformService } from '../platform/platform.service'
 import { userService } from '../user/user-service'
@@ -210,7 +212,10 @@ export const projectService = {
         
         const memberCountMap = new Map(memberCounts.map(r => [r.projectId, parseInt(r.memberCount) || 0]))
         
-        // Return projects with analytics
+        // Get organization names for projects
+        const organizationMap = await getOrganizationNamesForProjects(projectIds)
+        
+        // Return projects with analytics and organizationName
         return projects.map(project => ({
             ...project,
             analytics: {
@@ -219,6 +224,7 @@ export const projectService = {
                 totalFlows: 0, // Not calculated in CE mode
                 activeFlows: 0, // Not calculated in CE mode
             },
+            organizationName: organizationMap.get(project.id) || null,
         }))
     },
     async userHasProjects(params: GetAllForUserParams): Promise<boolean> {
@@ -255,6 +261,39 @@ export const projectService = {
     },
 }
 
+
+async function getOrganizationNamesForProjects(projectIds: string[]): Promise<Map<string, string>> {
+    if (projectIds.length === 0) return new Map()
+    
+    const orgRepo = databaseConnection().getRepository(OrganizationEntity)
+    const projects = await projectRepo().find({
+        where: { id: In(projectIds) },
+        select: ['id', 'organizationId'],
+    })
+    
+    const organizationIds = [...new Set(projects.map(p => p.organizationId).filter((id): id is string => id !== null))]
+    
+    if (organizationIds.length === 0) return new Map()
+    
+    const organizations = await orgRepo.find({
+        where: { id: In(organizationIds) },
+        select: ['id', 'name'],
+    })
+    
+    const orgNameMap = new Map(organizations.map(org => [org.id, org.name]))
+    const projectOrgMap = new Map<string, string>()
+    
+    projects.forEach(project => {
+        if (project.organizationId) {
+            const orgName = orgNameMap.get(project.organizationId)
+            if (orgName) {
+                projectOrgMap.set(project.id, orgName)
+            }
+        }
+    })
+    
+    return projectOrgMap
+}
 
 export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,

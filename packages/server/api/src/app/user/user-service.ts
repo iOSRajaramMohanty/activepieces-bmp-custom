@@ -31,6 +31,7 @@ import { paginationHelper } from '../helper/pagination/pagination-utils'
 import { system } from '../helper/system/system'
 import { platformService } from '../platform/platform.service'
 import { projectService } from '../project/project-service'
+import { organizationService } from '../organization/organization.service'
 import { UserEntity, UserSchema } from './user-entity'
 
 
@@ -221,31 +222,35 @@ export const userService = {
             return
         }
 
-        // If deleting an ADMIN (sub-owner), delete ONLY their personal project and associated data
-        // Do NOT delete other ADMINs or their operators/members - each ADMIN is isolated
-        if (userToDelete.platformRole === PlatformRole.ADMIN) {
-            // Get the admin's personal project
-            const adminProject = await projectService.getOneByOwnerAndPlatform({
-                ownerId: id,
-                platformId,
-            })
-
-            // If the admin has a personal project, delete it and all associated data
-            if (adminProject) {
-                // This will cascade delete all flows, connections, and other project data
-                await platformProjectService(system.globalLogger()).deletePersonalProjectForUser({
-                    userId: id,
-                    platformId,
-                })
-            }
-        }
-
         // Store the identityId before deleting the user
         const identityId = userToDelete.identityId
 
+        // If deleting an ADMIN (sub-owner), delete ONLY their personal project and associated data
+        // Do NOT delete other ADMINs or their operators/members - each ADMIN is isolated
+        if (userToDelete.platformRole === PlatformRole.ADMIN) {
+            // Get the admin's personal project(s)
+            const { ProjectEntity } = await import('../project/project-entity')
+            const projectRepo = repoFactory(ProjectEntity)
+            const adminProjects = await projectRepo().find({
+                where: { ownerId: id, platformId },
+            })
+
+            // Delete all projects owned by this admin
+            // This must be done BEFORE deleting the user due to foreign key constraints
+            for (const project of adminProjects) {
+                // Delete organization-environment record if exists
+                const { OrganizationEnvironmentEntity } = await import('../organization/organization-environment.entity')
+                const orgEnvRepo = repoFactory(OrganizationEnvironmentEntity)
+                await orgEnvRepo().delete({ projectId: project.id })
+                
+                // Delete the project (this will cascade delete flows, connections, etc.)
+                await projectRepo().delete({ id: project.id })
+            }
+        }
+
         // Delete the user record (ADMIN, OPERATOR, or MEMBER)
         // IMPORTANT about what gets deleted:
-        // - flows created by the user - flows belong to the project, not the user (NOT deleted)
+        // - flows created by the user - flows belong to the project, not the user (already deleted with project)
         // - project_member entries are automatically CASCADE deleted by the database
         await userRepo().delete({
             id,
@@ -279,6 +284,54 @@ export const userService = {
     async getMetaInformation({ id }: IdParams): Promise<UserWithMetaInformation> {
         const user = await userRepo().findOneByOrFail({ id })
         const identity = await userIdentityService(system.globalLogger()).getBasicInformation(user.identityId)
+        
+        // Fetch organization name and environment if organizationId exists
+        let organizationName: string | null = null
+        let environment: string | null = null
+        
+        if (user.organizationId) {
+            const organization = await organizationService.getById(user.organizationId)
+            organizationName = organization?.name || null
+            
+            // Fetch environment from organization_environment table
+            const { OrganizationEnvironmentEntity } = await import('../organization/organization-environment.entity')
+            const orgEnvRepo = repoFactory(OrganizationEnvironmentEntity)
+            
+            if (user.platformRole === PlatformRole.ADMIN) {
+                // For admins, find their environment directly
+                const orgEnv = await orgEnvRepo().findOne({
+                    where: { adminUserId: user.id },
+                })
+                environment = orgEnv?.environment || null
+            } else if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
+                // For operators/members, find their admin's environment via project membership
+                const { ProjectMemberEntity } = await import('../ee/projects/project-members/project-member.entity')
+                const { ProjectEntity } = await import('../project/project-entity')
+                const projectMemberRepo = repoFactory(ProjectMemberEntity)
+                const projectRepo = repoFactory(ProjectEntity)
+                
+                // Find the project this operator/member belongs to
+                const membership = await projectMemberRepo().findOne({
+                    where: { userId: user.id },
+                })
+                
+                if (membership) {
+                    // Find the project and its owner (admin)
+                    const project = await projectRepo().findOne({
+                        where: { id: membership.projectId },
+                    })
+                    
+                    if (project) {
+                        // Find the admin's environment
+                        const orgEnv = await orgEnvRepo().findOne({
+                            where: { adminUserId: project.ownerId },
+                        })
+                        environment = orgEnv?.environment || null
+                    }
+                }
+            }
+        }
+        
         return {
             id: user.id,
             email: identity.email,
@@ -292,6 +345,9 @@ export const userService = {
             updated: user.updated,
             lastActiveDate: user.lastActiveDate,
             imageUrl: identity.imageUrl,
+            organizationId: user.organizationId,
+            organizationName,
+            environment,
         }
     },
 

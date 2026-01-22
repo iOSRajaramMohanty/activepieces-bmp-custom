@@ -19,6 +19,9 @@ export interface SuperAdminUser {
   platformRole: string;
   platformName: string;
   platformId: string;
+  organizationId?: string;
+  organizationName?: string;
+  environment?: string;
   status: string;
   created: string;
   updated: string;
@@ -31,6 +34,8 @@ export interface SuperAdminProject {
   displayName: string;
   platformName: string;
   platformId: string;
+  organizationId?: string;
+  organizationName?: string;
   ownerEmail: string;
   flowCount: string;
   created: string;
