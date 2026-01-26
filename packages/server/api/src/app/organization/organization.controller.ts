@@ -14,6 +14,7 @@ import {
     ActivepiecesError,
     ErrorCode,
     PrincipalType,
+    PlatformRole,
 } from '@activepieces/shared'
 import { StatusCodes } from 'http-status-codes'
 import { securityAccess } from '@activepieces/server-shared'
@@ -62,15 +63,124 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
         },
     }, async (request) => {
         const { platformId, limit, cursor } = request.query
+        
+        // Get current user's organization info
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
 
         return await organizationService.list({
             platformId,
             limit,
             cursor,
+            userId: request.principal.id,
+            userOrganizationId: currentUser.organizationId || undefined,
+            userPlatformRole: currentUser.platformRole,
         })
     })
 
-    // Get organization by ID
+    // List organization environments - MUST be registered before /:id route
+    app.get('/:id/environments', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            tags: ['organizations'],
+            summary: 'List environments for an organization',
+            params: Type.Object({
+                id: Type.String(),
+            }),
+            response: {
+                [StatusCodes.OK]: Type.Array(OrganizationEnvironment),
+            },
+        },
+    }, async (request) => {
+        const { id } = request.params
+        
+        console.log('[organization.controller] GET /:id/environments', {
+            organizationId: id,
+            principalId: request.principal?.id,
+            params: request.params,
+        })
+        
+        if (!id) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'Organization ID is required',
+                },
+            })
+        }
+
+        // Get current user's organization info for access control
+        const { userService } = await import('../user/user-service')
+        if (!request.principal?.id) {
+            throw new ActivepiecesError({
+                code: ErrorCode.AUTHENTICATION,
+                params: {
+                    message: 'User ID is required',
+                },
+            })
+        }
+        
+        try {
+            const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+            console.log('[organization.controller] User found:', { userId: currentUser.id })
+
+            // Check if user has access to this organization
+            const organization = await organizationService.getById(
+                id,
+                request.principal.id,
+                currentUser.organizationId || undefined,
+                currentUser.platformRole
+            )
+            if (!organization) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.ENTITY_NOT_FOUND,
+                    params: {
+                        entityId: id,
+                        entityType: 'organization',
+                    },
+                })
+            }
+
+            // Get all environments for this organization
+            const allEnvironments = await organizationEnvironmentService.listByOrganization(id)
+            
+            // IMPORTANT: Filter environments based on user's admin role
+            // Each environment admin can ONLY see and manage their own environment
+            // Platform owners can see all environments
+            let filteredEnvironments = allEnvironments
+            
+            if (currentUser.platformRole !== PlatformRole.OWNER) {
+                // Non-owner users can only see environments where they are the admin
+                filteredEnvironments = allEnvironments.filter(env => 
+                    env.adminUserId === currentUser.id
+                )
+                
+                console.log('[organization.controller] Filtered environments for non-owner:', {
+                    userId: currentUser.id,
+                    originalCount: allEnvironments.length,
+                    filteredCount: filteredEnvironments.length,
+                })
+            }
+            
+            console.log('[organization.controller] Environments found:', { 
+                count: filteredEnvironments.length,
+                sample: filteredEnvironments[0] ? {
+                    id: filteredEnvironments[0].id,
+                    environment: filteredEnvironments[0].environment,
+                    hasMetadata: !!filteredEnvironments[0].metadata,
+                    adminUserId: filteredEnvironments[0].adminUserId,
+                } : null,
+            })
+            return filteredEnvironments
+        } catch (error) {
+            console.error('[organization.controller] Error in GET /:id/environments:', error)
+            throw error
+        }
+    })
+
+    // Get organization by ID - MUST be registered after /:id/environments
     app.get('/:id', {
         config: {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
@@ -88,7 +198,16 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     }, async (request) => {
         const { id } = request.params
 
-        const organization = await organizationService.getById(id)
+        // Get current user's organization info
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+
+        const organization = await organizationService.getById(
+            id,
+            request.principal.id,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
         if (!organization) {
             throw new ActivepiecesError({
                 code: ErrorCode.ENTITY_NOT_FOUND,
@@ -101,25 +220,63 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
         return organization
     })
 
-    // List organization environments
-    app.get('/:id/environments', {
+    // Update organization environment metadata
+    app.patch('/:organizationId/environments/:environmentId/metadata', {
         config: {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
             tags: ['organizations'],
-            summary: 'List environments for an organization',
+            summary: 'Update metadata for an organization environment',
             params: Type.Object({
-                id: Type.String(),
+                organizationId: Type.String(),
+                environmentId: Type.String(),
+            }),
+            body: Type.Object({
+                metadata: Type.Optional(Type.Unknown()),
             }),
             response: {
-                [StatusCodes.OK]: Type.Array(OrganizationEnvironment),
+                [StatusCodes.OK]: OrganizationEnvironment,
             },
         },
     }, async (request) => {
-        const { id } = request.params
+        const { organizationId, environmentId } = request.params
+        const { metadata } = request.body
 
-        return await organizationEnvironmentService.listByOrganization(id)
+        // Get current user's organization info for access control
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+
+        // Check if user has access to this organization
+        const organization = await organizationService.getById(
+            organizationId,
+            request.principal.id,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
+        if (!organization) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: {
+                    entityId: organizationId,
+                    entityType: 'organization',
+                },
+            })
+        }
+
+        // Get the environment to verify it belongs to the organization
+        const orgEnv = await organizationEnvironmentService.getById(environmentId)
+        if (!orgEnv || orgEnv.organizationId !== organizationId) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: {
+                    entityId: environmentId,
+                    entityType: 'organization_environment',
+                },
+            })
+        }
+
+        return await organizationEnvironmentService.update(environmentId, { metadata })
     })
 
     // Check admin availability for org-env
@@ -189,7 +346,17 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
         const { id } = request.params
         const updates = request.body
 
-        return await organizationService.update(id, updates)
+        // Get current user's organization info
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+
+        return await organizationService.update(
+            id,
+            updates,
+            request.principal.id,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
     })
 
     // Delete organization

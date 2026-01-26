@@ -23,6 +23,7 @@ export const userInteractionJobExecutor = (log: FastifyBaseLogger) => ({
                     auth: jobData.connectionValue as AppConnectionValue,
                     piece: jobData.piece,
                     timeoutInSeconds,
+                    environmentMetadata: jobData.environmentMetadata,
                 })
                 break
             case WorkerJobType.EXECUTE_TRIGGER_HOOK: {

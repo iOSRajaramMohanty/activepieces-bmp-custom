@@ -32,8 +32,23 @@ export const organizationService = {
         return await databaseConnection().getRepository(OrganizationEntity).save(newOrganization)
     },
 
-    async getById(id: string): Promise<Organization | null> {
-        return await databaseConnection().getRepository(OrganizationEntity).findOneBy({ id })
+    async getById(id: string, userId?: string, userOrganizationId?: string | undefined, userPlatformRole?: string): Promise<Organization | null> {
+        const organization = await databaseConnection().getRepository(OrganizationEntity).findOneBy({ id })
+        
+        if (!organization) {
+            return null
+        }
+
+        // Check if user has access to this organization
+        if (userId && userOrganizationId && userPlatformRole) {
+            const isPrivileged = userPlatformRole === 'OWNER' || userPlatformRole === 'SUPER_ADMIN'
+            if (!isPrivileged && organization.id !== userOrganizationId) {
+                // User doesn't have access to this organization
+                return null
+            }
+        }
+
+        return organization
     },
 
     async getByNameAndPlatform(name: string, platformId: string): Promise<Organization | null> {
@@ -44,7 +59,7 @@ export const organizationService = {
     },
 
     async list(params: ListOrganizationsParams): Promise<SeekPage<Organization>> {
-        const { platformId, limit = 50, cursor } = params
+        const { platformId, limit = 50, cursor, userId, userOrganizationId, userPlatformRole } = params
 
         const query = databaseConnection()
             .getRepository(OrganizationEntity)
@@ -52,6 +67,12 @@ export const organizationService = {
             .where('organization.platformId = :platformId', { platformId })
             .orderBy('organization.name', 'ASC')
             .take(limit + 1)
+
+        // Filter by user's organization unless they're OWNER or SUPER_ADMIN
+        const isPrivileged = userPlatformRole === 'OWNER' || userPlatformRole === 'SUPER_ADMIN'
+        if (!isPrivileged && userOrganizationId) {
+            query.andWhere('organization.id = :userOrganizationId', { userOrganizationId })
+        }
 
         if (cursor) {
             query.andWhere('organization.id > :cursor', { cursor })
@@ -71,8 +92,8 @@ export const organizationService = {
         }
     },
 
-    async update(id: string, updates: Partial<Organization>): Promise<Organization> {
-        const organization = await this.getById(id)
+    async update(id: string, updates: Partial<Organization>, userId?: string, userOrganizationId?: string | undefined, userPlatformRole?: string): Promise<Organization> {
+        const organization = await this.getById(id, userId, userOrganizationId, userPlatformRole)
         
         if (!organization) {
             throw new ActivepiecesError({
@@ -84,9 +105,23 @@ export const organizationService = {
             })
         }
 
+        // Additional authorization check for update
+        if (userId && userOrganizationId && userPlatformRole) {
+            const isPrivileged = userPlatformRole === 'OWNER' || userPlatformRole === 'SUPER_ADMIN'
+            if (!isPrivileged && organization.id !== userOrganizationId) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.ENTITY_NOT_FOUND,
+                    params: {
+                        entityId: id,
+                        entityType: 'organization',
+                    },
+                })
+            }
+        }
+
         await databaseConnection().getRepository(OrganizationEntity).update(id, updates as any)
         
-        return await this.getById(id) as Organization
+        return await this.getById(id, userId, userOrganizationId, userPlatformRole) as Organization
     },
 
     async delete(id: string): Promise<void> {
@@ -113,4 +148,7 @@ type ListOrganizationsParams = {
     platformId: string
     limit?: number
     cursor?: string | null
+    userId?: string
+    userOrganizationId?: string | undefined
+    userPlatformRole?: string
 }

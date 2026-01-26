@@ -75,4 +75,61 @@ export const organizationHooks = {
       },
     });
   },
+
+  useUpdateOrganization() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string; metadata: unknown }> }) =>
+        organizationApi.update(id, updates),
+      onSuccess: (data) => {
+        queryClient.invalidateQueries({
+          queryKey: ['organizations'],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['organization', data.id],
+        });
+        toast.success(t('Organization metadata updated successfully'));
+      },
+      onError: (error: any) => {
+        toast.error(t('Error'), {
+          description:
+            error?.response?.data?.message ||
+            t('Failed to update organization metadata'),
+        });
+      },
+    });
+  },
+
+  useUpdateEnvironmentMetadata() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: ({
+        organizationId,
+        environmentId,
+        metadata,
+      }: {
+        organizationId: string;
+        environmentId: string;
+        metadata: unknown;
+      }) => organizationApi.updateEnvironmentMetadata(organizationId, environmentId, metadata),
+      onSuccess: (data, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: ['organization-environments', variables.organizationId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['organizations'],
+        });
+        toast.success(t('Environment metadata updated successfully'));
+      },
+      onError: (error: any) => {
+        toast.error(t('Error'), {
+          description:
+            error?.response?.data?.message ||
+            t('Failed to update environment metadata'),
+        });
+      },
+    });
+  },
 };

@@ -11,7 +11,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog } from '../common/config';
+import { API_ENDPOINTS, debugLog, fetchMetadata } from '../common/config';
 
 export const sendBulkMessageAction = createAction({
   auth: adaBmpAuth,
@@ -33,6 +33,13 @@ export const sendBulkMessageAction = createAction({
     }),
   },
   async run(context) {
+    // Fetch organization/environment metadata
+    const metadata = await fetchMetadata(
+      context.project.id,
+      context.server as any,
+      httpClient
+    );
+
     // Extract the actual token from the auth object
     const token = (context.auth as any).secret_text;
     const { channel, account, messageType: msgType, contactCategory, templateCategory, template, message } = context.propsValue;
@@ -63,7 +70,7 @@ export const sendBulkMessageAction = createAction({
 
       // Fetch account details to get the account number (from field)
       debugLog('Fetching account details', { accountId: account });
-      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode);
+      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata);
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -90,7 +97,7 @@ export const sendBulkMessageAction = createAction({
         throw new Error('Selected account not found');
       }
 
-      const apiUrl = API_ENDPOINTS.sendBulkMessage();
+      const apiUrl = API_ENDPOINTS.sendBulkMessage(metadata);
       debugLog('Sending bulk message', { 
         url: apiUrl,
         channel,
@@ -137,7 +144,7 @@ export const sendBulkMessageAction = createAction({
         debugLog('Using MARKETING/UTILITY template format with call permission', { 
           templateName: templateData.name,
           category: templateData.category,
-        });
+        }, metadata);
       } else if (templateData && templateData.category === 'AUTHENTICATION') {
         // Use AUTHENTICATION template format with OTP value
         const otpValue = message || '';

@@ -24,6 +24,7 @@ export const OrganizationEnvironment = Type.Object({
     adminEmail: Type.Optional(Type.String()),
     projectId: Type.Optional(Type.String()),
     platformId: Type.String(),
+    metadata: Type.Optional(Type.Unknown()),
 })
 
 export type OrganizationEnvironment = Static<typeof OrganizationEnvironment>

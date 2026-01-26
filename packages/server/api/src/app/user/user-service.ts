@@ -193,6 +193,9 @@ export const userService = {
         return user
     },
     async getOneOrFail({ id }: IdParams): Promise<User> {
+        if (!id) {
+            throw new Error('User ID is required for getOneOrFail')
+        }
         return userRepo().findOneOrFail({ where: { id } })
     },
     async getOneByIdAndPlatformIdOrThrow({ id, platformId }: GetOneByIdAndPlatformIdParams): Promise<UserWithBadges> {
@@ -290,8 +293,18 @@ export const userService = {
         let environment: string | null = null
         
         if (user.organizationId) {
-            const organization = await organizationService.getById(user.organizationId)
-            organizationName = organization?.name || null
+            // For getMetaInformation, we need to fetch organization without access control restrictions
+            // since this is used internally to enrich user data. Use a direct database query.
+            try {
+                const { OrganizationEntity } = await import('../organization/organization.entity')
+                const orgRepo = repoFactory(OrganizationEntity)
+                const organization = await orgRepo().findOneBy({ id: user.organizationId })
+                organizationName = organization?.name || null
+            } catch (error) {
+                // If organization fetch fails, log but don't throw - organizationName will remain null
+                const errorMessage = error instanceof Error ? error.message : String(error)
+                system.globalLogger().warn(`Failed to fetch organization ${user.organizationId} for user ${user.id}: ${errorMessage}`)
+            }
             
             // Fetch environment from organization_environment table
             const { OrganizationEnvironmentEntity } = await import('../organization/organization-environment.entity')

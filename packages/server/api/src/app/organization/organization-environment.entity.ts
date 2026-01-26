@@ -28,6 +28,10 @@ export const OrganizationEnvironmentEntity = new EntitySchema<OrganizationEnviro
             type: String,
             nullable: false,
         },
+        metadata: {
+            type: 'jsonb',
+            nullable: true,
+        },
     },
     indices: [
         {

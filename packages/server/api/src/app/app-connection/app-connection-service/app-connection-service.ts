@@ -57,6 +57,7 @@ import {
 import { appConnectionHandler } from './app-connection.handler'
 import { oauth2Handler } from './oauth2'
 import { oauth2Util } from './oauth2/oauth2-util'
+import { organizationEnvironmentService } from '../../organization/organization-environment.service'
 export const appConnectionsRepo = repoFactory(AppConnectionEntity)
 
 export const appConnectionService = (log: FastifyBaseLogger) => ({
@@ -504,6 +505,23 @@ const engineValidateAuth = async (
         platformId,
     })
 
+    // Fetch environment-specific metadata for dynamic API URL injection
+    let environmentMetadata: Record<string, unknown> = {}
+    try {
+        const project = await projectRepo().findOneBy({ id: projectId })
+        if (project && project.organizationId) {
+            const environments = await organizationEnvironmentService.listByOrganization(project.organizationId)
+            // Find the environment that links to this project
+            const projectEnvironment = environments.find((env) => env.projectId === projectId)
+            if (projectEnvironment && projectEnvironment.metadata) {
+                environmentMetadata = projectEnvironment.metadata as Record<string, unknown>
+                log.debug({ projectId, environment: projectEnvironment.environment, environmentMetadata }, '[engineValidateAuth] Fetched environment metadata')
+            }
+        }
+    } catch (error) {
+        log.warn({ projectId, error }, '[engineValidateAuth] Failed to fetch environment metadata, continuing without it')
+    }
+
     const engineResponse = await userInteractionWatcher(log).submitAndWaitForResponse<OperationResponse<ExecuteValidateAuthResponse>>({
         piece: await getPiecePackageWithoutArchive(log, platformId, {
             pieceName,
@@ -513,6 +531,7 @@ const engineValidateAuth = async (
         platformId,
         connectionValue: auth,
         jobType: WorkerJobType.EXECUTE_VALIDATION,
+        environmentMetadata,
     })
 
     if (engineResponse.status !== EngineResponseStatus.OK) {

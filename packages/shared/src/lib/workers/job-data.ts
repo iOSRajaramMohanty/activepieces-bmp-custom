@@ -145,6 +145,7 @@ export const ExecuteValidateAuthJobData = Type.Object({
     piece: PiecePackage,
     schemaVersion: Type.Number(),
     connectionValue: Type.Unknown(),
+    environmentMetadata: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 })
 export type ExecuteValidateAuthJobData = Static<typeof ExecuteValidateAuthJobData>
 

@@ -48,4 +48,15 @@ export const organizationApi = {
   delete(id: string) {
     return api.delete(`/v1/organizations/${id}`);
   },
+
+  updateEnvironmentMetadata(
+    organizationId: string,
+    environmentId: string,
+    metadata: unknown
+  ) {
+    return api.patch<OrganizationEnvironment>(
+      `/v1/organizations/${organizationId}/environments/${environmentId}/metadata`,
+      { metadata }
+    );
+  },
 };

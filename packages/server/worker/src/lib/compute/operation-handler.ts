@@ -97,7 +97,7 @@ export const operationHandler = (log: FastifyBaseLogger) => ({
     },
     async executeValidateAuth(engineToken: string, operation: Omit<ExecuteValidateAuthOperation, EngineConstants>): Promise<OperationResponse<ExecuteValidateAuthResponse>> {
 
-        log.debug({ ...operation.piece, platformId: operation.platformId }, '[threadEngineRunner#executeValidateAuth]')
+        log.debug({ ...operation.piece, platformId: operation.platformId, hasEnvironmentMetadata: !!operation.environmentMetadata }, '[threadEngineRunner#executeValidateAuth]')
 
         await executionFiles(log).provision({
             pieces: [operation.piece],
@@ -108,6 +108,7 @@ export const operationHandler = (log: FastifyBaseLogger) => ({
             publicApiUrl: workerMachine.getPublicApiUrl(),
             internalApiUrl: workerMachine.getInternalApiUrl(),
             engineToken,
+            environmentMetadata: operation.environmentMetadata,
         }
         return executeSingleTask(log, input, EngineOperationType.EXECUTE_VALIDATE_AUTH, operation.timeoutInSeconds)
     },

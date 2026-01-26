@@ -70,6 +70,7 @@ export type BaseEngineOperation = {
 export type ExecuteValidateAuthOperation = Omit<BaseEngineOperation, 'projectId'> & {
     piece: PiecePackage
     auth: AppConnectionValue
+    environmentMetadata?: Record<string, unknown>
 }
 
 export type ExecuteExtractPieceMetadata = PiecePackage & { platformId: PlatformId }

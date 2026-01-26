@@ -44,6 +44,7 @@ import SettingsHealthPage from '../routes/platform/infra/health';
 import TriggerHealthPage from '../routes/platform/infra/triggers';
 import SettingsWorkersPage from '../routes/platform/infra/workers';
 import ProjectsPage from '../routes/platform/projects';
+import OrganizationsPage from '../routes/platform/organizations';
 import AuditLogsPage from '../routes/platform/security/audit-logs';
 import { ProjectRolePage } from '../routes/platform/security/project-role';
 import { ProjectRoleUsersTable } from '../routes/platform/security/project-role/project-role-users-table';
@@ -406,6 +407,16 @@ const routes = [
       <PlatformLayout>
         <PageTitle title="Users">
           <UsersPage />
+        </PageTitle>
+      </PlatformLayout>
+    ),
+  },
+  {
+    path: '/platform/organizations',
+    element: (
+      <PlatformLayout>
+        <PageTitle title="Organizations">
+          <OrganizationsPage />
         </PageTitle>
       </PlatformLayout>
     ),

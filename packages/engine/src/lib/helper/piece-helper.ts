@@ -134,6 +134,17 @@ export const pieceHelper = {
     ): Promise<ExecuteValidateAuthResponse> {
         const { piece: piecePackage } = params
 
+        // Inject environment-specific metadata into process.env for dynamic configuration
+        // This allows pieces to read environment-specific API URLs and settings at runtime
+        if (params.environmentMetadata) {
+            for (const [key, value] of Object.entries(params.environmentMetadata)) {
+                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                    process.env[key] = String(value)
+                    console.log(`[piece-helper] Injected environment metadata: ${key}=${String(value).substring(0, 50)}...`)
+                }
+            }
+        }
+
         const piece = await pieceLoader.loadPieceOrThrow({ pieceName: piecePackage.pieceName, pieceVersion: piecePackage.pieceVersion, devPieces })
         const server = {
             apiUrl: params.internalApiUrl.endsWith('/') ? params.internalApiUrl : params.internalApiUrl + '/',

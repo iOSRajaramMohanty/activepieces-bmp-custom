@@ -7,6 +7,7 @@ import {
   FileHeart,
   MousePointerClick,
   Shield,
+  Building2,
 } from 'lucide-react';
 import { ComponentType, SVGProps } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -53,6 +54,11 @@ export function PlatformSidebar() {
       to: '/platform/setup/pieces',
       label: t('Pieces'),
       icon: Puzzle,
+    },
+    {
+      to: '/platform/organizations',
+      label: t('Organizations'),
+      icon: Building2,
     },
   ];
 

@@ -54,7 +54,12 @@ import { Button } from '@/components/ui/button';
 export default function OwnerDashboard() {
   const { data: currentUser } = userHooks.useCurrentUser();
   const { platform } = platformHooks.useCurrentPlatform();
-  const { data: usersData, isLoading: usersLoading, refetch: refetchUsers } = platformUserHooks.useUsers();
+  const { data: usersData, isLoading: usersLoading, error: usersError, refetch: refetchUsers } = platformUserHooks.useUsers();
+  
+  // Log errors for debugging
+  if (usersError) {
+    console.error('[OwnerDashboard] Error fetching users:', usersError);
+  }
   const currentUserId = authenticationSession.getCurrentUserId();
   // Use /v1/projects endpoint - OWNER users will see all projects due to filtering logic
   // Note: This endpoint is provided by platformProjectController in ENTERPRISE edition
@@ -100,10 +105,20 @@ export default function OwnerDashboard() {
   // Filter users and projects for current platform
   // Exclude the logged-in owner from the users list
   const platformUsers = useMemo(() => {
-    if (!usersData?.data) return [];
-    return usersData.data.filter(
+    if (!usersData?.data) {
+      console.log('[OwnerDashboard] No users data available', { usersData, platform: platform?.id, currentUser: currentUser?.id });
+      return [];
+    }
+    const filtered = usersData.data.filter(
       (user) => user.platformId === platform?.id && user.id !== currentUser?.id
     );
+    console.log('[OwnerDashboard] Platform users:', { 
+      totalFromAPI: usersData.data.length, 
+      filtered: filtered.length, 
+      platformId: platform?.id,
+      currentUserId: currentUser?.id 
+    });
+    return filtered;
   }, [usersData, platform, currentUser]);
 
   const platformProjects = useMemo(() => {
@@ -437,6 +452,18 @@ export default function OwnerDashboard() {
     const totalMembers = platformUsers.filter((u) => u.platformRole === PlatformRole.MEMBER).length;
     const totalProjects = platformProjects.length;
     const totalFlows = allFlows.length;
+
+    console.log('[OwnerDashboard] Stats calculated:', {
+      totalUsers,
+      totalAdmins,
+      totalOperators,
+      totalMembers,
+      totalProjects,
+      totalFlows,
+      platformUsersCount: platformUsers.length,
+      platformProjectsCount: platformProjects.length,
+      allFlowsCount: allFlows.length,
+    });
 
     return {
       totalUsers,

@@ -333,6 +333,9 @@ import { AddTablesIntoTemplateEntity1768306510367 } from './migration/postgres/1
 import { AddImageToUser1768502658760 } from './migration/postgres/1768502658760-ADDIMAGETOUSER'
 import { RemoveUsageCountFromTemplates1768738475196 } from './migration/postgres/1768738475196-RemoveUsageCountFromTemplates'
 import { AddTemplateIdToFlowEntity1768829135202 } from './migration/postgres/1768829135202-AddTemplateIdToFlowEntity'
+import { AddOrganizationTables1769126400000 } from './migration/postgres/1769126400000-AddOrganizationTables'
+import { AddOrganizationToUserInvitation1769127000000 } from './migration/postgres/1769127000000-AddOrganizationToUserInvitation'
+import { AddMetadataToOrganizationEnvironment1769127500000 } from './migration/postgres/1769127500000-AddMetadataToOrganizationEnvironment'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -682,6 +685,9 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         RemoveUsageCountFromTemplates1768738475196,
         AddTablesIntoTemplateEntity1768306510367,
         AddTemplateIdToFlowEntity1768829135202,
+        AddOrganizationTables1769126400000,
+        AddOrganizationToUserInvitation1769127000000,
+        AddMetadataToOrganizationEnvironment1769127500000,
     ]
     return migrations
 }

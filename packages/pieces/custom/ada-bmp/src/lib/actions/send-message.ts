@@ -9,7 +9,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog } from '../common/config';
+import { API_ENDPOINTS, debugLog, fetchMetadata, AdaBmpMetadata } from '../common/config';
 
 export const sendMessageAction = createAction({
   auth: adaBmpAuth,
@@ -49,7 +49,8 @@ export const sendMessageAction = createAction({
                 recipientOptions = [{ label: 'Invalid channel selected', value: '' }];
                 isDisabled = true;
               } else {
-                // Fetch account details
+                // Note: Metadata fetching in props refreshers is not available yet
+                // Will use environment variables as fallback
                 const accountsUrl = API_ENDPOINTS.getAccounts(platformCode);
                 const accountsResponse = await httpClient.sendRequest({
                   method: HttpMethod.GET,
@@ -140,6 +141,13 @@ export const sendMessageAction = createAction({
     message: messageText,
   },
   async run(context) {
+    // Fetch organization/environment metadata
+    const metadata = await fetchMetadata(
+      context.project.id,
+      context.server as any,
+      httpClient
+    );
+
     // Extract the actual token from the auth object
     const token = (context.auth as any).secret_text;
     const { channel, account, recipientType, recipientSelection, message } = context.propsValue;
@@ -165,8 +173,8 @@ export const sendMessageAction = createAction({
       }
 
       // Fetch account details to get the account number (from field)
-      debugLog('Fetching account details', { accountId: account });
-      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode);
+      debugLog('Fetching account details', { accountId: account }, metadata);
+      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata);
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -193,14 +201,14 @@ export const sendMessageAction = createAction({
         throw new Error('Selected account not found');
       }
 
-      const apiUrl = API_ENDPOINTS.sendMessage();
+      const apiUrl = API_ENDPOINTS.sendMessage(metadata);
       debugLog('Sending message', { 
         url: apiUrl,
         channel,
         platform: platformCode,
         from: selectedAccount.accountNo,
         to: recipientId,
-      });
+      }, metadata);
       
       const response = await httpClient.sendRequest({
         method: HttpMethod.POST,
