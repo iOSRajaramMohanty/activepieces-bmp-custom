@@ -31,8 +31,7 @@ echo ""
 # Start all services (Backend + Frontend + Engine)
 echo "🚀 Starting Activepieces Services..."
 echo "   (This starts Backend API, Frontend UI, and Engine together)"
-cd /Users/rajarammohanty/Documents/POC/activepieces
-nohup ./scripts/run-dev.sh > backend.log 2>&1 &
+nohup /Users/rajarammohanty/Documents/POC/activepieces/scripts/run-dev.sh > backend.log 2>&1 &
 SERVICES_PID=$!
 echo "   Services PID: $SERVICES_PID"
 echo "   ⏳ Waiting for services to start..."
