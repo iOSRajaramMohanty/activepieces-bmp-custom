@@ -111,9 +111,6 @@ export const InviteUserDialog = ({
   const { data: orgsData } = organizationHooks.useOrganizations(platform?.id || '');
   const organizations = orgsData?.data || [];
   
-  // Get or create organization mutation
-  const { mutateAsync: getOrCreateOrg } = organizationHooks.useGetOrCreateOrganization();
-  
   // Check admin availability mutation
   const { mutateAsync: checkAvailability } = organizationHooks.useCheckAdminAvailability();
   
@@ -218,46 +215,42 @@ export const InviteUserDialog = ({
   };
 
   // Check admin availability when organization or environment changes (for ADMIN role)
+  // Only check if the organization already exists - don't create on every keystroke
   useEffect(() => {
     if (
       isOwner &&
       watchedPlatformRole === PlatformRole.ADMIN &&
       watchedOrganization &&
       watchedEnvironment &&
-      platform?.id
+      selectedOrgData // Only check if organization exists
     ) {
-      // First, get or create the organization
-      getOrCreateOrg({
-        name: watchedOrganization.toUpperCase(),
-        platformId: platform.id,
+      // Check availability for existing organization
+      checkAvailability({
+        organizationId: selectedOrgData.id,
+        environment: watchedEnvironment,
       })
-        .then((org) => {
-          setSelectedOrg(org.id);
-          // Then check availability
-          return checkAvailability({
-            organizationId: org.id,
-            environment: watchedEnvironment,
-          });
-        })
         .then((result) => {
+          setSelectedOrg(selectedOrgData.id);
           setAdminAvailability({
             available: result.available,
             adminEmail: result.adminEmail,
           });
         })
         .catch(() => {
+          // If check fails, assume available (new organization)
           setAdminAvailability({ available: true });
         });
     } else {
+      // If organization doesn't exist yet (new entry), assume available
       setAdminAvailability({ available: true });
+      setSelectedOrg('');
     }
   }, [
     watchedPlatformRole,
     watchedOrganization,
     watchedEnvironment,
-    platform?.id,
+    selectedOrgData,
     isOwner,
-    getOrCreateOrg,
     checkAvailability,
   ]);
 
@@ -447,7 +440,9 @@ export const InviteUserDialog = ({
                                   ))}
                                 </datalist>
                                 <p className="text-xs text-muted-foreground">
-                                  {t('Select existing or type new (uppercase letters only)')}
+                                  {organizations.length > 0 
+                                    ? t('Type to search existing organizations or enter a new name (uppercase letters only)')
+                                    : t('Enter organization name (uppercase letters only)')}
                                 </p>
                                 <FormMessage />
                               </FormItem>
