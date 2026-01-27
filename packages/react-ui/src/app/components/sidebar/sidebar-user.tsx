@@ -162,7 +162,7 @@ export function SidebarUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {!isInPlatformAdmin && !isOwner && <SidebarPlatformAdminButton />}
+            {!isInPlatformAdmin && !isOwner && !isSuperAdmin && <SidebarPlatformAdminButton />}
 
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setAccountSettingsOpen(true)}>
