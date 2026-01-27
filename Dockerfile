@@ -1,17 +1,26 @@
-FROM node:20.19-bullseye-slim AS base
+FROM ubuntu:22.04 AS base
 
 # Set environment variables early for better layer caching
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
     NX_DAEMON=false \
-    NX_NO_CLOUD=true
+    NX_NO_CLOUD=true \
+    DEBIAN_FRONTEND=noninteractive \
+    NODE_VERSION=20.19.1
 
-# Install all system dependencies in a single layer with cache mounts
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+# Install Node.js and system dependencies in a single layer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
+        nodejs \
         openssh-client \
         python3 \
         g++ \
@@ -21,12 +30,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         poppler-data \
         procps \
         locales \
-        locales-all \
         unzip \
-        curl \
-        ca-certificates \
         libcap-dev && \
-    yarn config set python /usr/bin/python3
+    locale-gen en_US.UTF-8 && \
+    npm install -g yarn && \
+    yarn config set python /usr/bin/python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN export ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
@@ -97,7 +107,10 @@ COPY docker-entrypoint.sh .
 RUN mkdir -p \
     /usr/src/app/dist/packages/server \
     /usr/src/app/dist/packages/engine \
-    /usr/src/app/dist/packages/shared && \
+    /usr/src/app/dist/packages/shared \
+    /usr/src/app/dist/packages/pieces/custom \
+    /usr/src/app/dist/packages/pieces/community/framework \
+    /usr/src/app/dist/packages/pieces/community/common && \
     chmod +x docker-entrypoint.sh
 
 # Copy built artifacts from build stage
