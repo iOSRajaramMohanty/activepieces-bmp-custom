@@ -1,0 +1,17 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@activepieces/piece-ada-bmp",
+      "dependencies": {
+        "@activepieces/pieces-common": "/usr/src/app/dist/packages/pieces/community/common",
+        "@activepieces/pieces-framework": "/usr/src/app/dist/packages/pieces/community/framework",
+      },
+    },
+  },
+  "packages": {
+    "@activepieces/pieces-common": ["@activepieces/pieces-common@file:../../../../dist/packages/pieces/community/common", {}],
+
+    "@activepieces/pieces-framework": ["@activepieces/pieces-framework@file:../../../../dist/packages/pieces/community/framework", {}],
+  }
+}
