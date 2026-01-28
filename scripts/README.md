@@ -1,64 +1,238 @@
 # Scripts Directory
 
-This directory contains helpful shell scripts for managing and developing the Activepieces project.
+Essential scripts for managing the Activepieces development environment.
 
-## Available Scripts
+---
 
-### Service Management
-- **`restart-all.sh`** - Restart both backend and frontend services
-- **`stop-all.sh`** - Stop all running services
-- **`check-status.sh`** - Check the status of all services
-- **`run-dev.sh`** - Start the development server with proper environment configuration
+## 🐳 Docker Scripts (3)
 
-### Development Tools
-- **`build-pieces.sh`** - Build community pieces (all, common, or specific piece)
-- **`show-build-commands.sh`** - Display available build commands
-- **`quick-start.sh`** - Quick start script for development setup
-- **`start-ada-bmp.sh`** - Start ADA BMP piece development
-- **`run-dev.sh`** - Start development server (loads environment from `.env` file)
+### **`clean-build-run.sh`** ⭐ Main Automation
+Complete automated Docker build and run process:
+- Backs up database automatically
+- Cleans old containers and images
+- Builds custom pieces
+- Builds Docker image from scratch
+- Starts all services
+- Installs dependencies
+- Validates everything works
 
-### Configuration & Management
-- **`toggle-multi-tenant.sh`** - Toggle multi-tenant mode on/off
-- **`validate-super-admin.sh`** - Validate super admin configuration
-- **`view-all-admins.sh`** - View all admin users
-
-## Usage
-
-All scripts should be run from the project root directory:
-
+**Usage:**
 ```bash
-# Example: Restart all services
-./scripts/restart-all.sh
-
-# Example: Check service status
-./scripts/check-status.sh
-
-# Example: Build a specific piece
-./scripts/build-pieces.sh slack
+./scripts/clean-build-run.sh
 ```
 
-## Environment Configuration
+**Time:** 15-20 minutes  
+**Output:** Complete Docker environment with ada-bmp piece
 
-The `run-dev.sh` script loads environment variables from a `.env` file in the project root.
 
-**Setup:**
+### **`quick-validate.sh`** ✅ Quick Validation
+Fast validation of Docker environment (2 minutes):
+- Checks containers are healthy
+- Verifies web is accessible
+- Confirms custom piece is loaded
+- Checks for module errors
+
+**Usage:**
 ```bash
-# Copy the example file to create your .env file
-cp .env.example .env
+./scripts/quick-validate.sh
+```
 
-# Edit .env with your configuration
-nano .env  # or use your preferred editor
+
+### **`validate-docker-build.sh`** 🔍 Full Validation
+Comprehensive validation with detailed checks (5 minutes):
+- Container health with timing
+- Piece loading and metadata
+- API response times
+- Database connection
+- Environment variables
+- Module error scanning
+
+**Usage:**
+```bash
+./scripts/validate-docker-build.sh
+```
+
+---
+
+## 💻 Local Development Scripts (5)
+
+### **`run-dev.sh`** 🚀 Development Server
+Starts the local development server with proper environment:
+- Loads environment from `.env` file
+- Uses Node v20
+- Sets up PostgreSQL database mode
+- Enables custom pieces (ada-bmp)
+- Runs on http://localhost:4200
+
+**Usage:**
+```bash
+./scripts/run-dev.sh
+```
+
+**Prerequisites:**
+- `.env` file with your configuration
+- PostgreSQL and Redis running (Docker or local)
+- Node v20 via nvm
+
+
+### **`restart-all.sh`** 🔄 Restart Services
+Restarts both backend and frontend services:
+```bash
+./scripts/restart-all.sh
+```
+
+
+### **`stop-all.sh`** 🛑 Stop Services
+Stops all running development services:
+```bash
+./scripts/stop-all.sh
+```
+
+
+### **`check-status.sh`** 📊 Check Status
+Checks the status of all running services:
+```bash
+./scripts/check-status.sh
+```
+
+
+### **`build-pieces.sh`** 🧩 Build Pieces
+Builds custom pieces (all, common, or specific):
+```bash
+# Build specific piece
+./scripts/build-pieces.sh ada-bmp
+
+# Build all pieces
+./scripts/build-pieces.sh all
+
+# Build common pieces
+./scripts/build-pieces.sh common
+```
+
+---
+
+## 🔐 Admin Management Script (1)
+
+### **`manage-super-admin.sh`** 👤 Super Admin Management
+Interactive script to create and manage super admin accounts:
+
+**Features:**
+- Create new super admin (signup + promote)
+- Promote existing user to super admin
+- List all super admins
+- View super admin details
+- Demote super admin
+- Check access permissions
+
+**Usage:**
+```bash
+./scripts/manage-super-admin.sh
+```
+
+**What it does:**
+- Creates super admins with FULL platform access
+- ALL super admins have IDENTICAL permissions
+- Can access ALL platforms, users, and projects
+- Not tied to any specific tenant
+
+**Example - Create New Super Admin:**
+```bash
+./scripts/manage-super-admin.sh
+# Select option 1
+# Enter email, password, name
+# ✅ Super admin created with full access!
+```
+
+**Example - Promote Existing User:**
+```bash
+./scripts/manage-super-admin.sh
+# Select option 2
+# Enter user email
+# ✅ User promoted to super admin!
 ```
 
 **Important:**
-- The `.env` file is in `.gitignore` and will not be committed
-- Never commit sensitive values (passwords, secrets) to version control
-- Use `.env.example` as a template for team members
-- The `run-dev.sh` script automatically loads variables from `.env`
+- All super admins have the SAME access level
+- Super admins can access ALL tenant data
+- Recommended: Keep 2-3 super admins maximum
+- Super admins are platform-level (highest privilege)
 
-## Notes
+---
 
-- Scripts are designed to be run from the project root
-- Most scripts include helpful output and error messages
-- Check individual script files for detailed usage instructions
-- Environment variables are managed in `.env` file (not in scripts)
+## 🎯 Quick Reference
+
+### First Time Setup (Docker)
+```bash
+# Complete automated setup
+./scripts/clean-build-run.sh
+
+# Validate it worked
+./scripts/quick-validate.sh
+```
+
+### Daily Development (Local)
+```bash
+# Start development
+./scripts/run-dev.sh
+
+# Check if running
+./scripts/check-status.sh
+
+# Restart if needed
+./scripts/restart-all.sh
+
+# Stop when done
+./scripts/stop-all.sh
+```
+
+### After Code Changes
+```bash
+# Rebuild custom piece
+./scripts/build-pieces.sh ada-bmp
+
+# Restart services
+./scripts/restart-all.sh
+```
+
+### Docker Rebuild
+```bash
+# Clean rebuild with validation
+./scripts/clean-build-run.sh
+```
+
+---
+
+## 📝 Notes
+
+- **All scripts run from project root**: `./scripts/script-name.sh`
+- **Docker scripts require**: Docker & Docker Compose installed
+- **Local dev scripts require**: Node v20, nvm, PostgreSQL, Redis
+- **Environment config**: Use `.env` file for local development
+- **Database backups**: Automatically created in `~/activepieces_backup_*.sql`
+
+---
+
+## 🔧 Environment Setup
+
+For local development with `run-dev.sh`, create a `.env` file:
+
+```bash
+# Copy example
+cp .env.example .env
+
+# Edit with your settings
+nano .env
+```
+
+**Key variables:**
+- `AP_POSTGRES_HOST` - Database host
+- `AP_POSTGRES_PORT` - Database port  
+- `AP_POSTGRES_DATABASE` - Database name
+- `AP_POSTGRES_USERNAME` - Database user
+- `AP_POSTGRES_PASSWORD` - Database password
+- `AP_DEV_PIECES` - Custom pieces to load (e.g., `ada-bmp`)
+
+---
+
+**Last Updated:** January 28, 2026  
+**Scripts Count:** 10 files (9 scripts + 1 README)
