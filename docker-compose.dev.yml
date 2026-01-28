@@ -16,8 +16,10 @@ services:
     env_file: .env.dev.backup
     volumes:
       - ./cache:/usr/src/app/cache
-      # Mount custom pieces for hot reload in dev
+      # Mount custom pieces source (for reference)
       - ./packages/pieces/custom:/usr/src/app/packages/pieces/custom
+      # Mount BUILT custom pieces WITH dependencies installed
+      - ./dist/packages/pieces/custom:/usr/src/app/dist/packages/pieces/custom
     networks:
       - activepieces-dev
     # Development: Lighter resource limits
@@ -120,7 +122,8 @@ services:
 
 volumes:
   postgres_data_dev:
-    driver: local
+    external: true
+    name: activepieces-bmp-custom_postgres_data_dev
   redis_data_dev:
     driver: local
 
