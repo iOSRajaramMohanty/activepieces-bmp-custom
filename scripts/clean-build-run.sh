@@ -324,19 +324,15 @@ echo -e "${BLUE}🔄 PHASE 6.5: Syncing metadata from database...${NC}"
 echo "════════════════════════════════════════════════════════"
 echo ""
 
-# Run metadata sync script
-if [ -f "./scripts/sync-metadata-to-env.sh" ]; then
-    echo "Running metadata sync..."
-    ./scripts/sync-metadata-to-env.sh Production || {
-        echo -e "${YELLOW}⚠️  Warning: Metadata sync failed (non-fatal)${NC}"
-        echo "   Continuing with existing .env.dev.backup values"
-    }
-else
-    echo -e "${YELLOW}⚠️  Warning: sync-metadata-to-env.sh not found, skipping sync${NC}"
-fi
+# Note: Metadata sync script (sync-metadata-to-env.sh) is no longer needed
+# Environment-specific URLs are now handled via:
+# 1. In-code environment mapping in config.ts
+# 2. Database-driven environment filtering via API endpoint
+# 3. Dynamic URL resolution based on selected environment
+echo -e "${BLUE}ℹ️  Using database-driven environment configuration${NC}"
+echo "   Environment-specific URLs are resolved dynamically at runtime"
 
 echo ""
-echo -e "${GREEN}✅ Metadata sync complete${NC}"
 echo ""
 sleep 2
 
