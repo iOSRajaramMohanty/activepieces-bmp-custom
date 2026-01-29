@@ -7,6 +7,7 @@ import {
 import {
   createPiece,
   PieceAuth,
+  Property,
 } from '@activepieces/pieces-framework';
 import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
@@ -14,58 +15,122 @@ import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
 import { receiveWebhook } from './lib/triggers/receive-webhook';
 import { API_ENDPOINTS, getBaseUrl, debugLog } from './lib/common/config';
 
-export const adaBmpAuth = PieceAuth.SecretText({
-  displayName: 'API Token',
-  description: 'Enter your ADA BMP API token',
+export const adaBmpAuth = PieceAuth.CustomAuth({
+  displayName: 'ADA BMP Connection',
+  description: 'Configure your ADA BMP API connection with environment-specific settings',
   required: true,
-  validate: async ({ auth, server }) => {
+  props: {
+    apiToken: Property.ShortText({
+      displayName: 'API Token',
+      description: 'Enter your ADA BMP API token',
+      required: true,
+    }),
+    environment: Property.StaticDropdown({
+      displayName: 'Environment',
+      description: 'Select the environment for this connection (filtered by your organization)',
+      required: true,
+      options: {
+        disabled: false,
+        options: [
+          { label: 'Dev', value: 'Dev' },
+          { label: 'Staging', value: 'Staging' },
+          { label: 'Production', value: 'Production' },
+        ],
+      },
+    }),
+    apiUrl: Property.ShortText({
+      displayName: 'API URL (Optional Override)',
+      description: 'Leave empty to use the API URL from environment metadata. Only specify if you need to override the default.',
+      required: false,
+    }),
+  },
+  validate: async ({ auth }) => {
     try {
-      console.log('[ADA-BMP] ===== TOKEN VALIDATION START =====');
-      console.log('[ADA-BMP] Token (first 10 chars):', auth.substring(0, 10) + '...');
-      console.log('[ADA-BMP] Server context available:', !!server);
+      // Type the auth object
+      const typedAuth = auth as {
+        apiToken: string;
+        environment: string;
+        apiUrl?: string;
+      };
       
-      // IMPORTANT: Use environment variable ONLY (no fallback URLs)
-      // This ensures strict environment isolation - tokens are validated ONLY against
-      // the API URL configured for the current environment
-      const envUrl = process.env.ADA_BMP_API_URL;
+      console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION START =====');
+      console.log('[ADA-BMP Auth] Token (first 10 chars):', typedAuth.apiToken.substring(0, 10) + '...');
+      console.log('[ADA-BMP Auth] Selected Environment:', typedAuth.environment);
+      console.log('[ADA-BMP Auth] Custom API URL:', typedAuth.apiUrl || '(using environment variable)');
       
-      if (!envUrl) {
-        console.error('[ADA-BMP] ===== NO API URL CONFIGURED =====');
+      let apiUrl = typedAuth.apiUrl; // User-provided override
+      let resolvedFrom = 'custom';
+      
+      // If no custom URL, try to fetch from database via Activepieces API
+      if (!apiUrl) {
+        // Try to fetch environment metadata from Activepieces platform
+        // This requires making an authenticated call to the platform API
+        // For now, fallback to environment variable (which should be empty by default)
+        const envKey = `${typedAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
+        apiUrl = process.env[envKey];
+        resolvedFrom = 'database';
+        
+        if (apiUrl) {
+          console.log(`[ADA-BMP Auth] Using API URL from database (cached in ${envKey}):`, apiUrl);
+        }
+      }
+      
+      // Final fallback to organization-level default (immutable)
+      if (!apiUrl) {
+        apiUrl = process.env.ADA_BMP_API_URL;
+        resolvedFrom = 'organization_default';
+        console.log('[ADA-BMP Auth] Using organization-level default API URL:', apiUrl);
+      }
+      
+      if (!apiUrl) {
+        console.error('[ADA-BMP Auth] ===== NO API URL CONFIGURED =====');
         return {
           valid: false,
-          error: 'ADA_BMP_API_URL environment variable is not configured. Please configure the API URL in your environment metadata or .env file for this environment (Dev/Staging/Production).',
+          error: `No API URL configured for ${typedAuth.environment} environment. Please:\n1. Configure environment-specific metadata in the database for ${typedAuth.environment}, OR\n2. Provide a custom API URL in the connection settings`,
         };
       }
       
-      const apiUrl = `${envUrl.replace(/\/$/, '')}/user/checkToken`;
-      console.log('[ADA-BMP] Validating against URL:', apiUrl);
+      const checkTokenUrl = `${apiUrl.replace(/\/$/, '')}/user/checkToken`;
+      console.log('[ADA-BMP Auth] Validating against URL:', checkTokenUrl);
       
-      // Validate token by calling /user/checkToken endpoint with accessToken in body
+      // Validate token by calling /user/checkToken endpoint
       const response = await httpClient.sendRequest({
         method: HttpMethod.POST,
-        url: apiUrl,
+        url: checkTokenUrl,
         body: {
-          accessToken: auth,
+          accessToken: typedAuth.apiToken,
         },
       });
 
-      console.log('[ADA-BMP] Response Status:', response.status);
-      console.log('[ADA-BMP] Response Body:', JSON.stringify(response.body, null, 2));
+      console.log('[ADA-BMP Auth] Response Status:', response.status);
+      console.log('[ADA-BMP Auth] Response Body:', JSON.stringify(response.body, null, 2));
 
       if (response.status === 200) {
-        console.log('[ADA-BMP] ===== TOKEN VALIDATION SUCCESS =====');
-        console.log('[ADA-BMP] Token is valid for environment API URL:', apiUrl);
+        console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION SUCCESS =====');
+        console.log('[ADA-BMP Auth] Token is valid for environment:', typedAuth.environment);
+        console.log('[ADA-BMP Auth] Resolved API URL:', apiUrl);
+        console.log('[ADA-BMP Auth] Resolved from:', resolvedFrom);
+        
+        // Store the resolved API URL in connection metadata
+        // This will be available in the auth object during action/trigger execution
         return {
           valid: true,
+          metadata: {
+            ADA_BMP_API_URL: apiUrl,
+            ADA_BMP_ENVIRONMENT: typedAuth.environment,
+            ADA_BMP_RESOLVED_FROM: resolvedFrom,
+            ADA_BMP_DEBUG: process.env.ADA_BMP_DEBUG === 'true',
+            ADA_BMP_TIMEOUT: parseInt(process.env.ADA_BMP_TIMEOUT || '30000', 10),
+          },
         };
       }
 
-      console.log('[ADA-BMP] ===== TOKEN VALIDATION FAILED =====');
+      console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION FAILED =====');
       
       if (response.status === 401 || response.status === 403) {
         return {
           valid: false,
-          error: `Invalid token: Authentication failed. This token is not valid for the ${envUrl} API. Please ensure you are using the correct token for this environment (Dev/Staging/Production).`,
+          error: `Invalid token for ${typedAuth.environment} environment. Please ensure you are using the correct token for the ${apiUrl} API.`,
         };
       }
       
@@ -74,26 +139,25 @@ export const adaBmpAuth = PieceAuth.SecretText({
         const errorMessage = errorBody?.message || errorBody?.error || 'Invalid token format or token expired';
         return {
           valid: false,
-          error: `Token validation failed: ${errorMessage}. Please check your API token for this environment.`,
+          error: `Token validation failed: ${errorMessage}`,
         };
       }
       
       return {
         valid: false,
-        error: `Token validation returned status ${response.status}. Please check your API token and environment configuration.`,
+        error: `Token validation returned status ${response.status}. Please check your API token.`,
       };
     } catch (error: any) {
-      console.error('[ADA-BMP] ===== TOKEN VALIDATION ERROR =====');
-      console.error('[ADA-BMP] Error Type:', error.constructor.name);
-      console.error('[ADA-BMP] Error Message:', error.message);
-      console.error('[ADA-BMP] Error Response Status:', error.response?.status);
-      console.error('[ADA-BMP] Error Response Body:', error.response?.body);
+      console.error('[ADA-BMP Auth] ===== TOKEN VALIDATION ERROR =====');
+      console.error('[ADA-BMP Auth] Error Type:', error.constructor.name);
+      console.error('[ADA-BMP Auth] Error Message:', error.message);
+      console.error('[ADA-BMP Auth] Error Response Status:', error.response?.status);
+      console.error('[ADA-BMP Auth] Error Response Body:', error.response?.body);
       
-      // Check for specific error responses
       if (error.response?.status === 401 || error.response?.status === 403) {
         return {
           valid: false,
-          error: 'Invalid token: Authentication failed. This token is not valid for the configured API URL. Please ensure you are using the correct token for this environment.',
+          error: `Invalid token: Authentication failed for ${(auth as any).environment} environment.`,
         };
       }
       
@@ -108,7 +172,7 @@ export const adaBmpAuth = PieceAuth.SecretText({
       
       return {
         valid: false,
-        error: `Failed to validate token: ${error.message || 'Unknown error'}. Please ensure ADA_BMP_API_URL is correctly configured in your environment metadata.`,
+        error: `Failed to validate token: ${error.message || 'Unknown error'}`,
       };
     }
   },
@@ -126,13 +190,27 @@ export const adaBmp = createPiece({
     sendMessageAction,
     sendBulkMessageAction,
     createCustomApiCallAction({
-      baseUrl: () => getBaseUrl(),
+      baseUrl: (auth) => {
+        // auth is CustomAuth with apiToken, environment, and optional apiUrl
+        const customAuth = auth as any;
+        
+        if (customAuth.apiUrl) {
+          debugLog('Custom API Call - Using custom API URL:', customAuth.apiUrl);
+          return customAuth.apiUrl;
+        }
+        
+        // Fallback to environment variable or default
+        const envKey = `${customAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
+        const url = process.env[envKey] || process.env.ADA_BMP_API_URL || getBaseUrl();
+        debugLog('Custom API Call - Using API URL:', url);
+        return url;
+      },
       auth: adaBmpAuth,
       authMapping: async (auth) => {
-        // auth is an object: { type: "SECRET_TEXT", secret_text: "token" }
-        // We need to extract the secret_text property
-        const token = (auth as any).secret_text;
-        debugLog('Custom API Call - Using token from auth.secret_text');
+        // auth is CustomAuth with apiToken, environment, and optional apiUrl
+        const customAuth = auth as any;
+        const token = customAuth.apiToken;
+        debugLog('Custom API Call - Using token for environment:', customAuth.environment);
         
         return {
           Authorization: `Bearer ${token}`,

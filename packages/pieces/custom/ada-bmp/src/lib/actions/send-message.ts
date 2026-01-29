@@ -9,7 +9,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog, fetchMetadata, AdaBmpMetadata } from '../common/config';
+import { API_ENDPOINTS, debugLog, fetchMetadata, AdaBmpMetadata, extractApiToken } from '../common/config';
 
 export const sendMessageAction = createAction({
   auth: adaBmpAuth,
@@ -27,7 +27,7 @@ export const sendMessageAction = createAction({
       required: true,
       refreshers: ['recipientType', 'channel', 'account'],
       auth: adaBmpAuth,
-      props: async ({ auth, recipientType, channel, account }) => {
+      props: async ({ auth, recipientType, channel, account, server, project }) => {
         const props: Record<string, any> = {};
         
         if (recipientType === 'select') {
@@ -43,21 +43,24 @@ export const sendMessageAction = createAction({
             isDisabled = true;
           } else {
             try {
+              // Fetch metadata from organization/environment
+              const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+              
               const platformCode = CHANNEL_TO_PLATFORM[channel as string];
               
               if (!platformCode) {
                 recipientOptions = [{ label: 'Invalid channel selected', value: '' }];
                 isDisabled = true;
               } else {
-                // Note: Metadata fetching in props refreshers is not available yet
-                // Will use environment variables as fallback
-                const accountsUrl = API_ENDPOINTS.getAccounts(platformCode);
+                const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, auth);
                 const accountsResponse = await httpClient.sendRequest({
                   method: HttpMethod.GET,
                   url: accountsUrl,
                   authentication: {
                     type: AuthenticationType.BEARER_TOKEN,
-                    token: (auth as any).secret_text,
+                    token: extractApiToken(auth),
                   },
                 });
 
@@ -71,13 +74,13 @@ export const sendMessageAction = createAction({
                   isDisabled = true;
                 } else {
                   // Fetch recipients
-                  const apiUrl = API_ENDPOINTS.getRecipients(selectedAccount.accountNo, platformCode);
+                  const apiUrl = API_ENDPOINTS.getRecipients(selectedAccount.accountNo, platformCode, metadata, auth);
                   const response = await httpClient.sendRequest({
                     method: HttpMethod.GET,
                     url: apiUrl,
                     authentication: {
                       type: AuthenticationType.BEARER_TOKEN,
-                      token: (auth as any).secret_text,
+                      token: extractApiToken(auth),
                     },
                   });
 
@@ -145,11 +148,12 @@ export const sendMessageAction = createAction({
     const metadata = await fetchMetadata(
       context.project.id,
       context.server as any,
-      httpClient
+      httpClient,
+      context.auth
     );
 
     // Extract the actual token from the auth object
-    const token = (context.auth as any).secret_text;
+    const token = extractApiToken(context.auth);
     const { channel, account, recipientType, recipientSelection, message } = context.propsValue;
 
     // Get the recipient ID from the dynamic property
@@ -174,7 +178,7 @@ export const sendMessageAction = createAction({
 
       // Fetch account details to get the account number (from field)
       debugLog('Fetching account details', { accountId: account }, metadata);
-      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata);
+      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, context.auth);
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -201,7 +205,7 @@ export const sendMessageAction = createAction({
         throw new Error('Selected account not found');
       }
 
-      const apiUrl = API_ENDPOINTS.sendMessage(metadata);
+      const apiUrl = API_ENDPOINTS.sendMessage(metadata, context.auth);
       debugLog('Sending message', { 
         url: apiUrl,
         channel,

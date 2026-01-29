@@ -4,16 +4,18 @@ Essential scripts for managing the Activepieces development environment.
 
 ---
 
-## 🐳 Docker Scripts (3)
+## 🐳 Docker Scripts (4)
 
 ### **`clean-build-run.sh`** ⭐ Main Automation
-Complete automated Docker build and run process:
+Complete automated Docker build and run process with safety checks:
+- **🔍 Checks for conflicting builds** (kills stuck processes automatically)
 - Backs up database automatically
 - Cleans old containers and images
 - Builds custom pieces
 - Builds Docker image (no cache)
 - Starts all services
 - Installs dependencies
+- **🔄 Syncs metadata from database** (automatic configuration)
 - Validates everything works
 
 **Usage:**
@@ -25,6 +27,12 @@ Complete automated Docker build and run process:
 - Full build: 10-15 minutes
 
 **Output:** Complete Docker environment ready for development
+
+**Safety Features** (Added Jan 29, 2026):
+- ✅ Automatically detects and kills stuck `clean-build-run.sh` processes
+- ✅ Automatically detects and kills stuck `docker-compose` builds
+- ✅ Prevents build conflicts and hung processes
+- ✅ Clear feedback on what's being cleaned up
 
 
 ### **`quick-validate.sh`** ✅ Quick Validation
@@ -53,6 +61,36 @@ Comprehensive validation with detailed checks (5 minutes):
 ```bash
 ./scripts/validate-docker-build.sh
 ```
+
+
+### **`sync-metadata-to-env.sh`** 🔄 Metadata Sync (New!)
+Automatically syncs configuration from database metadata to environment variables:
+- Queries database for organization/environment metadata
+- Extracts ADA_BMP configuration (API_URL, DEBUG, TIMEOUT)
+- Updates `.env.dev.backup` file
+- Exports as environment variables
+
+**Usage:**
+```bash
+# Sync from Production environment (default)
+./scripts/sync-metadata-to-env.sh
+
+# Sync from specific environment
+./scripts/sync-metadata-to-env.sh Development
+./scripts/sync-metadata-to-env.sh Staging
+```
+
+**When to use:**
+- After updating metadata in the database
+- Before building Docker containers
+- When environment variables are out of sync
+- **Automatically called by** `clean-build-run.sh`
+
+**Benefits:**
+- ✅ No manual .env.dev.backup editing needed
+- ✅ Single source of truth (database)
+- ✅ Automatic sync on Docker build
+- ✅ Supports multiple environments
 
 ---
 
@@ -236,5 +274,22 @@ nano .env
 
 ---
 
-**Last Updated:** January 28, 2026  
-**Scripts Count:** 10 files (9 scripts + 1 README)
+## 🆕 Recent Updates
+
+### January 29, 2026
+- **`sync-metadata-to-env.sh`** (NEW): Automatic database metadata sync
+  - Syncs ADA_BMP configuration from database to environment variables
+  - Eliminates manual .env.dev.backup editing
+  - Single source of truth for configuration
+  - Integrated into `clean-build-run.sh`
+
+- **`clean-build-run.sh`**: Enhanced with safety checks and auto-sync
+  - Added automatic detection and cleanup of stuck build processes
+  - Integrated metadata sync from database (Phase 6.5)
+  - Prevents build conflicts from hung processes
+  - Safer and more reliable execution
+
+---
+
+**Last Updated:** January 29, 2026  
+**Scripts Count:** 11 files (10 scripts + 1 README)

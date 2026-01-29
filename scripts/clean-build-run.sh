@@ -36,6 +36,7 @@ echo "  3. 🔨 Build custom piece (ada-bmp)"
 echo "  4. 🐳 Build Docker image from scratch"
 echo "  5. 🚀 Start all services"
 echo "  6. 🔧 Install dependencies"
+echo "  6.5. 🔄 Sync metadata from database"
 echo "  7. 🔍 Validate everything"
 echo ""
 echo -e "${YELLOW}⏱️  Estimated time: 15-20 minutes${NC}"
@@ -101,6 +102,43 @@ fi
 
 echo ""
 sleep 2
+
+#─────────────────────────────────────────────────────────
+# PHASE 1.5: CHECK FOR RUNNING BUILDS
+#─────────────────────────────────────────────────────────
+echo "════════════════════════════════════════════════════════"
+echo -e "${BLUE}🔍 PHASE 1.5: Checking for conflicting builds...${NC}"
+echo "════════════════════════════════════════════════════════"
+echo ""
+
+# Kill any stuck clean-build-run.sh processes (excluding current process)
+echo "Checking for stuck build scripts..."
+STUCK_BUILDS=$(ps aux | grep "clean-build-run.sh" | grep -v grep | grep -v $$ | awk '{print $2}')
+if [ ! -z "$STUCK_BUILDS" ]; then
+    echo -e "${YELLOW}⚠️  Found stuck build processes, killing them...${NC}"
+    echo "$STUCK_BUILDS" | xargs kill -9 2>/dev/null || true
+    sleep 2
+    echo -e "${GREEN}✅ Killed stuck build processes${NC}"
+else
+    echo "✅ No stuck build scripts found"
+fi
+echo ""
+
+# Kill any stuck docker-compose build processes
+echo "Checking for stuck docker-compose builds..."
+STUCK_COMPOSE=$(ps aux | grep "docker-compose" | grep "build" | grep -v grep | awk '{print $2}')
+if [ ! -z "$STUCK_COMPOSE" ]; then
+    echo -e "${YELLOW}⚠️  Found stuck docker-compose builds, killing them...${NC}"
+    echo "$STUCK_COMPOSE" | xargs kill -9 2>/dev/null || true
+    sleep 2
+    echo -e "${GREEN}✅ Killed stuck docker-compose processes${NC}"
+else
+    echo "✅ No stuck docker-compose builds found"
+fi
+echo ""
+
+echo -e "${GREEN}✅ No conflicting builds - safe to proceed${NC}"
+echo ""
 
 #─────────────────────────────────────────────────────────
 # PHASE 2: CLEAN OLD DOCKER SETUP
@@ -275,6 +313,30 @@ else
     sleep 20
 fi
 
+echo ""
+sleep 2
+
+#─────────────────────────────────────────────────────────
+# PHASE 6.5: SYNC METADATA FROM DATABASE
+#─────────────────────────────────────────────────────────
+echo "════════════════════════════════════════════════════════"
+echo -e "${BLUE}🔄 PHASE 6.5: Syncing metadata from database...${NC}"
+echo "════════════════════════════════════════════════════════"
+echo ""
+
+# Run metadata sync script
+if [ -f "./scripts/sync-metadata-to-env.sh" ]; then
+    echo "Running metadata sync..."
+    ./scripts/sync-metadata-to-env.sh Production || {
+        echo -e "${YELLOW}⚠️  Warning: Metadata sync failed (non-fatal)${NC}"
+        echo "   Continuing with existing .env.dev.backup values"
+    }
+else
+    echo -e "${YELLOW}⚠️  Warning: sync-metadata-to-env.sh not found, skipping sync${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}✅ Metadata sync complete${NC}"
 echo ""
 sleep 2
 

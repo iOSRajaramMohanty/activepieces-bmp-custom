@@ -1,6 +1,7 @@
 {
   "name": "@activepieces/piece-ada-bmp",
   "version": "0.1.0",
+  "main": "./src/index.js",
   "dependencies": {
     "@activepieces/pieces-common": "/usr/src/app/dist/packages/pieces/community/common",
     "@activepieces/pieces-framework": "/usr/src/app/dist/packages/pieces/community/framework"

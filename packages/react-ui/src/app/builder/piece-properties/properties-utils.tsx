@@ -28,6 +28,7 @@ import { DictionaryProperty } from './dictionary-property';
 import { DynamicDropdownPieceProperty } from './dynamic-dropdown-piece-property';
 import { DynamicProperties } from './dynamic-piece-property';
 import { TextInputWithMentions } from './text-input-with-mentions';
+import { AdaBmpEnvironmentSelect } from '@/app/connections/ada-bmp-environment-select';
 
 export const selectGenericFormComponentForProperty = ({
   field,
@@ -118,6 +119,11 @@ export const selectGenericFormComponentForProperty = ({
         />
       );
     case PropertyType.STATIC_DROPDOWN:
+      // Special handling for ADA BMP environment dropdown to filter based on organization
+      const isAdaBmpEnvironment = 
+        propertyName === 'environment' && 
+        inputName.includes('props.environment');
+      
       return (
         <AutoFormFieldWrapper
           property={property}
@@ -129,14 +135,25 @@ export const selectGenericFormComponentForProperty = ({
           allowDynamicValues={allowDynamicValues}
           dynamicInputModeToggled={dynamicInputModeToggled}
         >
-          <SearchableSelect
-            options={property.options.options}
-            onChange={field.onChange}
-            value={field.value}
-            disabled={disabled}
-            placeholder={property.options.placeholder ?? t('Select an option')}
-            showDeselect={!property.required}
-          ></SearchableSelect>
+          {isAdaBmpEnvironment ? (
+            <AdaBmpEnvironmentSelect
+              allOptions={property.options.options}
+              onChange={field.onChange}
+              value={field.value}
+              disabled={disabled}
+              placeholder={property.options.placeholder ?? t('Select an option')}
+              showDeselect={!property.required}
+            />
+          ) : (
+            <SearchableSelect
+              options={property.options.options}
+              onChange={field.onChange}
+              value={field.value}
+              disabled={disabled}
+              placeholder={property.options.placeholder ?? t('Select an option')}
+              showDeselect={!property.required}
+            />
+          )}
         </AutoFormFieldWrapper>
       );
     case PropertyType.JSON:

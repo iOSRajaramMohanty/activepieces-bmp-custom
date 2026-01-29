@@ -11,7 +11,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog, fetchMetadata } from '../common/config';
+import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from '../common/config';
 
 export const sendBulkMessageAction = createAction({
   auth: adaBmpAuth,
@@ -37,11 +37,12 @@ export const sendBulkMessageAction = createAction({
     const metadata = await fetchMetadata(
       context.project.id,
       context.server as any,
-      httpClient
+      httpClient,
+      context.auth
     );
 
     // Extract the actual token from the auth object
-    const token = (context.auth as any).secret_text;
+    const token = extractApiToken(context.auth);
     const { channel, account, messageType: msgType, contactCategory, templateCategory, template, message } = context.propsValue;
 
     // Validate contact category
@@ -70,7 +71,7 @@ export const sendBulkMessageAction = createAction({
 
       // Fetch account details to get the account number (from field)
       debugLog('Fetching account details', { accountId: account });
-      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata);
+      const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, context.auth);
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -97,7 +98,7 @@ export const sendBulkMessageAction = createAction({
         throw new Error('Selected account not found');
       }
 
-      const apiUrl = API_ENDPOINTS.sendBulkMessage(metadata);
+      const apiUrl = API_ENDPOINTS.sendBulkMessage(metadata, context.auth);
       debugLog('Sending bulk message', { 
         url: apiUrl,
         channel,

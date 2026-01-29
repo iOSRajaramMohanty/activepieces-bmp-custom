@@ -59,4 +59,10 @@ export const organizationApi = {
       { metadata }
     );
   },
+
+  getAllowedEnvironmentsForCurrentUser() {
+    return api.get<{ environments: string[]; organizationId: string; userId: string }>(
+      '/v1/organizations/current-user/allowed-environments'
+    );
+  },
 };

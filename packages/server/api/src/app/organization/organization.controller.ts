@@ -381,4 +381,90 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
         return reply.status(StatusCodes.NO_CONTENT).send()
     })
+
+    // Get allowed environments for current user based on their adminUserId
+    // Used by pieces to dynamically filter environment options
+    app.get('/current-user/allowed-environments', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            tags: ['organizations'],
+            summary: 'Get allowed environments for current user (based on adminUserId)',
+            response: {
+                [StatusCodes.OK]: Type.Object({
+                    environments: Type.Array(Type.String()),
+                    organizationId: Type.String(),
+                    userId: Type.String(),
+                }),
+            },
+        },
+    }, async (request) => {
+        try {
+            console.log('[organization.controller] GET /current-user/allowed-environments');
+            console.log('[organization.controller] Principal ID:', request.principal.id);
+            
+            const currentUserId = request.principal.id
+            
+            // Get current user's organization
+            const { userService } = await import('../user/user-service')
+            const currentUser = await userService.getOneOrFail({ id: currentUserId })
+            
+            console.log('[organization.controller] Current user organization:', currentUser.organizationId);
+            console.log('[organization.controller] Current user ID:', currentUserId);
+            
+            if (!currentUser.organizationId) {
+                console.warn('[organization.controller] User has no organizationId');
+                return {
+                    environments: ['Dev', 'Staging', 'Production'], // Default: all environments
+                    organizationId: '',
+                    userId: currentUserId,
+                }
+            }
+            
+            // Get ALL organization environments
+            const orgEnvironments = await organizationEnvironmentService.listByOrganization(
+                currentUser.organizationId
+            )
+            
+            console.log('[organization.controller] All organization environments:', 
+                orgEnvironments.map(e => `${e.environment} (admin: ${e.adminUserId})`).join(', '))
+            
+            // Filter to only environments where current user is the admin
+            const userAdminEnvironments = orgEnvironments.filter(
+                env => env.adminUserId === currentUserId
+            )
+            
+            console.log('[organization.controller] User is admin of:', 
+                userAdminEnvironments.map(e => e.environment).join(', '))
+            
+            // Extract environment types where user is admin
+            const allowedEnvironments = userAdminEnvironments.map(env => env.environment)
+            
+            // If user is not admin of any environment, return all as default
+            // (This handles platform admins or users without specific environment assignments)
+            if (allowedEnvironments.length === 0) {
+                console.warn('[organization.controller] User is not admin of any environment, returning all');
+                return {
+                    environments: ['Dev', 'Staging', 'Production'],
+                    organizationId: currentUser.organizationId,
+                    userId: currentUserId,
+                }
+            }
+            
+            return {
+                environments: allowedEnvironments,
+                organizationId: currentUser.organizationId,
+                userId: currentUserId,
+            }
+        } catch (error) {
+            console.error('[organization.controller] Error fetching allowed environments:', error)
+            // Fallback: return all environments on error
+            return {
+                environments: ['Dev', 'Staging', 'Production'],
+                organizationId: '',
+                userId: request.principal.id,
+            }
+        }
+    })
 }

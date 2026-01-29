@@ -1,28 +1,35 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { t } from 'i18next';
-import { Building2, Settings, Users, Code, Info } from 'lucide-react';
-import { useMemo } from 'react';
+import { Building2, Code, Info, Link2, Copy, Check } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
-import { Button } from '@/components/ui/button';
 import {
   DataTable,
   RowDataWithActions,
 } from '@/components/ui/data-table';
 import { DataTableColumnHeader } from '@/components/ui/data-table/data-table-column-header';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { organizationHooks } from '@/features/platform-admin/lib/organization-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { Organization, PlatformRole } from '@activepieces/shared';
-import { OrganizationMetadataDialog } from './organization-metadata-dialog';
 import { OrganizationEnvironmentsSection } from './organization-environments-section';
 
 export default function OrganizationsPage() {
   const { platform } = platformHooks.useCurrentPlatform();
   const { data: organizationsData, isLoading, refetch } = organizationHooks.useOrganizations(platform.id);
   const { data: currentUser } = userHooks.useCurrentUser();
+  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+  const copyToClipboard = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(url);
+    setTimeout(() => setCopiedUrl(null), 2000);
+  };
 
   const columns: ColumnDef<RowDataWithActions<Organization>, unknown>[] = useMemo(
     () => [
@@ -48,12 +55,12 @@ export default function OrganizationsPage() {
       },
       {
         accessorKey: 'metadata',
-        size: 300,
+        size: 450,
         header: ({ column }) => (
           <DataTableColumnHeader
             column={column}
-            title={t('Metadata')}
-            icon={Code}
+            title={t('API Configuration')}
+            icon={Link2}
           />
         ),
         cell: ({ row }) => {
@@ -88,48 +95,60 @@ export default function OrganizationsPage() {
           }
 
           return (
-            <div className="flex flex-col gap-1">
-              {apiUrl && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    API: {apiUrl.length > 30 ? `${apiUrl.substring(0, 30)}...` : apiUrl}
-                  </Badge>
-                </div>
-              )}
-              {timeout && (
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    Timeout: {timeout}ms
-                  </Badge>
-                </div>
-              )}
-              {debug !== undefined && (
-                <div className="flex items-center gap-2">
-                  <Badge variant={debug ? 'default' : 'outline'} className="text-xs">
-                    Debug: {debug ? t('Enabled') : t('Disabled')}
-                  </Badge>
-                </div>
-              )}
-            </div>
+            <TooltipProvider>
+              <div className="flex items-center gap-2 group">
+                {apiUrl ? (
+                  <>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 hover:border-primary/40 transition-all duration-200 flex-1 min-w-0">
+                      <Link2 className="w-4 h-4 text-primary flex-shrink-0" />
+                      <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                        <span className="text-xs text-muted-foreground font-medium">API Endpoint</span>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-sm font-mono font-semibold text-foreground truncate cursor-help">
+                              {apiUrl}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-md">
+                            <p className="font-mono text-xs break-all">{apiUrl}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-9 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => copyToClipboard(apiUrl)}
+                        >
+                          {copiedUrl === apiUrl ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{copiedUrl === apiUrl ? t('Copied!') : t('Copy URL')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded-lg border border-border/50">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground italic">
+                      {t('No API URL configured')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </TooltipProvider>
           );
         },
       },
-      {
-        id: 'actions',
-        size: 150,
-        header: () => <div className="text-center">{t('Actions')}</div>,
-        cell: ({ row }) => {
-          const org = row.original;
-          return (
-            <div className="flex justify-center">
-              <OrganizationMetadataDialog
-                organization={org}
-                onUpdate={() => refetch()}
-              />
-            </div>
-          );
-        },
-      },
+      // Actions column removed - Organization metadata is now read-only
     ],
     [refetch, t, currentUser]
   );
@@ -167,7 +186,7 @@ export default function OrganizationsPage() {
                 {t('Organizations')}
               </CardTitle>
               <CardDescription>
-                {t('Configure metadata at both organization and environment levels. Organization-level metadata applies to all environments, while environment-specific metadata overrides organization settings.')}
+                {t('View organization-level metadata and configure environment-specific metadata. Organization-level metadata is read-only (from system configuration), while environment-specific metadata can be configured to override defaults.')}
                 <br />
                 <span className="text-xs text-muted-foreground mt-1 block">
                   {t('Note: You can only view and configure metadata for your own organization. Organization owners and super admins can access all organizations.')}
@@ -238,7 +257,7 @@ export default function OrganizationsPage() {
               <ul className="list-disc list-inside space-y-1 ml-2">
                 <li>
                   <strong>{t('Organization-Level:')}</strong>{' '}
-                  {t('Default metadata that applies to all environments. Configure via the "Configure Metadata" button above.')}
+                  {t('Read-only default metadata from system configuration. This is the fallback API URL when no environment-specific metadata is configured.')}
                 </li>
                 <li>
                   <strong>{t('Environment-Level:')}</strong>{' '}

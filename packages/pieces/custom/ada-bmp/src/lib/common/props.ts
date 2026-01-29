@@ -1,7 +1,7 @@
 import { Property } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../../index';
-import { API_ENDPOINTS, debugLog } from './config';
+import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from './config';
 
 /**
  * Mapping from channel names to platform codes
@@ -28,7 +28,7 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
     description: 'Select the messaging channel (WhatsApp, Facebook, Line, Instagram)',
     required,
     refreshers: [],
-    async options({ auth }) {
+    async options({ auth, server, project }) {
       if (!auth) {
         return {
           disabled: true,
@@ -38,8 +38,33 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
       }
 
       try {
-        const apiUrl = API_ENDPOINTS.getChannels();
-        debugLog('Fetching channels from /account', { url: apiUrl });
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        
+        console.log('[ADA-BMP Props] Channel options called', { 
+          hasServer: !!contextServer, 
+          hasProject: !!contextProject,
+          projectId: contextProject?.id,
+          serverApiUrl: contextServer?.apiUrl
+        });
+        
+        // In sandbox mode (Docker), server and project may not be available
+        // Pass auth context to help fetchMetadata try to access the API
+        const metadata = await fetchMetadata(
+          contextProject?.id,
+          contextServer,
+          httpClient,
+          auth
+        );
+        
+        console.log('[ADA-BMP Props] Metadata fetched', { 
+          hasMetadata: !!metadata,
+          metadataApiUrl: metadata?.ADA_BMP_API_URL 
+        });
+        
+        const apiUrl = API_ENDPOINTS.getChannels(metadata, auth);
+        debugLog('Fetching channels from /account', { url: apiUrl, hasMetadata: !!metadata }, metadata);
         
         // Fetch accounts from the API using auth.secret_text
         const response = await httpClient.sendRequest({
@@ -47,11 +72,15 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
           url: apiUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
         debugLog('Account response received', { status: response.status });
+        console.log('[ADA-BMP Props] 📊 Channel API Response Status:', response.status);
+        console.log('[ADA-BMP Props] 📊 Channel API Response Body:', JSON.stringify(response.body, null, 2));
+        console.log('[ADA-BMP Props] 📊 Response has data array?:', Array.isArray(response.body?.data));
+        console.log('[ADA-BMP Props] 📊 Data array length:', response.body?.data?.length || 0);
 
         // Parse the response to extract channels
         // Response structure: { status, message, data: [ { platform, ... } ], pageNo, pageSize, pageTotal, totalRecord }
@@ -145,7 +174,7 @@ export const adaBmpChannelForBulk = <R extends boolean>(required: R) =>
     description: 'Select the messaging channel (WhatsApp, Facebook, Instagram)',
     required,
     refreshers: [],
-    async options({ auth }) {
+    async options({ auth, server, project }) {
       if (!auth) {
         return {
           disabled: true,
@@ -155,8 +184,13 @@ export const adaBmpChannelForBulk = <R extends boolean>(required: R) =>
       }
 
       try {
-        const apiUrl = API_ENDPOINTS.getChannels();
-        debugLog('Fetching channels from /account', { url: apiUrl });
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+        
+        const apiUrl = API_ENDPOINTS.getChannels(metadata, auth);
+        debugLog('Fetching channels from /account', { url: apiUrl, hasMetadata: !!metadata }, metadata);
         
         // Fetch accounts from the API using auth.secret_text
         const response = await httpClient.sendRequest({
@@ -164,7 +198,7 @@ export const adaBmpChannelForBulk = <R extends boolean>(required: R) =>
           url: apiUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
@@ -263,7 +297,7 @@ export const adaBmpAccount = <R extends boolean>(required: R) =>
     description: 'Select the account to use for this channel',
     required,
     refreshers: ['channel'], // Refresh when channel changes
-    async options({ auth, channel }) {
+    async options({ auth, channel, server, project }) {
       if (!auth) {
         return {
           disabled: true,
@@ -281,11 +315,16 @@ export const adaBmpAccount = <R extends boolean>(required: R) =>
       }
 
       try {
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+        
         // Map channel name to platform code
         const platformCode = CHANNEL_TO_PLATFORM[channel as string];
         
         if (!platformCode) {
-          debugLog('Unknown channel', { channel });
+          debugLog('Unknown channel', { channel }, metadata);
           return {
             disabled: true,
             placeholder: 'Invalid channel selected',
@@ -293,8 +332,8 @@ export const adaBmpAccount = <R extends boolean>(required: R) =>
           };
         }
 
-        const apiUrl = API_ENDPOINTS.getAccounts(platformCode);
-        debugLog('Fetching accounts', { url: apiUrl, platform: platformCode });
+        const apiUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, auth);
+        debugLog('Fetching accounts', { url: apiUrl, platform: platformCode, hasMetadata: !!metadata }, metadata);
         
         // Fetch accounts from the API
         const response = await httpClient.sendRequest({
@@ -302,7 +341,7 @@ export const adaBmpAccount = <R extends boolean>(required: R) =>
           url: apiUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
@@ -388,7 +427,7 @@ export const recipientFromList = <R extends boolean>(required: R) =>
     description: 'Select a recipient from active conversations',
     required,
     refreshers: ['channel', 'account'], // Refresh when channel or account changes
-    async options({ auth, channel, account }) {
+    async options({ auth, channel, account, server, project }) {
       if (!auth) {
         return {
           disabled: true,
@@ -406,11 +445,16 @@ export const recipientFromList = <R extends boolean>(required: R) =>
       }
 
       try {
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+        
         // Map channel name to platform code
         const platformCode = CHANNEL_TO_PLATFORM[channel as string];
         
         if (!platformCode) {
-          debugLog('Unknown channel', { channel });
+          debugLog('Unknown channel', { channel }, metadata);
           return {
             disabled: true,
             placeholder: 'Invalid channel selected',
@@ -419,13 +463,13 @@ export const recipientFromList = <R extends boolean>(required: R) =>
         }
 
         // First, fetch the account details to get accountNo
-        const accountsUrl = API_ENDPOINTS.getAccounts(platformCode);
+        const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, auth);
         const accountsResponse = await httpClient.sendRequest({
           method: HttpMethod.GET,
           url: accountsUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
@@ -443,7 +487,7 @@ export const recipientFromList = <R extends boolean>(required: R) =>
         const selectedAccount = accountsBody.data.find((acc) => acc.id === account);
         
         if (!selectedAccount) {
-          debugLog('Selected account not found', { accountId: account });
+          debugLog('Selected account not found', { accountId: account }, metadata);
           return {
             disabled: true,
             placeholder: 'Account not found',
@@ -452,15 +496,15 @@ export const recipientFromList = <R extends boolean>(required: R) =>
         }
 
         // Now fetch recipients using the accountNo
-        const apiUrl = API_ENDPOINTS.getRecipients(selectedAccount.accountNo, platformCode);
-        debugLog('Fetching recipients', { url: apiUrl, accountNo: selectedAccount.accountNo, platform: platformCode });
+        const apiUrl = API_ENDPOINTS.getRecipients(selectedAccount.accountNo, platformCode, metadata, auth);
+        debugLog('Fetching recipients', { url: apiUrl, accountNo: selectedAccount.accountNo, platform: platformCode, hasMetadata: !!metadata }, metadata);
         
         const response = await httpClient.sendRequest({
           method: HttpMethod.GET,
           url: apiUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
@@ -598,7 +642,7 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
     description: 'Select a contact category to send bulk messages to',
     required,
     refreshers: ['channel'], // Refresh when channel changes
-    async options({ auth, channel }): Promise<{ disabled: boolean; placeholder: string; options: Array<{ label: string; value: string }> }> {
+    async options({ auth, channel, server, project }): Promise<{ disabled: boolean; placeholder: string; options: Array<{ label: string; value: string }> }> {
       // Always return a valid structure - wrap everything in try-catch
       try {
         if (!auth) {
@@ -617,11 +661,16 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
           };
         }
 
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+        
         // Map channel name to platform code
         const platformCode = CHANNEL_TO_PLATFORM[channel];
         
         if (!platformCode) {
-          debugLog('Unknown channel', { channel, availableChannels: Object.keys(CHANNEL_TO_PLATFORM) });
+          debugLog('Unknown channel', { channel, availableChannels: Object.keys(CHANNEL_TO_PLATFORM) }, metadata);
           return {
             disabled: true,
             placeholder: `Invalid channel selected: ${channel}`,
@@ -629,8 +678,8 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
           };
         }
 
-        const apiUrl = API_ENDPOINTS.getContactCategories(platformCode);
-        debugLog('Fetching contact categories', { url: apiUrl, platform: platformCode });
+        const apiUrl = API_ENDPOINTS.getContactCategories(platformCode, metadata, auth);
+        debugLog('Fetching contact categories', { url: apiUrl, platform: platformCode, hasMetadata: !!metadata }, metadata);
         
         // Fetch contact categories from the API
         let response;
@@ -640,7 +689,7 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
             url: apiUrl,
             authentication: {
               type: AuthenticationType.BEARER_TOKEN,
-              token: (auth as any).secret_text,
+              token: extractApiToken(auth),
             },
           });
         } catch (requestError: any) {
@@ -807,7 +856,7 @@ export const adaBmpTemplate = <R extends boolean>(required: R) =>
     description: 'Select a template to use for the message (optional)',
     required,
     refreshers: ['account', 'messageType', 'templateCategory'], // Refresh when account, messageType, or templateCategory changes
-    async options({ auth, account, messageType, templateCategory }) {
+    async options({ auth, account, messageType, templateCategory, server, project }) {
       // Always log the templateCategory value received
       console.log('[ADA-BMP Template Options] Options function called', {
         hasAuth: !!auth,
@@ -843,8 +892,13 @@ export const adaBmpTemplate = <R extends boolean>(required: R) =>
       }
 
       try {
-        const apiUrl = API_ENDPOINTS.getTemplates(account as string);
-        debugLog('Fetching templates', { url: apiUrl, accountId: account });
+        // Fetch metadata from organization/environment
+        const contextServer = (server as any);
+        const contextProject = (project as any);
+        const metadata = await fetchMetadata(contextProject?.id, contextServer, httpClient, auth);
+        
+        const apiUrl = API_ENDPOINTS.getTemplates(account as string, metadata, auth);
+        debugLog('Fetching templates', { url: apiUrl, accountId: account, hasMetadata: !!metadata }, metadata);
         
         // Fetch templates from the API
         const response = await httpClient.sendRequest({
@@ -852,7 +906,7 @@ export const adaBmpTemplate = <R extends boolean>(required: R) =>
           url: apiUrl,
           authentication: {
             type: AuthenticationType.BEARER_TOKEN,
-            token: (auth as any).secret_text,
+            token: extractApiToken(auth),
           },
         });
 
