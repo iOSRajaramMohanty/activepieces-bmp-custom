@@ -11,7 +11,7 @@ Complete automated Docker build and run process:
 - Backs up database automatically
 - Cleans old containers and images
 - Builds custom pieces
-- Builds Docker image from scratch
+- Builds Docker image (no cache)
 - Starts all services
 - Installs dependencies
 - Validates everything works
@@ -21,8 +21,10 @@ Complete automated Docker build and run process:
 ./scripts/clean-build-run.sh
 ```
 
-**Time:** 15-20 minutes  
-**Output:** Complete Docker environment with ada-bmp piece
+**Time:** 
+- Full build: 10-15 minutes
+
+**Output:** Complete Docker environment ready for development
 
 
 ### **`quick-validate.sh`** ✅ Quick Validation
