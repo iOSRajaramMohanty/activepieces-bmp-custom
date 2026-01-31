@@ -52,8 +52,9 @@ fi
 
 echo ""
 
-# Change to project directory
-cd /Users/rajarammohanty/Documents/POC/activepieces
+# Change to project directory (use script-relative path so this works for forks/clones)
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 #─────────────────────────────────────────────────────────
 # PHASE 1: BACKUP DATABASE
@@ -191,8 +192,36 @@ if [ ! -d "packages/pieces/custom/ada-bmp" ]; then
     exit 1
 fi
 
-echo "Building ada-bmp piece..."
-npx nx build pieces-ada-bmp
+echo "Ensuring project dependencies are installed..."
+# Install bun if needed
+node tools/scripts/install-bun.js || true
+
+# Try local bun install + build; on failure, run the build inside Docker (Linux toolchain)
+if command -v bun >/dev/null 2>&1; then
+    echo "Attempting local bun install..."
+    if bun install; then
+        echo -e "${GREEN}✅ Local bun install succeeded.${NC}"
+        echo "Building ada-bmp piece locally..."
+        npx nx build pieces-ada-bmp || { echo -e "${RED}❌ Local build failed after successful install.${NC}"; exit 1; }
+    else
+        echo -e "${YELLOW}⚠️ Local bun install failed. Falling back to Docker-based build (Linux toolchain)...${NC}"
+        if command -v docker >/dev/null 2>&1; then
+            echo "Running build inside Docker (node:20-bullseye)..."
+            docker run --rm -v "$PROJECT_ROOT":/usr/src/app -w /usr/src/app node:20-bullseye bash -lc "apt-get update && apt-get install -y python3 g++ build-essential git curl unzip && npm install -g bun && bun install && npx nx build pieces-ada-bmp" || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
+        else
+            echo -e "${RED}❌ Docker not available to perform fallback build. Aborting.${NC}"
+            exit 1
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠️ Bun not found locally. Attempting Docker-based install/build...${NC}"
+    if command -v docker >/dev/null 2>&1; then
+        docker run --rm -v "$PROJECT_ROOT":/usr/src/app -w /usr/src/app node:20-bullseye bash -lc "apt-get update && apt-get install -y python3 g++ build-essential git curl unzip && npm install -g bun && bun install && npx nx build pieces-ada-bmp" || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
+    else
+        echo -e "${RED}❌ Neither bun nor docker available. Aborting.${NC}"
+        exit 1
+    fi
+fi
 
 echo ""
 
@@ -259,24 +288,27 @@ echo "Starting containers..."
 docker-compose -f docker-compose.dev.yml up -d
 
 echo ""
-echo "Waiting 60 seconds for services to initialize..."
-sleep 60
-echo ""
+# Wait for containers to report healthy (up to 120s)
+MAX_WAIT=120
+INTERVAL=5
+ELAPSED=0
+HEALTHY_COUNT=0
+echo "Waiting up to $MAX_WAIT seconds for containers to become healthy..."
+while [ $ELAPSED -lt $MAX_WAIT ]; do
+  docker-compose -f docker-compose.dev.yml ps
+  HEALTHY_COUNT=$(docker-compose -f docker-compose.dev.yml ps 2>/dev/null | grep "healthy" | wc -l | tr -d ' ')
+  if [ "$HEALTHY_COUNT" -eq "3" ]; then
+    echo -e "${GREEN}✅ All 3 containers are healthy${NC}"
+    break
+  fi
+  sleep $INTERVAL
+  ELAPSED=$((ELAPSED + INTERVAL))
+done
 
-# Check container status
-echo "Container status:"
-docker-compose -f docker-compose.dev.yml ps
-echo ""
-
-# Count healthy containers
-HEALTHY_COUNT=$(docker-compose -f docker-compose.dev.yml ps 2>/dev/null | grep "healthy" | wc -l | tr -d ' ')
-
-if [ "$HEALTHY_COUNT" -eq "3" ]; then
-    echo -e "${GREEN}✅ All 3 containers started successfully${NC}"
-else
-    echo -e "${YELLOW}⚠️  Only $HEALTHY_COUNT/3 containers healthy. Waiting another 30 seconds...${NC}"
-    sleep 30
-    docker-compose -f docker-compose.dev.yml ps
+if [ "$HEALTHY_COUNT" -ne "3" ]; then
+  echo -e "${YELLOW}⚠️  Only $HEALTHY_COUNT/3 containers healthy after $ELAPSED seconds${NC}"
+  echo "Container status:"
+  docker-compose -f docker-compose.dev.yml ps
 fi
 
 echo ""
@@ -346,27 +378,60 @@ echo ""
 
 # Test 1: Containers healthy
 echo -n "Test 1: Containers healthy... "
-HEALTHY=$(docker-compose -f docker-compose.dev.yml ps 2>/dev/null | grep "healthy" | wc -l | tr -d ' ')
+# Give containers up to 120s to become healthy (this mirrors the earlier wait)
+MAX_WAIT=120
+INTERVAL=5
+ELAPSED=0
+HEALTHY=0
+while [ $ELAPSED -lt $MAX_WAIT ]; do
+  HEALTHY=$(docker-compose -f docker-compose.dev.yml ps 2>/dev/null | grep "healthy" | wc -l | tr -d ' ')
+  if [ "$HEALTHY" -eq "3" ]; then
+    break
+  fi
+  sleep $INTERVAL
+  ELAPSED=$((ELAPSED + INTERVAL))
+done
 if [ "$HEALTHY" -eq "3" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+  echo -e "${GREEN}✅ PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL ($HEALTHY/3)${NC}"
+  echo -e "${RED}❌ FAIL ($HEALTHY/3)${NC}"
+  echo "--- Recent activepieces-dev logs (200 lines) ---"
+  docker logs --tail 200 activepieces-dev || true
 fi
 
 # Test 2: Web accessible
 echo -n "Test 2: Web accessible... "
-if curl -s -I http://localhost:8080 2>/dev/null | grep -q "200 OK"; then
-    echo -e "${GREEN}✅ PASS${NC}"
+FOUND=0
+for i in {1..6}; do
+  if curl -s -I http://localhost:8080 2>/dev/null | grep -q "200 OK"; then
+    FOUND=1; break
+  fi
+  sleep 5
+done
+if [ "$FOUND" -eq "1" ]; then
+  echo -e "${GREEN}✅ PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+  echo -e "${RED}❌ FAIL${NC}"
+  echo "--- Recent activepieces-dev logs (200 lines) ---"
+  docker logs --tail 200 activepieces-dev || true
 fi
 
 # Test 3: Piece in API
 echo -n "Test 3: Custom piece in API... "
-if curl -s 'http://localhost:8080/api/v1/pieces' 2>/dev/null | grep -q "ada-bmp"; then
-    echo -e "${GREEN}✅ PASS${NC}"
+FOUND=0
+for i in {1..12}; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" 'http://localhost:8080/api/v1/pieces/@activepieces/piece-ada-bmp' 2>/dev/null || echo "000")
+  if [ "$STATUS" = "200" ]; then
+    FOUND=1; break
+  fi
+  sleep 5
+done
+if [ "$FOUND" -eq "1" ]; then
+  echo -e "${GREEN}✅ PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+  echo -e "${RED}❌ FAIL${NC}"
+  echo "--- Recent activepieces-dev logs (200 lines) ---"
+  docker logs --tail 200 activepieces-dev || true
 fi
 
 # Test 4: No module errors
@@ -376,6 +441,8 @@ if [ "$ERRORS" -eq "0" ]; then
     echo -e "${GREEN}✅ PASS${NC}"
 else
     echo -e "${RED}❌ FAIL ($ERRORS errors)${NC}"
+    echo "--- Recent activepieces-dev logs (200 lines) ---"
+    docker logs --tail 200 activepieces-dev || true
 fi
 
 # Test 5: Database connection
