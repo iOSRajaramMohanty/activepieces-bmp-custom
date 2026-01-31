@@ -218,7 +218,7 @@ export const InviteUserDialog = ({
       : platform.plan.projectRolesEnabled && project?.type === ProjectType.TEAM
       ? InvitationType.PROJECT
       : InvitationType.PLATFORM,
-    platformRole: PlatformRole.MEMBER,
+    platformRole: isOwner ? PlatformRole.ADMIN : PlatformRole.MEMBER,
     projectRole: defaultProjectRole,
   },
 });
@@ -337,9 +337,18 @@ export const InviteUserDialog = ({
         <Dialog
           open={open}
           modal
-          onOpenChange={(open) => {
-            setOpen(open);
-            form.reset();
+          onOpenChange={(newOpen) => {
+            setOpen(newOpen);
+            form.reset({
+              emails: [],
+              type: isPlatformPage
+                ? InvitationType.PLATFORM
+                : platform.plan.projectRolesEnabled && project?.type === ProjectType.TEAM
+                ? InvitationType.PROJECT
+                : InvitationType.PLATFORM,
+              platformRole: isOwner ? PlatformRole.ADMIN : PlatformRole.MEMBER,
+              projectRole: defaultProjectRole,
+            });
             setInvitationLink('');
             setInputValue('');
             setShowSuggestions(false);

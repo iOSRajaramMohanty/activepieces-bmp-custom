@@ -37,15 +37,28 @@ export const PlatformRoleSelect = ({ form }: PlatformRoleSelectProps) => {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>{t('Platform Role')}</SelectLabel>
-                {isOwner && (
+                {isOwner ? (
                   <SelectItem value={PlatformRole.ADMIN}>{t('Admin')}</SelectItem>
+                ) : isAdmin ? (
+                  <>
+                    <SelectItem value={PlatformRole.OPERATOR}>
+                      {t('Operator')}
+                    </SelectItem>
+                    <SelectItem value={PlatformRole.MEMBER}>
+                      {t('Member')}
+                    </SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value={PlatformRole.ADMIN}>{t('Admin')}</SelectItem>
+                    <SelectItem value={PlatformRole.OPERATOR}>
+                      {t('Operator')}
+                    </SelectItem>
+                    <SelectItem value={PlatformRole.MEMBER}>
+                      {t('Member')}
+                    </SelectItem>
+                  </>
                 )}
-                <SelectItem value={PlatformRole.OPERATOR}>
-                  {t('Operator')}
-                </SelectItem>
-                <SelectItem value={PlatformRole.MEMBER}>
-                  {t('Member')}
-                </SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

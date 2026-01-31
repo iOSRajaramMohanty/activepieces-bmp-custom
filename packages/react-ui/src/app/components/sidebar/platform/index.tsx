@@ -8,7 +8,6 @@ import {
   MousePointerClick,
   Shield,
   Building2,
-  Webhook,
 } from 'lucide-react';
 import { ComponentType, SVGProps } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -56,11 +55,12 @@ export function PlatformSidebar() {
       label: t('Pieces'),
       icon: Puzzle,
     },
-    {
+    // Hide Organizations for Super Admin
+    ...(isSuperAdmin ? [] : [{
       to: '/platform/organizations',
       label: t('Organizations'),
       icon: Building2,
-    },
+    }]),
   ];
 
   const generalItems: {
@@ -93,6 +93,33 @@ export function PlatformSidebar() {
     });
   }
 
+  const infrastructureGroup = {
+    label: t('Infrastructure'),
+    items: [
+      {
+        to: '/platform/infrastructure/workers',
+        label: t('Workers'),
+        icon: Server,
+      },
+      {
+        to: '/platform/infrastructure/health',
+        label: t('Health'),
+        icon: FileHeart,
+      },
+      {
+        to: '/platform/infrastructure/triggers',
+        label: t('Triggers'),
+        icon: MousePointerClick,
+      },
+      // {
+      //   to: '/platform/infrastructure/event-destinations',
+      //   label: t('Event Streaming'),
+      //   icon: Webhook,
+      //   locked: !platform.plan.eventStreamingEnabled,
+      // },
+    ],
+  };
+
   const groups: {
     label: string;
     items: {
@@ -110,32 +137,8 @@ export function PlatformSidebar() {
       label: t('Setup'),
       items: setupItems,
     },
-    {
-      label: t('Infrastructure'),
-      items: [
-        {
-          to: '/platform/infrastructure/workers',
-          label: t('Workers'),
-          icon: Server,
-        },
-        {
-          to: '/platform/infrastructure/health',
-          label: t('Health'),
-          icon: FileHeart,
-        },
-        {
-          to: '/platform/infrastructure/triggers',
-          label: t('Triggers'),
-          icon: MousePointerClick,
-        },
-        {
-          to: '/platform/infrastructure/event-destinations',
-          label: t('Event Streaming'),
-          icon: Webhook,
-          locked: !platform.plan.eventStreamingEnabled,
-        },
-      ],
-    },
+    // Hide entire Infrastructure category for Super Admin
+    ...(isSuperAdmin ? [] : [infrastructureGroup]),
   ];
 
   return (
