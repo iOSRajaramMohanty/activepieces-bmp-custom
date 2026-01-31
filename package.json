@@ -9,9 +9,9 @@
     "serve:backend": "nx serve server-api",
     "serve:engine": "nx serve engine",
     "push": "npx nx run-many --target=lint --fix && git push",
-    "dev": "node tools/scripts/install-bun.js && concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend --port=4300\" \"npm:serve:backend\" \"npm:serve:engine\"",
-    "dev:backend": "concurrently -n \"API,ENG\" -c \"bgGreen.bold,bgRed.bold\" \"npm:serve:backend\" \"npm:serve:engine\"",
-    "dev:frontend": "concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend\" \"npm:serve:backend\" \"npm:serve:engine\"",
+    "dev": "node tools/scripts/install-bun.js && npx concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend --port=4300\" \"npm:serve:backend\" \"npm:serve:engine\"",
+    "dev:backend": "npx concurrently -n \"API,ENG\" -c \"bgGreen.bold,bgRed.bold\" \"npm:serve:backend\" \"npm:serve:engine\"",
+    "dev:frontend": "npx concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend\" \"npm:serve:backend\" \"npm:serve:engine\"",
     "start": "node tools/setup-dev.js && npm run dev",
     "test:e2e": "nx run tests-e2e:test-e2e",
     "cli": "npx ts-node -r tsconfig-paths/register --project packages/cli/tsconfig.json  packages/cli/src/index.ts",
@@ -29,8 +29,13 @@
     "bump-translated-pieces": "npx ts-node --project tools/tsconfig.tools.json tools/scripts/pieces/bump-translated-pieces.ts"
   },
   "private": true,
+  "engines": {
+    "node": ">=18.19.0 <23 || >=24.0.0"
+  },
   "dependencies": {
     "@activepieces/import-fresh-webpack": "3.3.0",
+    "@activepieces/pieces-framework": "file:packages/pieces/community/framework",
+    "@activepieces/shared": "file:packages/shared",
     "@ai-sdk/anthropic": "2.0.3",
     "@ai-sdk/azure": "2.0.12",
     "@ai-sdk/google": "2.0.6",

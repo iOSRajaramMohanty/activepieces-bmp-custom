@@ -13,6 +13,7 @@ import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
 import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
 import { receiveWebhook } from './lib/triggers/receive-webhook';
+import { newMessageCallbackTrigger } from './lib/triggers/new-message-callback';
 import { API_ENDPOINTS, getBaseUrl, debugLog } from './lib/common/config';
 
 export const adaBmpAuth = PieceAuth.CustomAuth({
@@ -178,6 +179,19 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
   },
 });
 
+/** Payload shape when BMP sends an event to the callback URL. BMP backend must send platform, accountNo, eventType. */
+type BmpCallbackPayload = {
+  challenge?: string;
+  event?: string;
+  eventType?: string;
+  platform?: string;
+  accountNo?: string;
+  identifierValue?: string;
+  tenantId?: string;
+  apiUrl?: string;
+  data?: unknown;
+};
+
 export const adaBmp = createPiece({
   displayName: 'ADA BMP',
   description: 'Multi-channel messaging platform supporting WhatsApp, Facebook, Line, and Instagram',
@@ -185,6 +199,52 @@ export const adaBmp = createPiece({
   logoUrl: '/ada-logo.png',
   categories: [PieceCategory.COMMUNICATION],
   auth: adaBmpAuth,
+  events: {
+    parseAndReply: ({ payload }) => {
+      let body = payload.body;
+      if (body == null || (typeof body === 'object' && Object.keys(body as object).length === 0)) {
+        const raw = (payload as { rawBody?: string | Buffer }).rawBody;
+        if (typeof raw === 'string') {
+          try {
+            body = JSON.parse(raw) as BmpCallbackPayload;
+          } catch {
+            body = {};
+          }
+        }
+      } else if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body) as BmpCallbackPayload;
+        } catch {
+          body = {};
+        }
+      }
+      const parsed = (body ?? {}) as BmpCallbackPayload;
+      if (parsed.challenge) {
+        return { reply: { headers: {}, body: parsed.challenge } };
+      }
+      // Required fields from BMP: platform, accountNo, eventType (top-level). Accept nested under .data if needed.
+      const top = parsed as Record<string, unknown>;
+      const data = (top.data && typeof top.data === 'object' && top.data !== null ? top.data : top) as Record<string, unknown>;
+      const platform = (parsed.platform ?? data.platform) != null ? String(parsed.platform ?? data.platform).trim() : '';
+      const accountNo = (parsed.accountNo ?? data.accountNo) != null ? String(parsed.accountNo ?? data.accountNo).trim() : '';
+      const eventType = (parsed.eventType ?? data.eventType ?? parsed.event ?? data.event) != null ? String(parsed.eventType ?? data.eventType ?? parsed.event ?? data.event).trim() : '';
+      if (!platform || !accountNo || !eventType) {
+        return { event: undefined, identifierValue: undefined };
+      }
+      const event = parsed.event ?? parsed.eventType ?? 'Message';
+      const identifierValue = `${platform}:${accountNo}`;
+      return { event, identifierValue };
+    },
+    verify: ({ webhookSecret, payload }) => {
+      const authHeader =
+        payload.headers?.['authorization'] ??
+        payload.headers?.['Authorization'] ??
+        payload.headers?.['x-webhook-secret'] ??
+        payload.headers?.['X-Webhook-Secret'];
+      const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+      return webhookSecret === undefined || webhookSecret === '' ? true : token === webhookSecret;
+    },
+  },
   authors: [],
   actions: [
     sendMessageAction,
@@ -220,5 +280,6 @@ export const adaBmp = createPiece({
   ],
   triggers: [
     receiveWebhook,
+    newMessageCallbackTrigger,
   ],
 });

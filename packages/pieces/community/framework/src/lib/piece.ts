@@ -119,7 +119,7 @@ type CreatePieceParams<
 type PieceEventProcessors = {
   parseAndReply: (ctx: { payload: EventPayload, server: Omit<ServerContext, 'token' | 'apiUrl'> }) => ParseEventResponse;
   verify: (ctx: {
-    webhookSecret: string | Record<string, string>;
+    webhookSecret?: string | Record<string, string>;
     payload: EventPayload;
     appWebhookUrl: string;
   }) => boolean;

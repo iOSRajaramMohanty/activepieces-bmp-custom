@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "@activepieces/piece-ada-bmp",
@@ -7,11 +8,18 @@
         "@activepieces/pieces-common": "/usr/src/app/dist/packages/pieces/community/common",
         "@activepieces/pieces-framework": "/usr/src/app/dist/packages/pieces/community/framework",
       },
+      "devDependencies": {
+        "@types/node": "20.19.9",
+      },
     },
   },
   "packages": {
     "@activepieces/pieces-common": ["@activepieces/pieces-common@file:../../../../dist/packages/pieces/community/common", {}],
 
     "@activepieces/pieces-framework": ["@activepieces/pieces-framework@file:../../../../dist/packages/pieces/community/framework", {}],
+
+    "@types/node": ["@types/node@20.19.9", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-cuVNgarYWZqxRJDQHEB58GEONhOK79QVR/qYx4S7kcUObQvUwvFnYxJuuHUKm2aieN9X3yZB4LZsuYNU1Qphsw=="],
+
+    "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
   }
 }

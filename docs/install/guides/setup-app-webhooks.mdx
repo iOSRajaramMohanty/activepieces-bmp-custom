@@ -31,3 +31,40 @@ Certain apps like Slack and Square only support one webhook per OAuth2 app. This
     - `message.groups`
     - `message.mpim`
     - `app_mention`
+
+## ADA BMP
+
+**Configure Callback URL (Slack-style)**
+
+Use a single callback URL so your BMP backend can POST events (e.g. new messages) to Activepieces. Only flows whose **New message receive** trigger has the same channel and account as the payload will run.
+
+**Required payload fields**
+
+The BMP backend **must** send these fields in every webhook request:
+
+- **`platform`** – e.g. `WA`, `FB`, `IG`, `LINE`
+- **`accountNo`** – account number for the channel (e.g. `601153819389`)
+- **`eventType`** – e.g. `Message`
+
+If any of these are missing, the request is rejected (400). The flow runs only when the payload’s `platform` and `accountNo` match the channel and account selected in the trigger.
+
+**Configure Callback URL in BMP**
+
+1. In your BMP backend (webhook/callback settings), set the Request URL to:
+    ```
+    https://YOUR_AP_INSTANCE/api/v1/app-events/ada-bmp
+    ```
+2. When BMP sends events, include the required JSON fields above (and any other fields such as `data`, `text`, `fromNo`, etc.).
+3. Optional: If your BMP verifies the URL with a challenge, send a payload with `challenge`; Activepieces will respond with that value.
+
+**Webhook Secret (optional)**
+
+To verify requests, set a shared secret in your Activepieces environment:
+
+1. Choose a shared secret (e.g. a token or password) that your BMP backend will send when calling the callback URL.
+2. Set the following environment variable (optional):
+    ```
+    AP_APP_WEBHOOK_SECRETS={"@activepieces/piece-ada-bmp": {"webhookSecret": "YOUR_SECRET"}}
+    ```
+3. Restart your application instance.
+4. When BMP sends events, include `Authorization: Bearer YOUR_SECRET` or header `X-Webhook-Secret: YOUR_SECRET`. If no secret is configured, verification is skipped and all requests are accepted.

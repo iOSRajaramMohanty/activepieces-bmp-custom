@@ -213,7 +213,8 @@ export const triggerHelper = {
                         if (!params.appWebhookUrl) {
                             throw new EngineGenericError('AppWebhookUrlNotAvailableError', `App webhook url is not available for piece name ${pieceName}`)
                         }
-                        if (!params.webhookSecret) {
+                        // Skip webhookSecret check for ADA BMP (allows optional secret)
+                        if (!params.webhookSecret && pieceName !== '@activepieces/piece-ada-bmp') {
                             throw new EngineGenericError('WebhookSecretNotAvailableError', `Webhook secret is not available for piece name ${pieceName}`)
                         }
 

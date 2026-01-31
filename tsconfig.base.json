@@ -39,6 +39,9 @@
       "@activepieces/piece-slack": [
         "packages/pieces/community/slack/src/index.ts"
       ],
+      "@activepieces/piece-ada-bmp": [
+        "packages/pieces/custom/ada-bmp/src/index.ts"
+      ],
       "@activepieces/piece-square": [
         "packages/pieces/community/square/src/index.ts"
       ],

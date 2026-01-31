@@ -1,3 +1,4 @@
+import { adaBmp } from '@activepieces/piece-ada-bmp'
 import { facebookLeads } from '@activepieces/piece-facebook-leads'
 import { intercom } from '@activepieces/piece-intercom'
 import { slack } from '@activepieces/piece-slack'
@@ -31,12 +32,14 @@ import { triggerSourceService } from '../trigger-source/trigger-source-service'
 import { appEventRoutingService } from './app-event-routing.service'
 
 const appWebhooks: Record<string, Piece<PieceAuthProperty | undefined>> = {
+    'ada-bmp': adaBmp,
     slack,
     square,
     'facebook-leads': facebookLeads,
     intercom,
 }
 const pieceNames: Record<string, string> = {
+    'ada-bmp': '@activepieces/piece-ada-bmp',
     slack: '@activepieces/piece-slack',
     square: '@activepieces/piece-square',
     'facebook-leads': '@activepieces/piece-facebook-leads',
