@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from 'i18next';
 import {
   CircleMinus,
@@ -6,6 +6,7 @@ import {
   RotateCcw,
   Trash,
   User,
+  UserPlus,
   Mail,
   Tag,
   Hash,
@@ -31,15 +32,40 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { InviteUserDialog } from '@/features/members/component/invite-user/invite-user-dialog';
+import { userInvitationApi } from '@/features/members/lib/user-invitation';
 import { platformUserHooks } from '@/hooks/platform-user-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
 import { platformUserApi } from '@/lib/platform-user-api';
-import { PlatformRole, UserStatus } from '@activepieces/shared';
+import {
+  InvitationType,
+  PlatformRole,
+  UserInvitation,
+  UserStatus,
+  UserWithMetaInformation,
+} from '@activepieces/shared';
 
-import { UpdateUserDialog } from './update-user-dialog';
+import { DeleteUserAction } from './actions/delete-user-action';
+import { EditUserAction } from './actions/edit-user-action';
+import { ToggleUserStatusAction } from './actions/toggle-user-status-action';
+import { UpdateUserDialog } from './actions/update-user-dialog';
+import { createUsersTableColumns } from './columns';
+
+export type UserRowData =
+  | {
+      id: string;
+      type: 'user';
+      data: UserWithMetaInformation;
+    }
+  | {
+      id: string;
+      type: 'invitation';
+      data: UserInvitation;
+    };
 
 export default function UsersPage() {
+  const [inviteOpen, setInviteOpen] = useState(false);
   const { data: rawData, isLoading, refetch } = platformUserHooks.useUsers();
   const { data: currentUser } = userHooks.useCurrentUser();
   const currentUserId = authenticationSession.getCurrentUserId();
@@ -145,6 +171,20 @@ export default function UsersPage() {
     },
   });
 
+  const { mutate: deleteInvitation, isPending: isDeletingInvitation } =
+    useMutation({
+      mutationKey: ['delete-invitation'],
+      mutationFn: async (invitationId: string) => {
+        await userInvitationApi.delete(invitationId);
+      },
+      onSuccess: () => {
+        refetch();
+        toast.success(t('Invitation deleted successfully'), {
+          duration: 3000,
+        });
+      },
+    });
+
   const { mutate: updateUserStatus, isPending: isUpdatingStatus } = useMutation(
     {
       mutationFn: async (data: { userId: string; status: UserStatus }) => {
@@ -170,6 +210,26 @@ export default function UsersPage() {
     },
   );
 
+  const handleDelete = (id: string, isInvitation: boolean) => {
+    if (isInvitation) {
+      deleteInvitation(id);
+    } else {
+      deleteUser(id);
+    }
+  };
+
+  const handleToggleStatus = (userId: string, currentStatus: UserStatus) => {
+    updateUserStatus({
+      userId,
+      status:
+        currentStatus === UserStatus.ACTIVE
+          ? UserStatus.INACTIVE
+          : UserStatus.ACTIVE,
+    });
+  };
+
+  const columns = createUsersTableColumns();
+
   return (
     <LockedFeatureGuard
       featureKey="USERS"
@@ -183,7 +243,16 @@ export default function UsersPage() {
           description={t(
             'Manage, delete, activate and deactivate users on platform',
           )}
-        />
+        >
+          <Button
+            className="gap-2"
+            size="sm"
+            onClick={() => setInviteOpen(true)}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="text-sm font-medium">{t('Invite')}</span>
+          </Button>
+        </DashboardPageHeader>
         {/* Organization Groups */}
         <div className="space-y-4">
           {Object.keys(userGroups).length === 0 ? (
@@ -561,6 +630,11 @@ export default function UsersPage() {
           )}
         </div>
       </div>
+      <InviteUserDialog
+        open={inviteOpen}
+        setOpen={setInviteOpen}
+        onInviteSuccess={refetch}
+      />
     </LockedFeatureGuard>
   );
 }

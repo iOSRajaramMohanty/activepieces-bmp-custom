@@ -37,21 +37,15 @@ export const PlatformRoleSelect = ({ form }: PlatformRoleSelectProps) => {
             <SelectContent>
               <SelectGroup>
                 <SelectLabel>{t('Platform Role')}</SelectLabel>
-                {/* Owner can invite ADMIN */}
                 {isOwner && (
                   <SelectItem value={PlatformRole.ADMIN}>{t('Admin')}</SelectItem>
                 )}
-                {/* Admin can only invite OPERATOR and MEMBER (not ADMIN) */}
-                {isAdmin && (
-                  <>
-                    <SelectItem value={PlatformRole.OPERATOR}>
-                      {t('Operator')}
-                    </SelectItem>
-                    <SelectItem value={PlatformRole.MEMBER}>
-                      {t('Member')}
-                    </SelectItem>
-                  </>
-                )}
+                <SelectItem value={PlatformRole.OPERATOR}>
+                  {t('Operator')}
+                </SelectItem>
+                <SelectItem value={PlatformRole.MEMBER}>
+                  {t('Member')}
+                </SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

@@ -336,6 +336,8 @@ import { AddTemplateIdToFlowEntity1768829135202 } from './migration/postgres/176
 import { AddOrganizationTables1769126400000 } from './migration/postgres/1769126400000-AddOrganizationTables'
 import { AddOrganizationToUserInvitation1769127000000 } from './migration/postgres/1769127000000-AddOrganizationToUserInvitation'
 import { AddMetadataToOrganizationEnvironment1769127500000 } from './migration/postgres/1769127500000-AddMetadataToOrganizationEnvironment'
+import { AddEventStreaming1769084311004 } from './migration/postgres/1769084311004-AddEventStreaming'
+import { RemoveOperatorRole1769613456917 } from './migration/postgres/1769613456917-RemoveOperatorRole'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -681,6 +683,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddOutdatedToReport1767994436597,
         AddNotesToFlowVersion1768130030028,
         MigrateOldTemplateCategoriesToDynamicOne1767624311536,
+        AddEventStreaming1769084311004,
         AddImageToUser1768502658760,
         RemoveUsageCountFromTemplates1768738475196,
         AddTablesIntoTemplateEntity1768306510367,
@@ -688,6 +691,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddOrganizationTables1769126400000,
         AddOrganizationToUserInvitation1769127000000,
         AddMetadataToOrganizationEnvironment1769127500000,
+        RemoveOperatorRole1769613456917,
     ]
     return migrations
 }

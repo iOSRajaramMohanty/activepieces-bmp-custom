@@ -121,7 +121,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             templateId: request.body.templateId,
         })
 
-        applicationEvents.sendUserEvent(request, {
+        applicationEvents(request.log).sendUserEvent(request, {
             action: ApplicationEventName.FLOW_CREATED,
             data: {
                 flow: newFlow,
@@ -152,6 +152,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
         preValidation: async (request) => {
             if (request.body?.type === FlowOperationType.IMPORT_FLOW) {
                 const migratedFlowTemplate = await migrateFlowVersionTemplate({
+                    displayName: request.body.request.displayName,
                     trigger: request.body.request.trigger,
                     schemaVersion: request.body.request.schemaVersion,
                     notes: request.body.request.notes ?? [],
@@ -159,6 +160,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                 })
                 request.body.request = {
                     ...request.body.request,
+                    displayName: migratedFlowTemplate.displayName,
                     trigger: migratedFlowTemplate.trigger,
                     schemaVersion: migratedFlowTemplate.schemaVersion,
                     notes: migratedFlowTemplate.notes,
@@ -223,7 +225,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             projectId: request.projectId,
             operation: cleanOperation(request.body),
         })
-        applicationEvents.sendUserEvent(request, {
+        applicationEvents(request.log).sendUserEvent(request, {
             action: ApplicationEventName.FLOW_UPDATED,
             data: {
                 request: request.body,
@@ -290,7 +292,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             id: request.params.id,
             projectId: request.projectId,
         })
-        applicationEvents.sendUserEvent(request, {
+        applicationEvents(request.log).sendUserEvent(request, {
             action: ApplicationEventName.FLOW_DELETED,
             data: {
                 flow,

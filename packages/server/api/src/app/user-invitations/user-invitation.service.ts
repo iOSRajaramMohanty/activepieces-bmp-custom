@@ -244,7 +244,6 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         invitationExpirySeconds,
         status,
     }: CreateParams): Promise<UserInvitationWithLink> {
-        const platform = await platformService.getOneOrThrow(platformId)
         const id = apId()
         
         // Validate platformRole for PLATFORM invitations
@@ -296,9 +295,14 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 invitationId: id,
                 platformId,
             })
+            if (smtpEmailSender(log).isSmtpConfigured()) {
+                await emailService(log).sendProjectMemberAdded({
+                    userInvitation,
+                })
+            }
             return userInvitation
         }
-        return enrichWithInvitationLink(platform, userInvitation, invitationExpirySeconds, log)
+        return enrichWithInvitationLink(userInvitation, invitationExpirySeconds, log)
     },
     async list(params: ListUserParams): Promise<SeekPage<UserInvitation>> {
         const decodedCursor = paginationHelper.decodeCursor(params.cursor ?? null)
@@ -494,7 +498,7 @@ async function generateInvitationLink(userInvitation: UserInvitation, expireyInS
         path: `invitation?token=${token}&email=${encodeURIComponent(userInvitation.email)}`,
     })
 }
-const enrichWithInvitationLink = async (platform: Platform, userInvitation: UserInvitation, expireyInSeconds: number, log: FastifyBaseLogger) => {
+const enrichWithInvitationLink = async (userInvitation: UserInvitation, expireyInSeconds: number, log: FastifyBaseLogger) => {
     const invitationLink = await generateInvitationLink(userInvitation, expireyInSeconds)
     if (!smtpEmailSender(log).isSmtpConfigured()) {
         return {

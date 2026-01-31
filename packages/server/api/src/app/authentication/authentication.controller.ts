@@ -94,7 +94,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             })
         }
 
-        applicationEvents.sendUserEvent({
+        applicationEvents(request.log).sendUserEvent({
             platformId: signUpResponse.platformId!,
             userId: signUpResponse.id,
             projectId: signUpResponse.projectId,
@@ -124,7 +124,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
 
         const responsePlatformId = response.platformId
         assertNotNullOrUndefined(responsePlatformId, 'Platform ID is required')
-        applicationEvents.sendUserEvent({
+        applicationEvents(request.log).sendUserEvent({
             platformId: responsePlatformId,
             userId: response.id,
             projectId: response.projectId,
