@@ -119,10 +119,15 @@ RUN mkdir -p \
 
 # Copy built artifacts from build stage
 COPY --from=build /usr/src/app/package.json .
+COPY --from=build /usr/src/app/tsconfig.base.json .
+COPY --from=build /usr/src/app/nx.json .
 COPY --from=build /usr/src/app/LICENSE .
 COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
 COPY --from=build /usr/src/app/dist/packages/server/ ./dist/packages/server/
 COPY --from=build /usr/src/app/dist/packages/shared/ ./dist/packages/shared/
+# Ensure built pieces (community + custom) are available at runtime for linking
+COPY --from=build /usr/src/app/dist/packages/pieces/community/ ./dist/packages/pieces/community/
+COPY --from=build /usr/src/app/dist/packages/pieces/custom/ ./dist/packages/pieces/custom/
 COPY --from=build /usr/src/app/packages ./packages
 
 # Copy frontend files to Nginx document root
