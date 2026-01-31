@@ -62,7 +62,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Install isolated-vm globally (needed for sandboxes)
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd /usr/src && bun install isolated-vm@5.0.1
+    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@5.0.1 && rm -rf /tmp/bun-install
 
 ### STAGE 1: Build ###
 FROM base AS build
@@ -71,10 +71,13 @@ WORKDIR /usr/src/app
 
 # Copy only dependency files first for better layer caching
 COPY .npmrc package.json bun.lock ./
+# Include local workspace packages referenced as file: deps so bun can resolve them
+COPY packages/pieces/community/framework ./packages/pieces/community/framework
+COPY packages/shared ./packages/shared
 
-# Install all dependencies with frozen lockfile
+# Do a fresh install (ignore lockfile) to allow resolving latest compatible versions
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile
+    rm -f bun.lock && bun install
 
 # Copy source code after dependency installation
 COPY . .
@@ -111,9 +114,11 @@ RUN mkdir -p \
     /usr/src/app/dist/packages/pieces/custom \
     /usr/src/app/dist/packages/pieces/community/framework \
     /usr/src/app/dist/packages/pieces/community/common && \
-    chmod +x docker-entrypoint.sh
+    chmod +x docker-entrypoint.sh && \
+    rm -f /usr/src/package.json || true
 
 # Copy built artifacts from build stage
+COPY --from=build /usr/src/app/package.json .
 COPY --from=build /usr/src/app/LICENSE .
 COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
 COPY --from=build /usr/src/app/dist/packages/server/ ./dist/packages/server/
