@@ -231,7 +231,9 @@ export const adaBmp = createPiece({
       if (!platform || !accountNo || !eventType) {
         return { event: undefined, identifierValue: undefined };
       }
-      const event = parsed.event ?? parsed.eventType ?? 'Message';
+      // const event = parsed.event ?? parsed.eventType ?? 'Message';
+      // Route all event types to the same listener; do not check eventType === 'Message' so any value (Message, Delivery, Read, etc.) is accepted
+      const event = 'Message';
       const identifierValue = `${platform}:${accountNo}`;
       return { event, identifierValue };
     },
