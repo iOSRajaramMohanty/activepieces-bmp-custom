@@ -463,6 +463,8 @@ echo -e "${GREEN}🎉 CLEAN BUILD & RUN COMPLETE!${NC}"
 echo "════════════════════════════════════════════════════════"
 echo ""
 echo "📊 Summary:"
+echo "  • Container status:"
+docker-compose -f docker-compose.dev.yml ps
 echo "  • Database backed up: $BACKUP_FILE"
 echo "  • Docker image rebuilt from scratch"
 echo "  • Custom piece (ada-bmp) built and loaded"
