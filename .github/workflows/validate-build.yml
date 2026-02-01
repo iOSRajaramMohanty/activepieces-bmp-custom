@@ -1,0 +1,41 @@
+name: Validate Docker Build & Pieces
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request: {}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start docker-compose test stack
+        run: |
+          docker compose -f docker-compose.test.yml up -d --build
+
+      - name: Wait for containers healthy
+        run: |
+          MAX_WAIT=300
+          INTERVAL=10
+          ELAPSED=0
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            HEALTHY=$(docker compose -f docker-compose.test.yml ps | grep healthy | wc -l | tr -d ' ')
+            if [ "$HEALTHY" -ge "3" ]; then
+              echo "Containers healthy"
+              break
+            fi
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+
+      - name: Run clean build & run validation
+        run: ./scripts/clean-build-run.sh -y
+
+      - name: Teardown
+        if: always()
+        run: docker compose -f docker-compose.test.yml down --volumes --remove-orphans

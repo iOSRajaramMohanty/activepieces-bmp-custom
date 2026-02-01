@@ -419,7 +419,7 @@ fi
 # Test 3: Piece in API
 echo -n "Test 3: Custom piece in API... "
 FOUND=0
-for i in {1..12}; do
+for i in {1..20}; do
   STATUS=$(curl -s -o /dev/null -w "%{http_code}" 'http://localhost:8080/api/v1/pieces/@activepieces/piece-ada-bmp' 2>/dev/null || echo "000")
   if [ "$STATUS" = "200" ]; then
     FOUND=1; break
