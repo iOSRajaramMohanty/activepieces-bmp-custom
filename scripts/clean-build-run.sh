@@ -52,6 +52,23 @@ fi
 
 echo ""
 
+# Ensure correct Node version and clean local artifacts before Docker build
+echo "Verifying Node.js version..."
+REQUIRED_NODE_VERSION="v20.19.6"
+CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
+if [ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]; then
+    echo -e "${RED}❌ Node version must be $REQUIRED_NODE_VERSION, found $CURRENT_NODE_VERSION${NC}"
+    echo "Please install or switch to $REQUIRED_NODE_VERSION (nvm, asdf, brew, etc.) and re-run."
+    exit 1
+fi
+echo -e "${GREEN}✅ Node version is $CURRENT_NODE_VERSION${NC}"
+
+echo "Cleaning local artifacts: node_modules, bun.lock, dist, cache, .nx, tmp ..."
+rm -rf node_modules bun.lock dist cache .nx tmp || true
+echo -e "${GREEN}✅ Cleaned local artifacts${NC}"
+echo ""
+sleep 2
+
 # Change to project directory (use script-relative path so this works for forks/clones)
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
