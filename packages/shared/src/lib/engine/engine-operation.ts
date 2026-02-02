@@ -94,6 +94,7 @@ export type ExecutePropsOptions = BaseEngineOperation & {
     input: Record<string, unknown>
     sampleData: Record<string, unknown>
     searchValue?: string
+    organizationEnvironmentMetadata?: Record<string, unknown>
 }
 
 type BaseExecuteFlowOperation<T extends ExecutionType> = BaseEngineOperation & {

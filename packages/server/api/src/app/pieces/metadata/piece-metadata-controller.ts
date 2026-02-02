@@ -27,6 +27,8 @@ import { sampleDataService } from '../../flows/step-run/sample-data.service'
 import { userInteractionWatcher } from '../../workers/user-interaction-watcher'
 import { pieceSyncService } from '../piece-sync-service'
 import { getPiecePackageWithoutArchive, pieceMetadataService } from './piece-metadata-service'
+import { organizationEnvironmentService } from '../../organization/organization-environment.service'
+import { projectService } from '../../project/project-service'
 
 export const pieceModule: FastifyPluginAsyncTypebox = async (app) => {
     await app.register(basePiecesController, { prefix: '/v1/pieces' })
@@ -135,6 +137,35 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
                 versionId: req.body.flowVersionId,
             })
             const sampleData = await sampleDataService(req.log).getSampleDataForFlow(projectId, flow.version, SampleDataFileType.OUTPUT)
+            
+            // Fetch organization environment metadata to pass to the piece
+            let organizationEnvironmentMetadata: Record<string, unknown> | undefined = undefined
+            try {
+                const project = await projectService.getOneOrThrow(projectId)
+                if (project.organizationId) {
+                    // Get all environments for this organization and find the one associated with this project
+                    const orgEnvs = await organizationEnvironmentService.listByOrganization(project.organizationId)
+                    const projectEnv = orgEnvs.find(env => env.projectId === projectId)
+                    
+                    if (projectEnv?.metadata) {
+                        organizationEnvironmentMetadata = projectEnv.metadata as Record<string, unknown>
+                        req.log.info({
+                            organizationId: project.organizationId,
+                            environment: projectEnv.environment,
+                            hasApiUrl: !!(projectEnv.metadata as any).ADA_BMP_API_URL,
+                        }, '[Pieces Options] Fetched organization environment metadata')
+                    } else {
+                        req.log.info({
+                            organizationId: project.organizationId,
+                            projectId,
+                        }, '[Pieces Options] No metadata found for project')
+                    }
+                }
+            } catch (error) {
+                req.log.warn({ error }, '[Pieces Options] Failed to fetch organization environment metadata')
+                // Continue without metadata - pieces will fall back to environment variables
+            }
+            
             const { result } = await userInteractionWatcher(req.log).submitAndWaitForResponse<OperationResponse<EngineHelperPropResult>>({
                 jobType: WorkerJobType.EXECUTE_PROPERTY,
                 platformId: platform.id,
@@ -146,6 +177,7 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
                 sampleData,
                 searchValue: req.body.searchValue,
                 piece: await getPiecePackageWithoutArchive(req.log, platform.id, req.body),
+                organizationEnvironmentMetadata,
             })
             return result
         },

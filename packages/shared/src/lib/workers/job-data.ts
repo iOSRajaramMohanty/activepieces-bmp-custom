@@ -181,6 +181,7 @@ export const ExecutePropertyJobData = Type.Object({
     webserverId: Type.String(),
     sampleData: Type.Record(Type.String(), Type.Unknown()),
     searchValue: Type.Optional(Type.String()),
+    organizationEnvironmentMetadata: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 })
 export type ExecutePropertyJobData = Static<typeof ExecutePropertyJobData>
 

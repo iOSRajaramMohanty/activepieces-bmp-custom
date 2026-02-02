@@ -39,11 +39,6 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
         ],
       },
     }),
-    apiUrl: Property.ShortText({
-      displayName: 'API URL (Optional Override)',
-      description: 'Leave empty to use the API URL from environment metadata. Only specify if you need to override the default.',
-      required: false,
-    }),
   },
   validate: async ({ auth }) => {
     try {
@@ -51,43 +46,39 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
       const typedAuth = auth as {
         apiToken: string;
         environment: string;
-        apiUrl?: string;
       };
       
       console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION START =====');
       console.log('[ADA-BMP Auth] Token (first 10 chars):', typedAuth.apiToken.substring(0, 10) + '...');
       console.log('[ADA-BMP Auth] Selected Environment:', typedAuth.environment);
-      console.log('[ADA-BMP Auth] Custom API URL:', typedAuth.apiUrl || '(using environment variable)');
       
-      let apiUrl = typedAuth.apiUrl; // User-provided override
-      let resolvedFrom = 'custom';
+      let apiUrl: string | undefined;
+      let resolvedFrom: string;
       
-      // If no custom URL, try to fetch from database via Activepieces API
-      if (!apiUrl) {
-        // Try to fetch environment metadata from Activepieces platform
-        // This requires making an authenticated call to the platform API
-        // For now, fallback to environment variable (which should be empty by default)
-        const envKey = `${typedAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
-        apiUrl = process.env[envKey];
-        resolvedFrom = 'database';
-        
-        if (apiUrl) {
-          console.log(`[ADA-BMP Auth] Using API URL from database (cached in ${envKey}):`, apiUrl);
-        }
+      // Try environment-specific variable first (e.g., STAGING_ADA_BMP_API_URL)
+      const envKey = `${typedAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
+      apiUrl = process.env[envKey];
+      resolvedFrom = 'environment_specific';
+      
+      if (apiUrl) {
+        console.log(`[ADA-BMP Auth] Using environment-specific URL from ${envKey}:`, apiUrl);
       }
       
-      // Final fallback to organization-level default (immutable)
+      // Fall back to default ADA_BMP_API_URL from .env
       if (!apiUrl) {
         apiUrl = process.env.ADA_BMP_API_URL;
-        resolvedFrom = 'organization_default';
-        console.log('[ADA-BMP Auth] Using organization-level default API URL:', apiUrl);
+        resolvedFrom = 'environment_default';
+        console.log('[ADA-BMP Auth] Using default API URL from ADA_BMP_API_URL:', apiUrl);
       }
       
+      // If still no URL, validation must fail
       if (!apiUrl) {
         console.error('[ADA-BMP Auth] ===== NO API URL CONFIGURED =====');
+        console.error('[ADA-BMP Auth] Environment selected:', typedAuth.environment);
+        console.error('[ADA-BMP Auth] No API URL found in environment variables');
         return {
           valid: false,
-          error: `No API URL configured for ${typedAuth.environment} environment. Please:\n1. Configure environment-specific metadata in the database for ${typedAuth.environment}, OR\n2. Provide a custom API URL in the connection settings`,
+          error: `No API URL configured for "${typedAuth.environment}" environment.\n\nPlease ask your platform admin to configure the ADA_BMP_API_URL in the .env file.\n\nFor Staging: https://bmpapistgjkt.cl.bmp.ada-asia.my\nFor Dev: https://bmpapidev2.cl.bmp.ada-asia.my\nFor Production: https://bmpapi.bmp.ada-asia.my`,
         };
       }
       
@@ -109,17 +100,17 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
       if (response.status === 200) {
         console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION SUCCESS =====');
         console.log('[ADA-BMP Auth] Token is valid for environment:', typedAuth.environment);
-        console.log('[ADA-BMP Auth] Resolved API URL:', apiUrl);
+        console.log('[ADA-BMP Auth] Validation API URL:', apiUrl);
         console.log('[ADA-BMP Auth] Resolved from:', resolvedFrom);
+        console.log('[ADA-BMP Auth] During flow execution, the API URL will be fetched from database metadata if configured');
         
-        // Store the resolved API URL in connection metadata
-        // This will be available in the auth object during action/trigger execution
+        // Don't store API URL in connection metadata - let database metadata take precedence
+        // The .env URL is only used for validation; runtime will use database metadata
         return {
           valid: true,
           metadata: {
-            ADA_BMP_API_URL: apiUrl,
             ADA_BMP_ENVIRONMENT: typedAuth.environment,
-            ADA_BMP_RESOLVED_FROM: resolvedFrom,
+            ADA_BMP_VALIDATED_AT: new Date().toISOString(),
             ADA_BMP_DEBUG: process.env.ADA_BMP_DEBUG === 'true',
             ADA_BMP_TIMEOUT: parseInt(process.env.ADA_BMP_TIMEOUT || '30000', 10),
           },

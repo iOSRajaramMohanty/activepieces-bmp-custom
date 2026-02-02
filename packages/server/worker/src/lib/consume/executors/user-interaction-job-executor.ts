@@ -59,6 +59,7 @@ export const userInteractionJobExecutor = (log: FastifyBaseLogger) => ({
                     sampleData: jobData.sampleData,
                     projectId: jobData.projectId,
                     searchValue: jobData.searchValue,
+                    organizationEnvironmentMetadata: jobData.organizationEnvironmentMetadata,
                     timeoutInSeconds,
                 })
                 break

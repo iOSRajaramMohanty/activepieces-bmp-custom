@@ -29,6 +29,17 @@ import { pieceLoader } from './piece-loader'
 
 export const pieceHelper = {
     async executeProps( operation: ExecutePropsParams): Promise<ExecutePropsResult<PropertyType.DROPDOWN | PropertyType.MULTI_SELECT_DROPDOWN | PropertyType.DYNAMIC>> {
+        // Inject organization environment metadata into process.env for pieces to access
+        // This allows pieces like ADA BMP to read environment-specific API URLs
+        if (operation.organizationEnvironmentMetadata) {
+            for (const [key, value] of Object.entries(operation.organizationEnvironmentMetadata)) {
+                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+                    process.env[key] = String(value)
+                    console.log(`[piece-helper executeProps] Injected environment metadata: ${key}=${String(value).substring(0, 50)}...`)
+                }
+            }
+        }
+        
         const constants = EngineConstants.fromExecutePropertyInput(operation)
         const executionState = await testExecutionContext.stateFromFlowVersion({
             apiUrl: operation.internalApiUrl,
