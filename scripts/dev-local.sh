@@ -11,6 +11,7 @@
 #   - Redis: localhost:6379 (starts via Docker if not running)
 #
 # If Postgres/Redis aren't running, they are auto-started via docker-compose.local-db.yml
+# Backs up database to ~/activepieces_backups/ before start/restart (when Postgres is running)
 #
 # Usage:
 #   ./scripts/dev-local.sh [start|stop|restart|status|db-start|db-stop]
@@ -62,6 +63,50 @@ kill_port() {
     print_info "Killing process on port $port..."
     lsof -ti:$port | xargs kill -9 2>/dev/null || true
     sleep 1
+}
+
+# Backup database before start/restart (when Postgres is accessible)
+backup_db() {
+    if [ ! -f ".env" ]; then
+        return 0
+    fi
+    set -a
+    source .env
+    set +a
+    
+    if ! check_port 5433; then
+        print_info "PostgreSQL not running, skipping backup"
+        return 0
+    fi
+    
+    mkdir -p ~/activepieces_backups
+    BACKUP_FILE=~/activepieces_backups/activepieces_backup_$(date +%Y%m%d_%H%M%S).sql
+    print_info "Backing up database to $BACKUP_FILE ..."
+    
+    if PGPASSWORD="${AP_POSTGRES_PASSWORD}" pg_dump \
+        -h "${AP_POSTGRES_HOST:-localhost}" \
+        -p "${AP_POSTGRES_PORT:-5433}" \
+        -U "${AP_POSTGRES_USERNAME:-postgres}" \
+        -d "${AP_POSTGRES_DATABASE:-activepieces}" \
+        -F p \
+        -f "$BACKUP_FILE" 2>/dev/null; then
+        if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+            BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+            print_success "Database backed up ($BACKUP_SIZE)"
+            # Delete old backup files (keep only the current one)
+            BACKUP_DIR=~/activepieces_backups
+            BACKUP_BASENAME=$(basename "$BACKUP_FILE")
+            for f in "$BACKUP_DIR"/activepieces_backup_*.sql; do
+                [ -f "$f" ] || continue
+                [ "$(basename "$f")" = "$BACKUP_BASENAME" ] && continue
+                rm -f "$f"
+            done
+        else
+            print_warning "Backup file empty (OK if fresh install)"
+        fi
+    else
+        print_warning "Could not backup database (may be empty or not initialized)"
+    fi
 }
 
 # Ensure Postgres (5433) and Redis (6379) are running - start via Docker if not
@@ -190,6 +235,9 @@ start_all() {
     echo -e "${BLUE}🚀 Starting Local Development${NC}"
     echo "════════════════════════════════════════"
     echo ""
+    
+    # Backup DB before restart/start (when accessible)
+    backup_db
     
     # Stop any existing services
     stop_services
