@@ -1,26 +1,39 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
 import { Type } from '@sinclair/typebox'
 import { StatusCodes } from 'http-status-codes'
-import { ActivepiecesError, AuthenticationResponse, ErrorCode, PlatformRole, PrincipalType, apId, UserIdentityProvider, ProjectType } from '@activepieces/shared'
+import { ActivepiecesError, AuthenticationResponse, ErrorCode, FilteredPieceBehavior, PlatformRole, PrincipalType, apId, UserIdentityProvider, ProjectType } from '@activepieces/shared'
 import { securityAccess } from '@activepieces/server-shared'
 import { databaseConnection } from '../database/database-connection'
 import { userService } from '../user/user-service'
-import { platformService } from '../platform/platform.service'
+import { platformRepo, platformService } from '../platform/platform.service'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { projectService } from '../project/project-service'
 import { authenticationUtils } from '../authentication/authentication-utils'
 import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
+import { defaultTheme } from '../flags/theme'
 
 /**
  * Super Admin Controller
  * Provides APIs for super admins to view and manage all tenants
+ * POST /super-admins (create) - No auth required (internal bootstrap)
+ * All other routes - Require logged-in super admin token
  */
 export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
     
-    // Middleware to check if user is super admin
+    // Middleware: skip auth for POST /super-admins (no token required). Other routes require super admin token.
     app.addHook('preHandler', async (request, reply) => {
+        const path = (request.url || '').split('?')[0]
+        const isCreateSuperAdmin = request.method === 'POST' && path.endsWith('/super-admins') && !path.includes('/promote/')
+        if (isCreateSuperAdmin) {
+            return // No auth required for creating super admin (internal use only)
+        }
+        if (!request.principal?.id) {
+            throw new ActivepiecesError({
+                code: ErrorCode.AUTHORIZATION,
+                params: { message: 'Authentication required. Please sign in as a super admin.' },
+            })
+        }
         const user = await userService.getOneOrFail({ id: request.principal.id })
-        
         if (user.platformRole !== PlatformRole.SUPER_ADMIN) {
             throw new ActivepiecesError({
                 code: ErrorCode.AUTHORIZATION,
@@ -356,6 +369,268 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         `, [currentPlatformId, request.principal.id])
         
         return stats[0]
+    })
+
+    /**
+     * List all super admins
+     */
+    app.get('/super-admins', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            response: {
+                [StatusCodes.OK]: Type.Array(Type.Any()),
+            },
+        },
+    }, async (request) => {
+        request.log.info('[SuperAdmin] Fetching all super admins')
+
+        const superAdmins = await databaseConnection().query(`
+            SELECT 
+                u.id,
+                u."platformRole",
+                u.status,
+                u.created,
+                u."lastActiveDate",
+                ui.email,
+                ui."firstName",
+                ui."lastName"
+            FROM "user" u
+            LEFT JOIN user_identity ui ON u."identityId" = ui.id
+            WHERE u."platformRole" = 'SUPER_ADMIN'
+            ORDER BY u.created DESC
+        `)
+
+        return superAdmins
+    })
+
+    /**
+     * Create a new super admin (internal use - no auth required)
+     * Creates identity, user with SUPER_ADMIN role, and a platform for the super admin
+     */
+    app.post('/super-admins', {
+        config: {
+            security: securityAccess.public(),
+        },
+        schema: {
+            body: Type.Object({
+                email: Type.String({ format: 'email' }),
+                password: Type.String({ minLength: 8, maxLength: 64 }),
+                firstName: Type.String({ minLength: 1 }),
+                lastName: Type.String({ minLength: 1 }),
+            }),
+            response: {
+                [StatusCodes.CREATED]: Type.Object({
+                    id: Type.String(),
+                    email: Type.String(),
+                    platformRole: Type.String(),
+                    message: Type.String(),
+                }),
+            },
+        },
+    }, async (request, reply) => {
+        const { email, password, firstName, lastName } = request.body
+
+        request.log.info({ email }, '[SuperAdmin] Creating new super admin')
+
+        try {
+            const identityService = userIdentityService(request.log)
+            const existingIdentity = await identityService.getIdentityByEmail(email)
+            if (existingIdentity) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: `User with email ${email} already exists`,
+                    },
+                })
+            }
+
+            const identity = await identityService.create({
+                email,
+                password,
+                firstName,
+                lastName,
+                trackEvents: false,
+                newsLetter: false,
+                provider: UserIdentityProvider.EMAIL,
+                verified: true,
+            })
+
+            const user = await userService.create({
+                identityId: identity.id,
+                platformId: null,
+                platformRole: PlatformRole.SUPER_ADMIN,
+            })
+
+            const platform = await platformRepo().save({
+                id: apId(),
+                ownerId: user.id,
+                name: `${firstName}'s Platform`,
+                primaryColor: defaultTheme.colors.primary.default,
+                logoIconUrl: defaultTheme.logos.logoIconUrl,
+                fullLogoUrl: defaultTheme.logos.fullLogoUrl,
+                favIconUrl: defaultTheme.logos.favIconUrl,
+                emailAuthEnabled: true,
+                filteredPieceNames: [],
+                enforceAllowedAuthDomains: false,
+                allowedAuthDomains: [],
+                filteredPieceBehavior: FilteredPieceBehavior.BLOCKED,
+                federatedAuthProviders: {},
+                cloudAuthEnabled: true,
+                pinnedPieces: [],
+            })
+
+            await databaseConnection().query(
+                'UPDATE "user" SET "platformId" = $1, "updated" = NOW() WHERE id = $2',
+                [platform.id, user.id],
+            )
+
+            request.log.info({ userId: user.id, email }, '[SuperAdmin] Super admin created successfully')
+
+            return reply.status(StatusCodes.CREATED).send({
+                id: user.id,
+                email,
+                platformRole: PlatformRole.SUPER_ADMIN,
+                message: 'Super admin created successfully',
+            })
+        } catch (error) {
+            request.log.error({ error, email }, '[SuperAdmin] Failed to create super admin')
+            throw error
+        }
+    })
+
+    /**
+     * Update a super admin (e.g. demote to ADMIN)
+     */
+    app.patch('/super-admins/:userId', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            params: Type.Object({
+                userId: Type.String(),
+            }),
+            body: Type.Object({
+                platformRole: Type.Enum(PlatformRole, {
+                    description: 'New role (e.g. ADMIN to demote)',
+                }),
+            }),
+            response: {
+                [StatusCodes.OK]: Type.Object({
+                    success: Type.Boolean(),
+                    message: Type.String(),
+                    platformRole: Type.String(),
+                }),
+            },
+        },
+    }, async (request, reply) => {
+        const { userId } = request.params
+        const { platformRole } = request.body
+        const currentSuperAdminId = request.principal.id
+
+        if (userId === currentSuperAdminId) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'You cannot update your own super admin role',
+                },
+            })
+        }
+
+        if (platformRole === PlatformRole.SUPER_ADMIN) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'Use the promote flow to assign SUPER_ADMIN role',
+                },
+            })
+        }
+
+        request.log.info({ userId, platformRole }, '[SuperAdmin] Updating super admin role')
+
+        try {
+            const userToUpdate = await userService.getOneOrFail({ id: userId })
+
+            if (userToUpdate.platformRole !== PlatformRole.SUPER_ADMIN) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: 'User is not a super admin',
+                    },
+                })
+            }
+
+            await databaseConnection().query(
+                'UPDATE "user" SET "platformRole" = $1, "updated" = NOW() WHERE id = $2',
+                [platformRole, userId],
+            )
+
+            request.log.info({ userId, platformRole }, '[SuperAdmin] Super admin updated successfully')
+
+            return reply.status(StatusCodes.OK).send({
+                success: true,
+                message: 'Super admin role updated successfully',
+                platformRole,
+            })
+        } catch (error) {
+            request.log.error({ error, userId }, '[SuperAdmin] Failed to update super admin')
+            throw error
+        }
+    })
+
+    /**
+     * Promote an existing user to super admin
+     */
+    app.post('/super-admins/promote/:userId', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            params: Type.Object({
+                userId: Type.String(),
+            }),
+            response: {
+                [StatusCodes.OK]: Type.Object({
+                    success: Type.Boolean(),
+                    message: Type.String(),
+                    platformRole: Type.String(),
+                }),
+            },
+        },
+    }, async (request, reply) => {
+        const { userId } = request.params
+
+        request.log.info({ userId }, '[SuperAdmin] Promoting user to super admin')
+
+        try {
+            const userToPromote = await userService.getOneOrFail({ id: userId })
+
+            if (userToPromote.platformRole === PlatformRole.SUPER_ADMIN) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: 'User is already a super admin',
+                    },
+                })
+            }
+
+            await databaseConnection().query(
+                'UPDATE "user" SET "platformRole" = $1, "updated" = NOW() WHERE id = $2',
+                [PlatformRole.SUPER_ADMIN, userId],
+            )
+
+            request.log.info({ userId }, '[SuperAdmin] User promoted to super admin successfully')
+
+            return reply.status(StatusCodes.OK).send({
+                success: true,
+                message: 'User promoted to super admin successfully',
+                platformRole: PlatformRole.SUPER_ADMIN,
+            })
+        } catch (error) {
+            request.log.error({ error, userId }, '[SuperAdmin] Failed to promote user to super admin')
+            throw error
+        }
     })
 
     /**
@@ -779,8 +1054,19 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 [userId]
             )
             
-            // Delete the user (this will NOT delete the platform or owners created by this super admin)
-            // because platforms are owned by OWNER users, not SUPER_ADMIN users
+            // Super admin may own a platform (created via POST /super-admins). Delete it first.
+            const ownedPlatforms = await databaseConnection().query(
+                'SELECT id, name FROM platform WHERE "ownerId" = $1',
+                [userId]
+            )
+            for (const platform of ownedPlatforms) {
+                const platformId = platform.id
+                await databaseConnection().query('DELETE FROM project WHERE "platformId" = $1', [platformId])
+                await databaseConnection().query('DELETE FROM "user" WHERE "platformId" = $1 AND id != $2', [platformId, userId])
+                await databaseConnection().query('DELETE FROM platform WHERE id = $1', [platformId])
+            }
+            
+            // Now delete the super admin user
             await databaseConnection().query(
                 'DELETE FROM "user" WHERE id = $1',
                 [userId]

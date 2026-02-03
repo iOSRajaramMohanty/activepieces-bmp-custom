@@ -70,6 +70,35 @@ export interface CreateTenantResponse {
   message: string;
 }
 
+export interface SuperAdminListItem {
+  id: string;
+  platformRole: string;
+  status: string;
+  created: string;
+  lastActiveDate?: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface CreateSuperAdminRequest {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}
+
+export interface CreateSuperAdminResponse {
+  id: string;
+  email: string;
+  platformRole: string;
+  message: string;
+}
+
+export interface UpdateSuperAdminRequest {
+  platformRole: string;
+}
+
 export const superAdminApi = {
   getAllPlatforms() {
     return api.get<SuperAdminPlatform[]>('/v1/super-admin/platforms');
@@ -112,6 +141,30 @@ export const superAdminApi = {
   deleteUser(userId: string) {
     return api.delete<{ success: boolean; message: string }>(
       `/v1/super-admin/users/${userId}`,
+    );
+  },
+
+  getSuperAdmins() {
+    return api.get<SuperAdminListItem[]>('/v1/super-admin/super-admins');
+  },
+
+  createSuperAdmin(data: CreateSuperAdminRequest) {
+    return api.post<CreateSuperAdminResponse>(
+      '/v1/super-admin/super-admins',
+      data,
+    );
+  },
+
+  updateSuperAdmin(userId: string, data: UpdateSuperAdminRequest) {
+    return api.patch<{ success: boolean; message: string; platformRole: string }>(
+      `/v1/super-admin/super-admins/${userId}`,
+      data,
+    );
+  },
+
+  promoteToSuperAdmin(userId: string) {
+    return api.post<{ success: boolean; message: string; platformRole: string }>(
+      `/v1/super-admin/super-admins/promote/${userId}`,
     );
   },
 

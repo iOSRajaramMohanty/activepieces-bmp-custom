@@ -236,7 +236,10 @@ async function getOrCreateCache(): Promise<KVCacheInstance> {
             const cacheId = pm2Enabled ? (process.env.NODE_APP_INSTANCE ?? '0') : 'default'
             const dbPath = path.resolve(path.join(process.cwd(), `pieces-cache-db-${cacheId}.sqlite`))
             const db = new Keyv({
-                store: new KeyvSqlite(`sqlite://${dbPath}`),
+                store: new KeyvSqlite({
+                    uri: `sqlite://${dbPath}`,
+                    busyTimeout: 15000, // Wait up to 15s if DB is locked (e.g. during Nx watch restart)
+                }),
             })
 
             const registry = ((await db.get(META_REGISTRY_KEY)) as PieceRegistryEntry[] | undefined) ?? []
