@@ -9,7 +9,7 @@
     "serve:backend": "nx serve server-api",
     "serve:engine": "nx serve engine",
     "push": "npx nx run-many --target=lint --fix && git push",
-    "dev": "node tools/scripts/install-bun.js && npx concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend --port=4300\" \"npm:serve:backend\" \"npm:serve:engine\"",
+    "dev": "node tools/scripts/install-bun.js && npx concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend --port=4200\" \"npm:serve:backend\" \"npm:serve:engine\"",
     "dev:backend": "npx concurrently -n \"API,ENG\" -c \"bgGreen.bold,bgRed.bold\" \"npm:serve:backend\" \"npm:serve:engine\"",
     "dev:frontend": "npx concurrently -n \"GUI,API,ENG\" -c \"bgBlue.bold,bgGreen.bold,bgRed.bold\" \"npm:serve:frontend\" \"npm:serve:backend\" \"npm:serve:engine\"",
     "start": "node tools/setup-dev.js && npm run dev",

@@ -1,0 +1,45 @@
+# Local dev ONLY - Postgres (5433) + Redis (6379) for dev-local.sh / restart-all.sh
+# Uses existing data volume. Docker build uses different DB (docker-compose.dev.yml)
+# Run: docker compose -f docker-compose.local-db.yml up -d
+services:
+  postgres-local:
+    image: 'postgres:14.4'
+    container_name: postgres-local
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    env_file: .env
+    environment:
+      - 'POSTGRES_DB=${AP_POSTGRES_DATABASE}'
+      - 'POSTGRES_PASSWORD=${AP_POSTGRES_PASSWORD}'
+      - 'POSTGRES_USER=${AP_POSTGRES_USERNAME}'
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AP_POSTGRES_USERNAME} -d ${AP_POSTGRES_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis-local:
+    image: 'redis:7.0.7'
+    container_name: redis-local
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - 'redis_data_local:/data'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_local:
+    external: true
+    name: activepieces-bmp-custom_postgres_data_dev
+  redis_data_local:
+    driver: local

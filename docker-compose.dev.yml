@@ -1,3 +1,5 @@
+# Docker development build - uses CONTAINERIZED PostgreSQL and Redis
+# (Different from dev-local.sh / restart-all.sh which use existing host DB/Redis)
 services:
   activepieces:
     build:
@@ -49,16 +51,16 @@ services:
     image: 'postgres:14.4'
     container_name: postgres-dev
     restart: unless-stopped
-    # Dev: Expose on port 5433 (different from production)
+    # Docker dev: Expose on 5434 (different from existing 5433 - local FE 4200 keeps your data)
     ports:
-      - '5433:5432'
+      - '5434:5432'
     env_file: .env.dev.backup
     environment:
       - 'POSTGRES_DB=${AP_POSTGRES_DATABASE}'
       - 'POSTGRES_PASSWORD=${AP_POSTGRES_PASSWORD}'
       - 'POSTGRES_USER=${AP_POSTGRES_USERNAME}'
     volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
+      - postgres_data_docker:/var/lib/postgresql/data
     networks:
       - activepieces-dev
     # Development: Lighter resource limits
@@ -88,11 +90,11 @@ services:
     image: 'redis:7.0.7'
     container_name: redis-dev
     restart: unless-stopped
-    # Dev: Redis without password for easier development
+    # Docker dev: Redis without password for easier development
     command: redis-server --appendonly yes
-    # Dev: Expose Redis for debugging
+    # Expose on 6380 (avoids conflict with existing host Redis on 6379)
     ports:
-      - '6379:6379'
+      - '6380:6379'
     volumes:
       - 'redis_data_dev:/data'
     networks:
@@ -121,9 +123,8 @@ services:
         max-file: "2"
 
 volumes:
-  postgres_data_dev:
-    external: true
-    name: activepieces-bmp-custom_postgres_data_dev
+  postgres_data_docker:
+    driver: local
   redis_data_dev:
     driver: local
 

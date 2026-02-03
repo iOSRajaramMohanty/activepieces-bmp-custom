@@ -1,7 +1,14 @@
 #!/bin/bash
 
+################################################################################
+# Restart Activepieces local development services
+# Uses EXISTING PostgreSQL and Redis from .env (localhost:5432, localhost:6379)
+# Different from Docker build which uses containerized postgres-dev and redis-dev
+################################################################################
+
 echo "════════════════════════════════════════════════════════"
 echo "🔄 RESTARTING ACTIVEPIECES SERVICES"
+echo "   (Using existing PostgreSQL + Redis from .env)"
 echo "════════════════════════════════════════════════════════"
 echo ""
 
@@ -27,6 +34,12 @@ mkdir -p .nx/cache/terminalOutputs
 chmod -R 755 .nx/cache 2>/dev/null || true
 echo "✅ Nx cache reset and directory structure ready"
 echo ""
+
+# Ensure Postgres (5433) and Redis (6379) are running for local dev
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+echo "🔧 Ensuring local DB (Postgres 5433, Redis 6379) is running..."
+"$SCRIPT_DIR/dev-local.sh" db-start 2>/dev/null || true
 
 # Start all services (Backend + Frontend + Engine)
 echo "🚀 Starting Activepieces Services..."

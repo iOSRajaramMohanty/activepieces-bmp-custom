@@ -90,23 +90,17 @@ BACKUP_FILE=~/activepieces_backups/activepieces_backup_$(date +%Y%m%d_%H%M%S).sq
 echo "Backup location: $BACKUP_FILE"
 echo ""
 
-# Check if database is accessible
-if docker ps | grep -q "postgres-dev"; then
-    echo "Database container found. Creating backup..."
-    
-    # Backup database
-    PGPASSWORD=A79Vm5D4p2VQHOp2gd5 pg_dump \
-        -h localhost \
-        -p 5433 \
-        -U postgres \
-        -d activepieces \
-        -F p \
-        -f "$BACKUP_FILE" 2>/dev/null || {
-        echo -e "${YELLOW}⚠️  Could not backup database (may be empty or not initialized)${NC}"
-        echo "Continuing anyway..."
-    }
-    
-    # Verify backup
+# Check if database is accessible (try local 5433 first, then Docker 5434)
+BACKUP_DONE=0
+if docker ps | grep -q "postgres-local"; then
+    echo "Local DB container (postgres-local on 5433) found. Creating backup..."
+    PGPASSWORD=A79Vm5D4p2VQHOp2gd5 pg_dump -h localhost -p 5433 -U postgres -d activepieces -F p -f "$BACKUP_FILE" 2>/dev/null && BACKUP_DONE=1
+elif docker ps | grep -q "postgres-dev"; then
+    echo "Docker DB container (postgres-dev on 5434) found. Creating backup..."
+    PGPASSWORD=A79Vm5D4p2VQHOp2gd5 pg_dump -h localhost -p 5434 -U postgres -d activepieces -F p -f "$BACKUP_FILE" 2>/dev/null && BACKUP_DONE=1
+fi
+
+if [ "$BACKUP_DONE" -eq 1 ]; then
     if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
         BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
         echo -e "${GREEN}✅ Database backed up successfully ($BACKUP_SIZE)${NC}"
@@ -114,7 +108,11 @@ if docker ps | grep -q "postgres-dev"; then
         echo -e "${YELLOW}⚠️  Backup file empty or not created (OK if fresh install)${NC}"
     fi
 else
-    echo -e "${YELLOW}⚠️  Database container not running, skipping backup${NC}"
+    if docker ps | grep -qE "postgres-local|postgres-dev"; then
+        echo -e "${YELLOW}⚠️  Could not backup database (may be empty or not initialized)${NC}"
+    else
+        echo -e "${YELLOW}⚠️  No database container running, skipping backup${NC}"
+    fi
     echo "This is OK if it's your first build."
 fi
 
@@ -191,7 +189,7 @@ echo ""
 echo "📊 Docker volume status:"
 docker volume ls | grep activepieces || echo "No activepieces volumes"
 echo ""
-echo -e "${YELLOW}ℹ️  Database volume preserved (contains your data)${NC}"
+echo -e "${YELLOW}ℹ️  Local dev volume (postgres-local, 5433) is untouched. Docker uses separate volume (postgres-dev, 5434).${NC}"
 echo ""
 sleep 2
 

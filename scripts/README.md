@@ -254,22 +254,30 @@ Interactive script to create and manage super admin accounts:
 
 ## 🔧 Environment Setup
 
-For local development with `run-dev.sh`, create a `.env` file:
+### PostgreSQL & Redis: Local vs Docker
+
+| Mode | Config File | PostgreSQL | Redis | Frontend |
+|------|-------------|------------|-------|----------|
+| **Local dev** (`dev-local.sh`, `restart-all.sh`, `run-dev.sh`) | `.env` | `localhost:5433` (auto-started via `docker-compose.local-db.yml` if needed) | `localhost:6379` | `http://localhost:4200` |
+| **Docker build** (`docker-compose.dev.yml`) | `.env.dev.backup` | Container `postgres-dev` (host port 5434) | Container `redis-dev` (host port 6380) | `http://localhost:8080` |
+
+**Local dev**: If Postgres/Redis aren't running, `dev-local.sh` and `restart-all.sh` auto-start them via `docker-compose.local-db.yml` using your existing data volume. Manual control: `./scripts/dev-local.sh db-start` / `./scripts/dev-local.sh db-stop`.
+
+### For local development (`run-dev.sh`, `dev-local.sh`), create a `.env` file:
 
 ```bash
 # Copy example
 cp .env.example .env
 
-# Edit with your settings
+# Edit with your settings (existing PostgreSQL + Redis)
 nano .env
 ```
 
-**Key variables:**
-- `AP_POSTGRES_HOST` - Database host
-- `AP_POSTGRES_PORT` - Database port  
-- `AP_POSTGRES_DATABASE` - Database name
-- `AP_POSTGRES_USERNAME` - Database user
-- `AP_POSTGRES_PASSWORD` - Database password
+**Key variables for local dev (existing data visible on FE 4200):**
+- `AP_POSTGRES_HOST` - `localhost` (existing DB)
+- `AP_POSTGRES_PORT` - `5433` (existing DB with your data)
+- `AP_REDIS_HOST` - `localhost` (existing Redis)
+- `AP_REDIS_PORT` - `6379` (or your existing Redis port)
 - `AP_DEV_PIECES` - Custom pieces to load (e.g., `ada-bmp`)
 
 ---
