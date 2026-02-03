@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useState, useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormField, FormItem, FormMessage } from '@/components/ui/form';
@@ -23,7 +23,6 @@ import {
   AuthenticationResponse,
   ErrorCode,
   isNil,
-  PlatformRole,
   SignInRequest,
 } from '@activepieces/shared';
 
@@ -45,8 +44,8 @@ type SignInSchema = Static<typeof SignInSchema>;
 const SignInForm: React.FC = () => {
   const [showCheckYourEmailNote, setShowCheckYourEmailNote] = useState(false);
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const emailFromQuery = searchParams.get('email') || '';
+  const showInvitationOnlyNote = searchParams.get('message') === 'invitation-required';
   
   const form = useForm<SignInSchema>({
     resolver: typeboxResolver(SignInSchema),
@@ -138,12 +137,13 @@ const SignInForm: React.FC = () => {
     mutate(data);
   };
 
-  if (!userCreated) {
-    return <Navigate to="/sign-up" />;
-  }
-
   return (
     <>
+      {(!userCreated || showInvitationOnlyNote) && (
+        <p className="mb-4 text-center text-sm text-muted-foreground">
+          {t('Sign up is only available via invitation. Please use the link from your invitation email.')}
+        </p>
+      )}
       <Form {...form}>
         <form className="grid space-y-4">
           <FormField

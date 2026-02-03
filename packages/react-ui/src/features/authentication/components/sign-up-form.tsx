@@ -257,8 +257,9 @@ const SignUpForm = ({
                   id="email"
                   type="email"
                   placeholder={'email@example.com'}
-                  className="rounded-sm"
+                  className="rounded-sm bg-muted read-only:cursor-not-allowed read-only:opacity-100"
                   data-testid="sign-up-email"
+                  readOnly
                 />
                 <FormMessage />
               </FormItem>
