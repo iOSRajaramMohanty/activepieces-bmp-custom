@@ -34,6 +34,7 @@ import AuthenticatePage from '../routes/authenticate';
 import { ChangePasswordPage } from '../routes/change-password';
 import { AppConnectionsPage } from '../routes/connections';
 import { EmbeddedConnectionDialog } from '../routes/embed/embedded-connection-dialog';
+import { EmbeddedStepSettingsDialog } from '../routes/embed/embedded-step-settings-dialog';
 import { FlowsPage } from '../routes/flows';
 import { FlowBuilderPage } from '../routes/flows/id';
 import { ResetPasswordPage } from '../routes/forget-password';
@@ -94,6 +95,10 @@ const routes = [
   {
     path: '/embed/connections',
     element: <EmbeddedConnectionDialog></EmbeddedConnectionDialog>,
+  },
+  {
+    path: '/embed/step-settings',
+    element: <EmbeddedStepSettingsDialog></EmbeddedStepSettingsDialog>,
   },
   {
     path: '/authenticate',

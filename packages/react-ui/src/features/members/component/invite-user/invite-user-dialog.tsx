@@ -22,15 +22,6 @@ import {
 import { FormField, FormItem, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { TagInput } from '@/components/ui/tag-input';
 import {
   Tooltip,
@@ -40,6 +31,7 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { PlatformRoleSelect } from '@/features/members/component/platform-role-select';
+import { RoleSelector } from '@/features/members/component/role-selector';
 import { userInvitationApi } from '@/features/members/lib/user-invitation';
 import { projectRoleApi } from '@/features/platform-admin/lib/project-role-api';
 import { organizationHooks } from '@/features/platform-admin/lib/organization-hooks';
@@ -355,7 +347,7 @@ export const InviteUserDialog = ({
             setTagInputKey(0);
           }}
         >
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[475px]">
             <DialogHeader>
               <DialogTitle>
                 {invitationLink
@@ -669,29 +661,13 @@ export const InviteUserDialog = ({
                       render={({ field }) => (
                         <FormItem className="grid gap-2">
                           <Label>{t('Project Role')}</Label>
-                          <Select
-                            onValueChange={(value) => {
-                              const selectedRole = roles.find(
-                                (role) => role.name === value,
-                              );
-                              field.onChange(selectedRole?.name);
-                            }}
+                          <RoleSelector
+                            type="project"
                             value={field.value || defaultProjectRole}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('Select Role')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>{t('Roles')}</SelectLabel>
-                                {roles.map((role) => (
-                                  <SelectItem key={role.name} value={role.name}>
-                                    {role.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
+                            onValueChange={field.onChange}
+                            roles={roles}
+                            placeholder={t('Select Role')}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
