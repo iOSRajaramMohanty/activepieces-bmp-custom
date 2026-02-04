@@ -50,6 +50,7 @@ import {
 import { projectRepo } from '../../project/project-service'
 import { userService } from '../../user/user-service'
 import { userInteractionWatcher } from '../../workers/user-interaction-watcher'
+import { isBmpPiece } from '@activepieces/shared'
 import {
     AppConnectionEntity,
     AppConnectionSchema,
@@ -62,7 +63,7 @@ export const appConnectionsRepo = repoFactory(AppConnectionEntity)
 
 export const appConnectionService = (log: FastifyBaseLogger) => ({
     async upsert(params: UpsertParams): Promise<AppConnectionWithoutSensitiveData> {
-        const { projectIds, externalId, value, displayName, pieceName, ownerId, platformId, scope, type, status, metadata } = params
+        const { projectIds, externalId, value, displayName, pieceName, ownerId, platformId, scope, type, status, metadata, creatorPlatformRole } = params
         const pieceVersion = params.pieceVersion ?? ( await pieceMetadataService(log).getOrThrow({
             name: pieceName,
             platformId,
@@ -89,6 +90,15 @@ export const appConnectionService = (log: FastifyBaseLogger) => ({
         })
 
         const newId = existingConnection?.id ?? apId()
+        const connectionMetadata: Metadata = {
+            ...(metadata ?? {}),
+            ...(creatorPlatformRole ? { creatorPlatformRole } : {}),
+            ...(isBmpPiece(pieceName) && value && typeof value === 'object' && 'props' in value
+                ? (value.props && typeof value.props === 'object' && 'environment' in value.props
+                    ? { environment: (value.props as Record<string, unknown>).environment }
+                    : {})
+                : {}),
+        }
         const connection = {
             displayName,
             ...spreadIfDefined('ownerId', ownerId),
@@ -101,11 +111,12 @@ export const appConnectionService = (log: FastifyBaseLogger) => ({
             scope,
             projectIds,
             platformId,
-            ...spreadIfDefined('metadata', metadata),
+            metadata: Object.keys(connectionMetadata).length > 0 ? connectionMetadata : undefined,
             pieceVersion,
         }
 
-        await appConnectionsRepo().upsert(connection, ['id'])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TypeORM QueryDeepPartialEntity fails with Metadata JSONB
+        await appConnectionsRepo().upsert(connection as any, ['id'])
 
         const updatedConnection = await appConnectionsRepo().findOneByOrFail({
             id: newId,
@@ -505,21 +516,26 @@ const engineValidateAuth = async (
         platformId,
     })
 
-    // Fetch environment-specific metadata for dynamic API URL injection
+    // Fetch organization_environment metadata for the selected environment (required for BMP)
+    const authConn = auth as { props?: { environment?: string }; environment?: string }
+    const authEnvironment = authConn?.props?.environment ?? authConn?.environment
     let environmentMetadata: Record<string, unknown> = {}
-    try {
-        const project = await projectRepo().findOneBy({ id: projectId })
-        if (project && project.organizationId) {
-            const environments = await organizationEnvironmentService.listByOrganization(project.organizationId)
-            // Find the environment that links to this project
-            const projectEnvironment = environments.find((env) => env.projectId === projectId)
-            if (projectEnvironment && projectEnvironment.metadata) {
-                environmentMetadata = projectEnvironment.metadata as Record<string, unknown>
-                log.debug({ projectId, environment: projectEnvironment.environment, environmentMetadata }, '[engineValidateAuth] Fetched environment metadata')
-            }
+    const project = await projectRepo().findOneBy({ id: projectId })
+    if (project?.organizationId && authEnvironment) {
+        const environments = await organizationEnvironmentService.listByOrganization(project.organizationId)
+        const orgEnv = environments.find((env) => env.environment === authEnvironment)
+        if (orgEnv?.metadata) {
+            environmentMetadata = orgEnv.metadata as Record<string, unknown>
         }
-    } catch (error) {
-        log.warn({ projectId, error }, '[engineValidateAuth] Failed to fetch environment metadata, continuing without it')
+    }
+    const hasBmpApiUrl = isBmpPiece(pieceName) && !!environmentMetadata?.ADA_BMP_API_URL
+    if (isBmpPiece(pieceName) && (!project?.organizationId || !authEnvironment || !hasBmpApiUrl)) {
+        throw new ActivepiecesError({
+            code: ErrorCode.VALIDATION,
+            params: {
+                message: `No API URL configured for ${authEnvironment || 'selected'} environment. Configure ADA_BMP_API_URL in Organization > Environments > [your org] > Configure for the selected environment.`,
+            },
+        })
     }
 
     const engineResponse = await userInteractionWatcher(log).submitAndWaitForResponse<OperationResponse<ExecuteValidateAuthResponse>>({
@@ -645,6 +661,7 @@ type UpsertParams = {
     pieceName: string
     metadata?: Metadata
     pieceVersion?: string
+    creatorPlatformRole?: PlatformRole
 }
 
 

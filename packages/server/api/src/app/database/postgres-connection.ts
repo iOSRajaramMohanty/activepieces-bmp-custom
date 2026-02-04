@@ -336,6 +336,8 @@ import { AddTemplateIdToFlowEntity1768829135202 } from './migration/postgres/176
 import { AddOrganizationTables1769126400000 } from './migration/postgres/1769126400000-AddOrganizationTables'
 import { AddOrganizationToUserInvitation1769127000000 } from './migration/postgres/1769127000000-AddOrganizationToUserInvitation'
 import { AddMetadataToOrganizationEnvironment1769127500000 } from './migration/postgres/1769127500000-AddMetadataToOrganizationEnvironment'
+import { AddProjectIdToOrganization1769127600000 } from './migration/postgres/1769127600000-AddProjectIdToOrganization'
+import { AddMissingOrganizationEnvironments1769127700000 } from './migration/postgres/1769127700000-AddMissingOrganizationEnvironments'
 import { AddEventStreaming1769084311004 } from './migration/postgres/1769084311004-AddEventStreaming'
 import { RemoveOperatorRole1769613456917 } from './migration/postgres/1769613456917-RemoveOperatorRole'
 
@@ -691,6 +693,8 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddOrganizationTables1769126400000,
         AddOrganizationToUserInvitation1769127000000,
         AddMetadataToOrganizationEnvironment1769127500000,
+        AddProjectIdToOrganization1769127600000,
+        AddMissingOrganizationEnvironments1769127700000,
         RemoveOperatorRole1769613456917,
     ]
     return migrations

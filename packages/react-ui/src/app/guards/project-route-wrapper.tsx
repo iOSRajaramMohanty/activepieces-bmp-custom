@@ -25,6 +25,7 @@ export const TokenCheckerWrapper: React.FC<{ children: React.ReactNode }> = ({
   }
   const hasAccessToProject =
     projectCollectionUtils.useHasAccessToProject(projectIdFromParams);
+  const { data: accessibleProjects } = projectCollectionUtils.useAll();
 
   if (!hasAccessToProject) {
     toast.error(t('Invalid Access'), {
@@ -33,6 +34,13 @@ export const TokenCheckerWrapper: React.FC<{ children: React.ReactNode }> = ({
       ),
       duration: 10000,
     });
+    const firstProject = Array.isArray(accessibleProjects)
+      ? accessibleProjects[0]
+      : (accessibleProjects as readonly { id: string }[] | undefined)?.[0];
+    if (firstProject?.id) {
+      authenticationSession.switchToProject(firstProject.id);
+      return <Navigate to={`/projects/${firstProject.id}/flows`} replace />;
+    }
     return <Navigate to="/" replace />;
   }
 

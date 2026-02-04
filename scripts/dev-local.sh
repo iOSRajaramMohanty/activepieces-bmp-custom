@@ -184,9 +184,12 @@ stop_services() {
         rm "$PROJECT_ROOT/.dev-pid"
     fi
     
+    # Explicitly kill Engine worker (nx serve engine) - it may not bind to a port
+    pkill -f "nx serve engine" 2>/dev/null || true
+    
     # Kill processes on ports (cleanup)
     kill_port 3000  # Backend
-    kill_port 3001  # Engine
+    kill_port 3001  # Engine (if it binds)
     kill_port 4200  # Frontend
     
     print_success "Services stopped"
@@ -208,11 +211,10 @@ show_status() {
     fi
     
     # Check engine (Engine is a worker, not an HTTP server)
-    # It compiles and waits to be invoked by the backend
     if pgrep -f "nx serve engine" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Engine:      ✅ Compiled & Ready (worker, not HTTP server)${NC}"
+        echo -e "${GREEN}✅ Engine:      ✅ Running (worker, not HTTP server)${NC}"
     else
-        echo -e "${YELLOW}⚠️  Engine:      ⚠️  Not compiled (building...)${NC}"
+        print_error "Engine: ❌ Not running"
     fi
     
     # Check frontend (port 4200)

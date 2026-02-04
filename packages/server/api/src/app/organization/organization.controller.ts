@@ -146,22 +146,15 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             // Get all environments for this organization
             const allEnvironments = await organizationEnvironmentService.listByOrganization(id)
             
-            // IMPORTANT: Filter environments based on user's admin role
-            // Each environment admin can ONLY see and manage their own environment
-            // Platform owners can see all environments
+            // Admins can see and configure Dev/Staging/Prod metadata for their org.
+            // Owners see all. Members/Operators see envs for their org (read-only; no configure).
             let filteredEnvironments = allEnvironments
-            
-            if (currentUser.platformRole !== PlatformRole.OWNER) {
-                // Non-owner users can only see environments where they are the admin
-                filteredEnvironments = allEnvironments.filter(env => 
-                    env.adminUserId === currentUser.id
-                )
-                
-                console.log('[organization.controller] Filtered environments for non-owner:', {
-                    userId: currentUser.id,
-                    originalCount: allEnvironments.length,
-                    filteredCount: filteredEnvironments.length,
-                })
+            if (currentUser.platformRole !== PlatformRole.OWNER && currentUser.platformRole !== PlatformRole.SUPER_ADMIN) {
+                // Admin with this org: see all envs (can configure metadata)
+                // Member/Operator with this org: see all envs (read-only, Configure disabled)
+                if (currentUser.organizationId !== id) {
+                    filteredEnvironments = []
+                }
             }
             
             console.log('[organization.controller] Environments found:', { 
@@ -218,6 +211,69 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             })
         }
         return organization
+    })
+
+    // Initialize Dev, Staging, Prod environments for an organization (Admin/Owner only)
+    app.post('/:organizationId/environments/initialize', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            tags: ['organizations'],
+            summary: 'Create Dev, Staging, Prod environments for an organization',
+            params: Type.Object({
+                organizationId: Type.String(),
+            }),
+            response: {
+                [StatusCodes.OK]: Type.Array(OrganizationEnvironment),
+            },
+        },
+    }, async (request, reply) => {
+        const { organizationId } = request.params
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+
+        const organization = await organizationService.getById(
+            organizationId,
+            request.principal.id,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
+        if (!organization) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: { entityId: organizationId, entityType: 'organization' },
+            })
+        }
+
+        const isAdminOrOwner = currentUser.platformRole === PlatformRole.OWNER ||
+            currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
+            (currentUser.platformRole === PlatformRole.ADMIN && currentUser.organizationId === organizationId)
+        if (!isAdminOrOwner) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: { message: 'Only admins and owners can setup environment metadata' },
+            })
+        }
+
+        const platformId = request.principal.platform.id
+        const envs: EnvironmentType[] = [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
+        const created: OrganizationEnvironment[] = []
+
+        for (const env of envs) {
+            const existing = await organizationEnvironmentService.getByOrgAndEnv(organizationId, env)
+            if (!existing) {
+                const orgEnv = await organizationEnvironmentService.create({
+                    organizationId,
+                    environment: env,
+                    platformId,
+                })
+                created.push(orgEnv)
+            }
+        }
+
+        const all = await organizationEnvironmentService.listByOrganization(organizationId)
+        return reply.status(StatusCodes.OK).send(all)
     })
 
     // Update organization environment metadata
@@ -400,71 +456,31 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             },
         },
     }, async (request) => {
-        try {
-            console.log('[organization.controller] GET /current-user/allowed-environments');
-            console.log('[organization.controller] Principal ID:', request.principal.id);
-            
-            const currentUserId = request.principal.id
-            
-            // Get current user's organization
-            const { userService } = await import('../user/user-service')
-            const currentUser = await userService.getOneOrFail({ id: currentUserId })
-            
-            console.log('[organization.controller] Current user organization:', currentUser.organizationId);
-            console.log('[organization.controller] Current user ID:', currentUserId);
-            
-            if (!currentUser.organizationId) {
-                console.warn('[organization.controller] User has no organizationId');
-                return {
-                    environments: ['Dev', 'Staging', 'Production'], // Default: all environments
-                    organizationId: '',
-                    userId: currentUserId,
-                }
-            }
-            
-            // Get ALL organization environments
-            const orgEnvironments = await organizationEnvironmentService.listByOrganization(
-                currentUser.organizationId
-            )
-            
-            console.log('[organization.controller] All organization environments:', 
-                orgEnvironments.map(e => `${e.environment} (admin: ${e.adminUserId})`).join(', '))
-            
-            // Filter to only environments where current user is the admin
-            const userAdminEnvironments = orgEnvironments.filter(
-                env => env.adminUserId === currentUserId
-            )
-            
-            console.log('[organization.controller] User is admin of:', 
-                userAdminEnvironments.map(e => e.environment).join(', '))
-            
-            // Extract environment types where user is admin
-            const allowedEnvironments = userAdminEnvironments.map(env => env.environment)
-            
-            // If user is not admin of any environment, return all as default
-            // (This handles platform admins or users without specific environment assignments)
-            if (allowedEnvironments.length === 0) {
-                console.warn('[organization.controller] User is not admin of any environment, returning all');
-                return {
-                    environments: ['Dev', 'Staging', 'Production'],
-                    organizationId: currentUser.organizationId,
-                    userId: currentUserId,
-                }
-            }
-            
-            return {
-                environments: allowedEnvironments,
-                organizationId: currentUser.organizationId,
-                userId: currentUserId,
-            }
-        } catch (error) {
-            console.error('[organization.controller] Error fetching allowed environments:', error)
-            // Fallback: return all environments on error
-            return {
-                environments: ['Dev', 'Staging', 'Production'],
-                organizationId: '',
-                userId: request.principal.id,
-            }
+        const currentUserId = request.principal.id
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: currentUserId })
+
+        // Derive allowed environments from platform role (BMP connection popup filtering)
+        let environments: string[]
+        switch (currentUser.platformRole) {
+            case PlatformRole.MEMBER:
+                environments = [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING]
+                break
+            case PlatformRole.OPERATOR:
+                environments = [EnvironmentType.PRODUCTION]
+                break
+            case PlatformRole.ADMIN:
+            case PlatformRole.OWNER:
+            case PlatformRole.SUPER_ADMIN:
+            default:
+                environments = [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
+                break
+        }
+
+        return {
+            environments,
+            organizationId: currentUser.organizationId ?? '',
+            userId: currentUserId,
         }
     })
 }

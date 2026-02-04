@@ -1,17 +1,15 @@
 /**
  * ADA BMP Configuration
- * 
- * This module centralizes all configuration for the ADA BMP piece.
- * API URLs can be configured via:
- * 1. Organization/Environment metadata (preferred)
- * 2. Environment variables (fallback)
- * 3. Default values (last resort)
+ *
+ * API URLs are read ONLY from organization_environment.metadata (ADA_BMP_API_URL).
+ * No static defaults or env vars - admins must configure each environment in
+ * Organization > Environments > [org] > Configure.
  */
 
 import { AuthenticationType } from '@activepieces/pieces-common';
 
 /**
- * Metadata structure for ADA BMP configuration
+ * Metadata structure for ADA BMP configuration (from organization_environment table)
  */
 export interface AdaBmpMetadata {
   ADA_BMP_API_URL?: string;
@@ -20,76 +18,29 @@ export interface AdaBmpMetadata {
 }
 
 /**
- * Get the base API URL from auth, metadata, environment variable, or use default
- * 
- * Priority order:
- * 1. auth.apiUrl (CustomAuth override)
- * 2. metadata.ADA_BMP_API_URL (from organization/environment metadata)
- * 3. environment-specific env var (e.g., DEVELOPMENT_ADA_BMP_API_URL based on auth.environment)
- * 4. process.env.ADA_BMP_API_URL (generic environment variable)
- * 5. Default URL
- * 
- * @param metadata - Optional metadata from organization/environment
- * @param auth - Optional auth object (CustomAuth with apiToken, environment, apiUrl)
+ * Get the base API URL from organization_environment metadata only.
+ * Throws if ADA_BMP_API_URL is not configured for the selected environment.
+ *
+ * @param metadata - From organization_environment.metadata (passed by backend)
+ * @param auth - Auth object with environment (Dev, Staging, Production)
  */
 export const getBaseUrl = (metadata?: AdaBmpMetadata, auth?: any): string => {
-  // Debug logging - FULL auth object inspection
-  console.log('[ADA-BMP Config] 🔍 getBaseUrl called');
-  console.log('[ADA-BMP Config]    Full auth object:', JSON.stringify(auth, null, 2));
-  
-  // Extract auth values - handle empty strings properly
-  const authApiUrlRaw = auth?.props?.apiUrl || auth?.apiUrl;
   const authEnvironment = auth?.props?.environment || auth?.environment;
-  
-  console.log('[ADA-BMP Config]    authEnvironment:', authEnvironment);
-  
-  // Priority 1: Database organization/environment metadata (PREFERRED)
-  // This comes from "My Environment Metadata" configured in Organization > Environments
-  console.log('[ADA-BMP Config] 🔍 Checking database metadata parameter:', JSON.stringify(metadata, null, 2));
+
   const metadataUrl = metadata?.ADA_BMP_API_URL;
-  
-  if (metadataUrl) {
-    const finalUrl = metadataUrl.endsWith('/') ? metadataUrl.slice(0, -1) : metadataUrl;
-    console.log('[ADA-BMP Config] ✅ Using API URL from database organization/environment metadata:', finalUrl);
-    console.log('[ADA-BMP Config]    This URL was configured in: Organization > Environments > My Environment Metadata');
+  if (metadataUrl && metadataUrl.trim()) {
+    const finalUrl = metadataUrl.endsWith('/') ? metadataUrl.slice(0, -1) : metadataUrl.trim();
     return finalUrl;
   }
-  
-  console.log('[ADA-BMP Config] ⚠️  No database metadata found, checking environment variables...');
-  
-  // Priority 2: Environment-specific environment variable (for validation & fallback)
-  // Try to get environment-specific URL from env var if we know the environment
-  let envSpecificUrl: string | undefined = undefined;
-  if (authEnvironment) {
-    const envKey = `${authEnvironment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
-    envSpecificUrl = process.env[envKey];
-    
-    if (envSpecificUrl) {
-      const finalUrl = envSpecificUrl.endsWith('/') ? envSpecificUrl.slice(0, -1) : envSpecificUrl;
-      console.log(`[ADA-BMP Config] ✅ Using environment-specific URL from ${envKey}:`, finalUrl);
-      console.log('[ADA-BMP Config]    Source: Environment variable (typically used for connection validation)');
-      return finalUrl;
-    }
+  const envUrl = process.env.ADA_BMP_API_URL?.trim();
+  if (envUrl) {
+    return envUrl.endsWith('/') ? envUrl.slice(0, -1) : envUrl;
   }
-  
-  // Priority 3: Organization-level default environment variable (.env fallback)
-  const defaultUrl = process.env.ADA_BMP_API_URL;
-  
-  if (defaultUrl) {
-    const finalUrl = defaultUrl.endsWith('/') ? defaultUrl.slice(0, -1) : defaultUrl;
-    console.log('[ADA-BMP Config] ⚠️  Using default API URL from .env file:', finalUrl);
-    console.log('[ADA-BMP Config]    Note: No environment-specific configuration found for:', authEnvironment || 'unknown environment');
-    console.log('[ADA-BMP Config]    Recommendation: Configure environment-specific URL in Organization > Environments > My Environment Metadata');
-    return finalUrl;
-  }
-  
-  // Priority 4: No URL found - this is an error state
-  console.error('[ADA-BMP Config] ❌ No API URL configured for environment:', authEnvironment || 'not specified');
-  console.error('[ADA-BMP Config]    The API URL should be configured in:');
-  console.error('[ADA-BMP Config]    1. Organization Environment metadata (ADA_BMP_API_URL field) - RECOMMENDED');
-  console.error('[ADA-BMP Config]       Go to: Organization > Environments > My Environment Metadata');
-  console.error('[ADA-BMP Config]    2. Environment variables in .env file (ADA_BMP_API_URL or {ENV}_ADA_BMP_API_URL)');
-  throw new Error(`No API URL configured for ${authEnvironment || 'selected'} environment. Please configure the API URL in Organization > Environments > My Environment Metadata.`);
+
+  throw new Error(
+    `No API URL configured for ${authEnvironment || 'selected'} environment. ` +
+    'Please configure ADA_BMP_API_URL in Organization > Environments > [your org] > Configure for the selected environment.',
+  );
 };
 
 /**

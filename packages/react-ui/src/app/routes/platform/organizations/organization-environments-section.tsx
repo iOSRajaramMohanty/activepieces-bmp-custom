@@ -1,5 +1,5 @@
 import { t } from 'i18next';
-import { Code, ChevronDown, ChevronRight, Building2 } from 'lucide-react';
+import { Code, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { organizationHooks } from '@/features/platform-admin/lib/organization-hooks';
-import { OrganizationEnvironment, EnvironmentType } from '@activepieces/shared';
+import { userHooks } from '@/hooks/user-hooks';
+import { OrganizationEnvironment, EnvironmentType, PlatformRole } from '@activepieces/shared';
 import { EnvironmentMetadataDialog } from './environment-metadata-dialog';
 
 type OrganizationEnvironmentsSectionProps = {
@@ -21,15 +22,14 @@ export const OrganizationEnvironmentsSection = ({
 }: OrganizationEnvironmentsSectionProps) => {
   const [open, setOpen] = useState(false);
   const { data: environments, isLoading, refetch, error } = organizationHooks.useOrganizationEnvironments(organizationId);
-  
-  // Debug logging
-  console.log('[OrganizationEnvironmentsSection]', {
-    organizationId,
-    organizationName,
-    environmentsCount: environments?.length || 0,
-    isLoading,
-    error,
-  });
+  const { mutate: initializeEnvironments, isPending: isInitializing } = organizationHooks.useInitializeEnvironments();
+  const { data: currentUser } = userHooks.useCurrentUser();
+
+  const canSetupEnvironments = currentUser && (
+    currentUser.platformRole === PlatformRole.OWNER ||
+    currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
+    (currentUser.platformRole === PlatformRole.ADMIN && currentUser.organizationId === organizationId)
+  );
 
   const getEnvironmentBadgeVariant = (env: EnvironmentType) => {
     switch (env) {
@@ -41,19 +41,6 @@ export const OrganizationEnvironmentsSection = ({
         return 'destructive';
       default:
         return 'outline';
-    }
-  };
-
-  const getDefaultApiUrl = (env: EnvironmentType) => {
-    switch (env) {
-      case EnvironmentType.DEVELOPMENT:
-        return 'https://bmpapidev1.cl.bmp.ada-asia.my';
-      case EnvironmentType.STAGING:
-        return 'https://bmpapistg.cl.bmp.ada-asia.my';
-      case EnvironmentType.PRODUCTION:
-        return 'https://bmpapiprod.cl.bmp.ada-asia.my';
-      default:
-        return '';
     }
   };
 
@@ -76,7 +63,6 @@ export const OrganizationEnvironmentsSection = ({
   }
 
   if (error) {
-    console.error('[OrganizationEnvironmentsSection] Error loading environments:', error);
     const errorMessage = error instanceof Error 
       ? error.message 
       : (error as any)?.response?.data?.message 
@@ -100,8 +86,7 @@ export const OrganizationEnvironmentsSection = ({
     );
   }
 
-  // Always show the section, even if no environments exist
-  // This allows users to see that environment metadata can be configured
+  // No environments: Admins can setup Dev, Staging, Prod; Members/Operators see info message
   if (!environments || environments.length === 0) {
     return (
       <Card className="mt-4">
@@ -111,10 +96,23 @@ export const OrganizationEnvironmentsSection = ({
             {t('Environment Metadata')} - {organizationName}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <div className="text-sm text-muted-foreground">
-            {t('No environment assigned to you or no environments configured for this organization yet.')}
+            {canSetupEnvironments
+              ? t('Setup Dev, Staging, and Prod metadata for BMP connections. Members use Dev/Staging; Operators use Production.')
+              : t('No environment metadata configured for this organization yet. Ask your admin to set up Dev, Staging, Prod.')}
           </div>
+          {canSetupEnvironments && (
+            <Button
+              onClick={() => initializeEnvironments(organizationId)}
+              loading={isInitializing}
+              disabled={isInitializing}
+              className="gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              {t('Setup Dev, Staging, Prod')}
+            </Button>
+          )}
         </CardContent>
       </Card>
     );

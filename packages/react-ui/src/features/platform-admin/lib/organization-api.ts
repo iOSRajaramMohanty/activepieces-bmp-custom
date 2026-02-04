@@ -30,6 +30,13 @@ export const organizationApi = {
     );
   },
 
+  initializeEnvironments(organizationId: string) {
+    return api.post<OrganizationEnvironment[]>(
+      `/v1/organizations/${organizationId}/environments/initialize`,
+      {}
+    );
+  },
+
   checkAdminAvailability(request: CheckAdminAvailabilityRequest) {
     return api.post<CheckAdminAvailabilityResponse>(
       '/v1/organizations/check-admin',

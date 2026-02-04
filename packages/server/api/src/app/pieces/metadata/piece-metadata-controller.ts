@@ -7,6 +7,7 @@ import {
     GetPieceRequestParams,
     GetPieceRequestQuery,
     GetPieceRequestWithScopeParams,
+    isBmpPiece,
     isNil,
     ListPiecesRequestQuery,
     LocalesEnum,
@@ -21,7 +22,9 @@ import {
 import {
     FastifyPluginAsyncTypebox,
 } from '@fastify/type-provider-typebox'
+import { ArrayContains } from 'typeorm'
 import { EngineHelperPropResult, OperationResponse } from 'server-worker'
+import { appConnectionsRepo } from '../../app-connection/app-connection-service/app-connection-service'
 import { flowService } from '../../flows/flow/flow.service'
 import { sampleDataService } from '../../flows/step-run/sample-data.service'
 import { userInteractionWatcher } from '../../workers/user-interaction-watcher'
@@ -143,16 +146,28 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
             try {
                 const project = await projectService.getOneOrThrow(projectId)
                 if (project.organizationId) {
-                    // Get all environments for this organization and find the one associated with this project
                     const orgEnvs = await organizationEnvironmentService.listByOrganization(project.organizationId)
-                    const projectEnv = orgEnvs.find(env => env.projectId === projectId)
-                    
-                    if (projectEnv?.metadata) {
-                        organizationEnvironmentMetadata = projectEnv.metadata as Record<string, unknown>
+                    let orgEnv: { metadata?: unknown; environment: string } | undefined
+
+                    if (isBmpPiece(req.body.pieceName)) {
+                        const authEnvironment = await extractEnvironmentFromConnection(
+                            req.body.input,
+                            projectId,
+                            platform.id,
+                        )
+                        if (authEnvironment) {
+                            orgEnv = orgEnvs.find(env => env.environment === authEnvironment)
+                        }
+                    }
+                    if (!orgEnv) {
+                        orgEnv = orgEnvs.find(env => env.projectId === projectId)
+                    }
+                    if (orgEnv?.metadata) {
+                        organizationEnvironmentMetadata = orgEnv.metadata as Record<string, unknown>
                         req.log.info({
                             organizationId: project.organizationId,
-                            environment: projectEnv.environment,
-                            hasApiUrl: !!(projectEnv.metadata as any).ADA_BMP_API_URL,
+                            environment: orgEnv.environment,
+                            hasApiUrl: !!(orgEnv.metadata as Record<string, unknown>)?.ADA_BMP_API_URL,
                         }, '[Pieces Options] Fetched organization environment metadata')
                     } else {
                         req.log.info({
@@ -187,6 +202,32 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
 
 function getPlatformId(principal: Principal): string | undefined {
     return principal.type === PrincipalType.WORKER || principal.type === PrincipalType.UNKNOWN ? undefined : principal.platform?.id
+}
+
+function parseConnectionExternalIdFromAuth(auth: unknown): string | null {
+    if (typeof auth !== 'string') return null
+    const match = auth.match(/\['([^']+)'\]/)
+    return match ? match[1] : null
+}
+
+async function extractEnvironmentFromConnection(
+    input: Record<string, unknown>,
+    projectId: string,
+    platformId: string,
+): Promise<string | null> {
+    const auth = input?.auth
+    const externalId = parseConnectionExternalIdFromAuth(auth)
+    if (!externalId) return null
+    const conn = await appConnectionsRepo().findOne({
+        where: {
+            projectIds: ArrayContains([projectId]),
+            externalId,
+            platformId,
+        },
+        select: ['metadata'],
+    })
+    const meta = conn?.metadata as Record<string, string> | undefined
+    return meta?.environment ?? null
 }
 
 const RegistryPiecesRequest = {

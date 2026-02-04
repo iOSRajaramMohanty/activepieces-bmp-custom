@@ -7,6 +7,7 @@ import {
     ErrorCode,
     Flow,
     FlowId,
+    PlatformRole,
     FlowOperationRequest,
     FlowOperationStatus,
     FlowOperationType,
@@ -50,8 +51,12 @@ import { FlowEntity } from './flow.entity'
 import { flowRepo } from './flow.repo'
 
 export const flowService = (log: FastifyBaseLogger) => ({
-    async create({ projectId, request, externalId, ownerId, templateId }: CreateParams): Promise<PopulatedFlow> {
+    async create({ projectId, request, externalId, ownerId, templateId, creatorPlatformRole }: CreateParams): Promise<PopulatedFlow> {
         const folderId = await getFolderIdFromRequest({ projectId, folderId: request.folderId, folderName: request.folderName, log })
+        const metadata: Metadata = {
+            ...(request.metadata ?? {}),
+            ...(creatorPlatformRole ? { creatorPlatformRole } : {}),
+        }
         const newFlow: NewFlow = {
             id: apId(),
             projectId,
@@ -60,7 +65,7 @@ export const flowService = (log: FastifyBaseLogger) => ({
             ownerId,
             publishedVersionId: null,
             externalId: externalId ?? apId(),
-            metadata: request.metadata,
+            metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
             operationStatus: FlowOperationStatus.NONE,
             templateId,
         }
@@ -776,6 +781,7 @@ type CreateParams = {
     ownerId?: UserId
     externalId?: string
     templateId?: string
+    creatorPlatformRole?: PlatformRole
 }
 
 type ListParamsBase = {

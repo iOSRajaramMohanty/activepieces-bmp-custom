@@ -29,7 +29,7 @@ import { stripeHelper } from '../ee/platform/platform-plan/stripe-helper'
 import { fileService } from '../file/file.service'
 import { flowService } from '../flows/flow/flow.service'
 import { system } from '../helper/system/system'
-import { projectRepo } from '../project/project-service'
+import { projectRepo, projectService } from '../project/project-service'
 import { userRepo, userService } from '../user/user-service'
 import { platformRepo, platformService } from './platform.service'
 
@@ -279,18 +279,13 @@ export const platformController: FastifyPluginAsyncTypebox = async (app) => {
                 }
             }
             
-            // Get admin's projects to set as default project
-            const adminProjects = await projectRepo().find({
-                where: {
-                    ownerId: admin.id,
-                    platformId: platformId,
-                },
-                order: {
-                    created: 'ASC',
-                },
-                take: 1,
+            // Get admin's accessible projects (includes org shared project for org admins)
+            const adminProjects = await projectService.getAllForUser({
+                platformId,
+                userId: admin.id,
+                platformRole: admin.platformRole,
+                userOrganizationId: admin.organizationId ?? undefined,
             })
-            
             const defaultProjectId = adminProjects.length > 0 ? adminProjects[0].id : null
             
             // Return admin's authentication token

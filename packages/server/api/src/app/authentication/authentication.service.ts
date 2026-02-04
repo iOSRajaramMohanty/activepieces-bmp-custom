@@ -142,11 +142,10 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             }
         }
         
-        // Check if this is an organization-based admin invitation
+        // Check if this is an organization-based admin invitation (no environment required; shared project per org)
         const isOrganizationAdminInvitation = platformInvitation &&
             platformInvitation.platformRole === PlatformRole.ADMIN &&
-            !isNil(platformInvitation.organizationId) &&
-            !isNil(platformInvitation.environment)
+            !isNil(platformInvitation.organizationId)
         
         let user: User
         if (isOrganizationAdminInvitation) {

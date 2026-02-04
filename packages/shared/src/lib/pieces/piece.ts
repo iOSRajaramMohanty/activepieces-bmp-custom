@@ -1,5 +1,12 @@
 import { Static, Type } from '@sinclair/typebox'
 
+/** BMP piece name for connection filtering by environment and platform role */
+export const BMP_PIECE_NAME = '@activepieces/piece-ada-bmp'
+
+export function isBmpPiece(pieceName: string): boolean {
+    return pieceName === BMP_PIECE_NAME || pieceName === 'ada-bmp'
+}
+
 export enum PackageType {
     ARCHIVE = 'ARCHIVE',
     REGISTRY = 'REGISTRY',

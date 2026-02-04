@@ -37,6 +37,7 @@ export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
             platformId: request.principal.platform.id,
             userId: request.principal.id,
             platformRole: user.platformRole,
+            userOrganizationId: user.organizationId ?? undefined,
         })
         
         // Add analytics (member counts) to each project for CE mode

@@ -42,46 +42,17 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
   },
   validate: async ({ auth }) => {
     try {
-      // Type the auth object
-      const typedAuth = auth as {
-        apiToken: string;
-        environment: string;
-      };
-      
-      console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION START =====');
-      console.log('[ADA-BMP Auth] Token (first 10 chars):', typedAuth.apiToken.substring(0, 10) + '...');
-      console.log('[ADA-BMP Auth] Selected Environment:', typedAuth.environment);
-      
-      let apiUrl: string | undefined;
-      let resolvedFrom: string;
-      
-      // Try environment-specific variable first (e.g., STAGING_ADA_BMP_API_URL)
-      const envKey = `${typedAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
-      apiUrl = process.env[envKey];
-      resolvedFrom = 'environment_specific';
-      
-      if (apiUrl) {
-        console.log(`[ADA-BMP Auth] Using environment-specific URL from ${envKey}:`, apiUrl);
-      }
-      
-      // Fall back to default ADA_BMP_API_URL from .env
+      const typedAuth = auth as { apiToken: string; environment: string };
+
+      // API URL must come from organization_environment.metadata (injected as process.env.ADA_BMP_API_URL)
+      const apiUrl = process.env.ADA_BMP_API_URL?.trim();
       if (!apiUrl) {
-        apiUrl = process.env.ADA_BMP_API_URL;
-        resolvedFrom = 'environment_default';
-        console.log('[ADA-BMP Auth] Using default API URL from ADA_BMP_API_URL:', apiUrl);
-      }
-      
-      // If still no URL, validation must fail
-      if (!apiUrl) {
-        console.error('[ADA-BMP Auth] ===== NO API URL CONFIGURED =====');
-        console.error('[ADA-BMP Auth] Environment selected:', typedAuth.environment);
-        console.error('[ADA-BMP Auth] No API URL found in environment variables');
         return {
           valid: false,
-          error: `No API URL configured for "${typedAuth.environment}" environment.\n\nPlease ask your platform admin to configure the ADA_BMP_API_URL in the .env file.\n\nFor Staging: https://bmpapistgjkt.cl.bmp.ada-asia.my\nFor Dev: https://bmpapidev2.cl.bmp.ada-asia.my\nFor Production: https://bmpapi.bmp.ada-asia.my`,
+          error: `No API URL configured for "${typedAuth.environment}" environment. Configure ADA_BMP_API_URL in Organization > Environments > [your org] > Configure for the selected environment.`,
         };
       }
-      
+
       const checkTokenUrl = `${apiUrl.replace(/\/$/, '')}/user/checkToken`;
       console.log('[ADA-BMP Auth] Validating against URL:', checkTokenUrl);
       
@@ -98,11 +69,7 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
       console.log('[ADA-BMP Auth] Response Body:', JSON.stringify(response.body, null, 2));
 
       if (response.status === 200) {
-        console.log('[ADA-BMP Auth] ===== TOKEN VALIDATION SUCCESS =====');
-        console.log('[ADA-BMP Auth] Token is valid for environment:', typedAuth.environment);
-        console.log('[ADA-BMP Auth] Validation API URL:', apiUrl);
-        console.log('[ADA-BMP Auth] Resolved from:', resolvedFrom);
-        console.log('[ADA-BMP Auth] During flow execution, the API URL will be fetched from database metadata if configured');
+        console.log('[ADA-BMP Auth] Token validated for environment:', typedAuth.environment);
         
         // Don't store API URL in connection metadata - let database metadata take precedence
         // The .env URL is only used for validation; runtime will use database metadata
@@ -134,6 +101,13 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
           error: `Token validation failed: ${errorMessage}`,
         };
       }
+
+      if (response.status >= 500 && response.status < 600) {
+        return {
+          valid: false,
+          error: `BMP ${typedAuth.environment} API is temporarily unavailable (server error ${response.status}). Please try again later or use a different environment.`,
+        };
+      }
       
       return {
         valid: false,
@@ -159,6 +133,15 @@ export const adaBmpAuth = PieceAuth.CustomAuth({
         return {
           valid: false,
           error: `Token validation failed: ${errorMessage}`,
+        };
+      }
+
+      const status = error.response?.status;
+      if (status >= 500 && status < 600) {
+        const env = (auth as { environment?: string })?.environment ?? 'API';
+        return {
+          valid: false,
+          error: `BMP ${env} API is temporarily unavailable (server error ${status}). Please try again later or use a different environment.`,
         };
       }
       

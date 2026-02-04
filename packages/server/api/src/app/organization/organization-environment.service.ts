@@ -193,35 +193,14 @@ export const organizationEnvironmentService = {
         })
     },
 
-    async checkAdminAvailability(params: {
+    async checkAdminAvailability(_params: {
         organizationId: string
         environment: EnvironmentType
     }): Promise<CheckAdminAvailabilityResponse> {
-        const { organizationId, environment } = params
-        const orgEnv = await databaseConnection()
-            .getRepository(OrganizationEnvironmentEntity)
-            .createQueryBuilder('orgEnv')
-            .leftJoinAndSelect('user', 'u', 'orgEnv.adminUserId = u.id')
-            .leftJoinAndSelect('user_identity', 'ui', 'u.identityId = ui.id')
-            .where('orgEnv.organizationId = :organizationId', { organizationId })
-            .andWhere('orgEnv.environment = :environment', { environment })
-            .select([
-                'orgEnv.id',
-                'orgEnv.adminUserId',
-                'ui.email',
-            ])
-            .getRawOne()
-
-        if (!orgEnv || !orgEnv.adminUserId) {
-            return {
-                available: true,
-            }
-        }
-
+        // No longer "one slot per (org, env)" — multiple Admins per org allowed.
+        // Always return available for ADMIN invite flow.
         return {
-            available: false,
-            adminUserId: orgEnv.adminUserId,
-            adminEmail: orgEnv.ui_email,
+            available: true,
         }
     },
 

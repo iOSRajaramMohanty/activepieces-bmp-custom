@@ -101,6 +101,31 @@ export const organizationHooks = {
     });
   },
 
+  useInitializeEnvironments() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+      mutationFn: (organizationId: string) =>
+        organizationApi.initializeEnvironments(organizationId),
+      onSuccess: (_, organizationId) => {
+        queryClient.invalidateQueries({
+          queryKey: ['organization-environments', organizationId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['organizations'],
+        });
+        toast.success(t('Dev, Staging, Prod environments created. You can now configure metadata.'));
+      },
+      onError: (error: any) => {
+        toast.error(t('Error'), {
+          description:
+            error?.response?.data?.message ||
+            t('Failed to setup environments'),
+        });
+      },
+    });
+  },
+
   useUpdateEnvironmentMetadata() {
     const queryClient = useQueryClient();
 

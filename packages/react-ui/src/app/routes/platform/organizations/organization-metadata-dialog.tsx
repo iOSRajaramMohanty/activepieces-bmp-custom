@@ -185,7 +185,7 @@ export const OrganizationMetadataDialog = ({
                   </FormDescription>
                   <Input
                     {...field}
-                    placeholder="https://bmpapistg.cl.bmp.ada-asia.my"
+                    placeholder="https://"
                     className="rounded-sm"
                   />
                   <FormMessage />

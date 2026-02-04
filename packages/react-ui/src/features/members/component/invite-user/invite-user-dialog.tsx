@@ -100,14 +100,7 @@ export const InviteUserDialog = ({
 }) => {
   const { embedState } = useEmbedding();
   const [invitationLink, setInvitationLink] = useState('');
-  const [adminAvailability, setAdminAvailability] = useState<{
-    available: boolean;
-    adminEmail?: string;
-  }>({ available: true });
   const [selectedOrg, setSelectedOrg] = useState<string>('');
-  const [takenEnvironments, setTakenEnvironments] = useState<{
-    [key in EnvironmentType]?: string; // Maps environment to admin email
-  }>({});
   
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -122,9 +115,6 @@ export const InviteUserDialog = ({
   // Fetch organizations for the platform
   const { data: orgsData } = organizationHooks.useOrganizations(platform?.id || '');
   const organizations = orgsData?.data || [];
-  
-  // Check admin availability mutation
-  const { mutateAsync: checkAvailability } = organizationHooks.useCheckAdminAvailability();
   
   // Only get project if not owner and projectId exists (owners don't have projects)
   let project = null;
@@ -227,14 +217,8 @@ export const InviteUserDialog = ({
   // Watch emails to update suggestions
   const currentEmails = form.watch('emails');
 
-  // Watch organization and environment for ADMIN invitations
+  // Watch organization for ADMIN invitations
   const watchedOrganization = form.watch('organizationName');
-  const watchedEnvironment = form.watch('environment');
-  const selectedOrgData = organizations.find(
-    (org) => org.name === watchedOrganization,
-  );
-  const { data: orgEnvironments } =
-    organizationHooks.useOrganizationEnvironments(selectedOrgData?.id);
 
   const onSubmit = (data: FormSchema) => {
     if (data.emails.length === 0) {
@@ -266,36 +250,12 @@ export const InviteUserDialog = ({
       return;
     }
 
-    // Validate organization and environment for ADMIN invitations
+    // Validate organization for ADMIN invitations (no environment required; multiple Admins per org)
     if (isOwner && data.platformRole === PlatformRole.ADMIN) {
       if (!data.organizationName) {
         form.setError('organizationName', {
           type: 'required',
           message: t('Please enter organization name'),
-        });
-        return;
-      }
-
-      if (!data.environment) {
-        form.setError('environment', {
-          type: 'required',
-          message: t('Please select environment'),
-        });
-        return;
-      }
-
-      // Check if slot is available
-      if (!adminAvailability.available) {
-        form.setError('root.serverError', {
-          type: 'validation',
-          message: t(
-            'Admin slot already taken for {{org}} {{env}} by {{email}}',
-            {
-              org: data.organizationName,
-              env: data.environment,
-              email: adminAvailability.adminEmail,
-            }
-          ),
         });
         return;
       }
@@ -504,161 +464,7 @@ export const InviteUserDialog = ({
                               </FormItem>
                             )}
                           />
-
-                          <FormField
-                            control={form.control}
-                            name="environment"
-                            render={({ field }) => (
-                              <FormItem className="grid gap-2">
-                                <Label>{t('Environment')} *</Label>
-                                <RadioGroup
-                                  onValueChange={field.onChange}
-                                  value={field.value}
-                                  className="flex gap-4"
-                                >
-                                  {/* Development Environment */}
-                                  {(() => {
-                                    const envData = (orgEnvironments as any) || [];
-                                    const isDevTaken = envData?.some(
-                                      (env: any) => env.environment === EnvironmentType.DEVELOPMENT
-                                    );
-                                    const devAdmin = envData?.find(
-                                      (env: any) => env.environment === EnvironmentType.DEVELOPMENT
-                                    );
-                                    
-                                    const envOption = (
-                                      <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                          value={EnvironmentType.DEVELOPMENT}
-                                          id="env-dev"
-                                          disabled={isDevTaken}
-                                        />
-                                        <Label 
-                                          htmlFor="env-dev" 
-                                          className={`font-normal ${isDevTaken ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        >
-                                          {t('Development')}
-                                        </Label>
-                                      </div>
-                                    );
-                                    
-                                    return isDevTaken ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          {envOption}
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {t('Already assigned to {{email}}', { email: devAdmin?.adminEmail || 'an admin' })}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : envOption;
-                                  })()}
-
-                                  {/* Staging Environment */}
-                                  {(() => {
-                                    const envData = (orgEnvironments as any) || [];
-                                    const isStagingTaken = envData?.some(
-                                      (env: any) => env.environment === EnvironmentType.STAGING
-                                    );
-                                    const stagingAdmin = envData?.find(
-                                      (env: any) => env.environment === EnvironmentType.STAGING
-                                    );
-                                    
-                                    const envOption = (
-                                      <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                          value={EnvironmentType.STAGING}
-                                          id="env-staging"
-                                          disabled={isStagingTaken}
-                                        />
-                                        <Label 
-                                          htmlFor="env-staging" 
-                                          className={`font-normal ${isStagingTaken ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        >
-                                          {t('Staging')}
-                                        </Label>
-                                      </div>
-                                    );
-                                    
-                                    return isStagingTaken ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          {envOption}
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {t('Already assigned to {{email}}', { email: stagingAdmin?.adminEmail || 'an admin' })}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : envOption;
-                                  })()}
-
-                                  {/* Production Environment */}
-                                  {(() => {
-                                    const envData = (orgEnvironments as any) || [];
-                                    const isProductionTaken = envData?.some(
-                                      (env: any) => env.environment === EnvironmentType.PRODUCTION
-                                    );
-                                    const productionAdmin = envData?.find(
-                                      (env: any) => env.environment === EnvironmentType.PRODUCTION
-                                    );
-                                    
-                                    const envOption = (
-                                      <div className="flex items-center space-x-2">
-                                        <RadioGroupItem
-                                          value={EnvironmentType.PRODUCTION}
-                                          id="env-production"
-                                          disabled={isProductionTaken}
-                                        />
-                                        <Label 
-                                          htmlFor="env-production" 
-                                          className={`font-normal ${isProductionTaken ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        >
-                                          {t('Production')}
-                                        </Label>
-                                      </div>
-                                    );
-                                    
-                                    return isProductionTaken ? (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          {envOption}
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          {t('Already assigned to {{email}}', { email: productionAdmin?.adminEmail || 'an admin' })}
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    ) : envOption;
-                                  })()}
-                                </RadioGroup>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Admin availability status */}
-                          {watchedOrganization && watchedEnvironment && (
-                            <Alert variant={adminAvailability.available ? 'default' : 'destructive'}>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription>
-                                {adminAvailability.available ? (
-                                  <span className="text-green-600 dark:text-green-400">
-                                    ✓ {t('Admin slot available for {{org}} {{env}}', {
-                                      org: watchedOrganization,
-                                      env: watchedEnvironment,
-                                    })}
-                                  </span>
-                                ) : (
-                                  <span>
-                                    {t('Admin already assigned to {{org}} {{env}}: {{email}}', {
-                                      org: watchedOrganization,
-                                      env: watchedEnvironment,
-                                      email: adminAvailability.adminEmail,
-                                    })}
-                                  </span>
-                                )}
-                              </AlertDescription>
-                            </Alert>
-                          )}
+                          {/* Environment selector hidden for ADMIN — multiple Admins per org, shared project */}
                         </>
                       )}
                     </>
@@ -701,16 +507,7 @@ export const InviteUserDialog = ({
                         isPending ||
                         (isOwner &&
                           form.getValues().platformRole === PlatformRole.ADMIN &&
-                          (
-                            !adminAvailability.available ||
-                            // Also disable if selected environment is already taken
-                            (watchedEnvironment &&
-                              orgEnvironments &&
-                              (orgEnvironments as any)?.some(
-                                (env: any) => env.environment === watchedEnvironment
-                              ))
-                          )
-                        )
+                          !form.getValues().organizationName)
                       }
                     >
                       {isPlatformPage ? t('Invite') : t('Add')}

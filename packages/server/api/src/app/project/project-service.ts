@@ -163,6 +163,7 @@ export const projectService = {
             platformId: user.platformId,
             userId,
             platformRole: user.platformRole,
+            userOrganizationId: user.organizationId ?? undefined,
         })
         if (isNil(projects) || projects.length === 0) {
             throw new ActivepiecesError({
@@ -299,7 +300,7 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
     params: ApplyProjectsAccessFiltersParams,
 ): Promise<void> {
-    const { platformId, userId, platformRole, isPrivileged } = params
+    const { platformId, userId, platformRole, userOrganizationId, isPrivileged } = params
     
     // If isPrivileged is true (from EE code), don't apply filters - user can see all projects
     if (isPrivileged === true) {
@@ -307,32 +308,35 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     }
     
     // OWNER (tenant) can see all ADMINs' personal projects in their platform
-    // OWNER should NOT have their own personal projects - they only view their sub-owners' projects
     if (platformRole === PlatformRole.OWNER || platformRole === PlatformRole.SUPER_ADMIN) {
         return
     }
 
     queryBuilder.andWhere(new Brackets(qb => {
         if (platformRole === PlatformRole.ADMIN) {
-            // ADMIN (sub-owner): Can see ONLY their own personal projects + TEAM projects they're members of
-            // They CANNOT see other ADMINs' personal projects
-            qb.where(
-                // Admin's own personal projects
-                'project."ownerId" = :userId AND project.type = :personalType',
-                { userId, personalType: ProjectType.PERSONAL },
-            ).orWhere(
-                // TEAM projects where admin is a member
+            // ADMIN with org: only org shared project + TEAM projects (one project per org)
+            // ADMIN without org: own personal projects + TEAM projects
+            if (!isNil(userOrganizationId)) {
+                qb.where('project."organizationId" = :userOrganizationId', { userOrganizationId })
+            } else {
+                qb.where(
+                    'project."ownerId" = :userId AND project.type = :personalType',
+                    { userId, personalType: ProjectType.PERSONAL },
+                )
+            }
+            qb.orWhere(
                 'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
                 { userId, platformId },
             )
         } else {
-            // OPERATOR/MEMBER: Can only see TEAM projects they're members of
-            // They work within their ADMIN's personal projects
-            qb.where(
-                // TEAM projects where user is a member
-                'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
-                { userId, platformId },
-            )
+            // OPERATOR/MEMBER: org shared project (visibility) + TEAM projects (if member)
+            const projectMemberCondition = 'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)'
+            if (!isNil(userOrganizationId)) {
+                qb.where('project."organizationId" = :userOrganizationId', { userOrganizationId })
+                    .orWhere(projectMemberCondition, { userId, platformId })
+            } else {
+                qb.where(projectMemberCondition, { userId, platformId })
+            }
         }
     }))
 }
@@ -358,6 +362,7 @@ type GetAllForUserParams = {
     platformId: string
     userId: string
     platformRole: PlatformRole
+    userOrganizationId?: string | null
     displayName?: string
 }
 
@@ -417,5 +422,6 @@ type ApplyProjectsAccessFiltersParams = {
     platformId: string
     userId: string
     platformRole?: PlatformRole
+    userOrganizationId?: string | null
     isPrivileged?: boolean
 }

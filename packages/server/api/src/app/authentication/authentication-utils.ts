@@ -84,6 +84,7 @@ export const authenticationUtils = {
             platformId: params.platformId,
             userId: params.userId,
             platformRole: user.platformRole,
+            userOrganizationId: user.organizationId ?? undefined,
         })
         const project = isNil(params.projectId) ? projects?.[0] : projects.find((project) => project.id === params.projectId)
         if (isNil(project)) {

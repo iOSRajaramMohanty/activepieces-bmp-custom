@@ -5,9 +5,12 @@ import {
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,
+    EnvironmentType,
+    isBmpPiece,
     ListAppConnectionOwnersRequestQuery,
     ListAppConnectionsRequestQuery,
     Permission,
+    PlatformRole,
     PrincipalType,
     ReplaceAppConnectionsRequestBody,
     SeekPage,
@@ -22,11 +25,14 @@ import {
 import { StatusCodes } from 'http-status-codes'
 import { applicationEvents } from '../helper/application-events'
 import { securityHelper } from '../helper/security-helper'
+import { userService } from '../user/user-service'
 import { appConnectionService } from './app-connection-service/app-connection-service'
 import { AppConnectionEntity } from './app-connection.entity'
 
 export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts, done) => {
     app.post('/', UpsertAppConnectionRequest, async (request, reply) => {
+        const ownerId = await securityHelper.getUserIdFromRequest(request)
+        const currentUser = ownerId ? await userService.getOneOrFail({ id: ownerId }) : null
         const appConnection = await appConnectionService(request.log).upsert({
             platformId: request.principal.platform.id,
             projectIds: [request.projectId],
@@ -35,10 +41,11 @@ export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts
             value: request.body.value,
             displayName: request.body.displayName,
             pieceName: request.body.pieceName,
-            ownerId: await securityHelper.getUserIdFromRequest(request),
+            ownerId,
             scope: AppConnectionScope.PROJECT,
             metadata: request.body.metadata,
             pieceVersion: request.body.pieceVersion,
+            creatorPlatformRole: currentUser?.platformRole,
         })
         applicationEvents(request.log).sendUserEvent(request, {
             action: ApplicationEventName.CONNECTION_UPSERTED,
@@ -81,9 +88,37 @@ export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts
             externalIds: undefined,
         })
 
+        let platformRole: PlatformRole = PlatformRole.OWNER
+        if (request.principal.type === PrincipalType.USER) {
+            const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+            platformRole = currentUser.platformRole
+        }
+
+        const allowedEnvsByRole: Record<string, string[]> = {
+            [PlatformRole.MEMBER]: [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING],
+            [PlatformRole.OPERATOR]: [EnvironmentType.PRODUCTION],
+            [PlatformRole.ADMIN]: [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION],
+            [PlatformRole.OWNER]: [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION],
+            [PlatformRole.SUPER_ADMIN]: [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION],
+        }
+        const allowedEnvs = allowedEnvsByRole[platformRole] ?? [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
+
+        const filteredData = appConnections.data.filter((conn) => {
+            const creatorRole = (conn.metadata as Record<string, string> | undefined)?.creatorPlatformRole
+            if (platformRole !== PlatformRole.ADMIN && platformRole !== PlatformRole.OWNER && platformRole !== PlatformRole.SUPER_ADMIN) {
+                if (platformRole === PlatformRole.MEMBER && creatorRole === PlatformRole.OPERATOR) return false
+                if (platformRole === PlatformRole.OPERATOR && creatorRole === PlatformRole.MEMBER) return false
+            }
+            if (isBmpPiece(conn.pieceName)) {
+                const connEnv = (conn.metadata as Record<string, string> | undefined)?.environment
+                if (connEnv && !allowedEnvs.includes(connEnv)) return false
+            }
+            return true
+        })
+
         const appConnectionsWithoutSensitiveData: SeekPage<AppConnectionWithoutSensitiveData> = {
             ...appConnections,
-            data: appConnections.data.map(appConnectionService(request.log).removeSensitiveData),
+            data: filteredData.map(appConnectionService(request.log).removeSensitiveData),
         }
         return appConnectionsWithoutSensitiveData
     },

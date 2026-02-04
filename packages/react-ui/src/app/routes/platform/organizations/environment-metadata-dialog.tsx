@@ -53,18 +53,6 @@ type EnvironmentMetadataDialogProps = {
   onUpdate?: () => void;
 };
 
-const getDefaultApiUrl = (environment: EnvironmentType): string => {
-  switch (environment) {
-    case EnvironmentType.DEVELOPMENT:
-      return 'https://bmpapidev1.cl.bmp.ada-asia.my';
-    case EnvironmentType.STAGING:
-      return 'https://bmpapistg.cl.bmp.ada-asia.my';
-    case EnvironmentType.PRODUCTION:
-      return 'https://bmpapiprod.cl.bmp.ada-asia.my';
-    default:
-      return '';
-  }
-};
 
 export const EnvironmentMetadataDialog = ({
   organizationId,
@@ -77,7 +65,7 @@ export const EnvironmentMetadataDialog = ({
 
   // Extract metadata values with defaults
   const metadata = (environment.metadata as Record<string, unknown>) || {};
-  const defaultApiUrl = (metadata.ADA_BMP_API_URL as string) || getDefaultApiUrl(environment.environment);
+  const defaultApiUrl = (metadata.ADA_BMP_API_URL as string) || '';
   const defaultTimeout = (metadata.ADA_BMP_TIMEOUT as number) || 30000;
   const defaultDebug = (metadata.ADA_BMP_DEBUG as boolean) || false;
 
@@ -220,7 +208,7 @@ export const EnvironmentMetadataDialog = ({
                   </FormDescription>
                   <Input
                     {...field}
-                    placeholder={getDefaultApiUrl(environment.environment)}
+                    placeholder="https://"
                     className="rounded-sm"
                     disabled={!hasAccess}
                   />

@@ -5,6 +5,7 @@ export const Organization = Type.Object({
     ...BaseModelSchema,
     name: Type.String(),
     platformId: Type.String(),
+    projectId: Type.Optional(Type.String()),
     metadata: Type.Optional(Type.Unknown()),
 })
 

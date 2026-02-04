@@ -63,79 +63,61 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                         })
                     }
                     
-                    // Handle organization and environment for ADMIN invitations from OWNER
+                    // Handle organization for ADMIN invitations from OWNER
+                    // ADMIN invite: organization only, no environment; multiple Admins per org allowed
                     if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
-                        // Organization and environment are required for ADMIN invitations
-                        if (!request.body.organizationName || !request.body.environment) {
+                        if (!request.body.organizationName) {
                             throw new ActivepiecesError({
                                 code: ErrorCode.VALIDATION,
                                 params: {
-                                    message: 'Organization name and environment are required when inviting admins',
+                                    message: 'Organization name is required when inviting admins',
                                 },
                             })
                         }
                         
-                        // Get or create organization
                         const organization = await organizationService.getOrCreate({
                             name: request.body.organizationName,
                             platformId: request.principal.platform.id,
                         })
                         organizationId = organization.id
-                        environment = request.body.environment
-                        
-                        // Check if admin slot is available for this org-environment
-                        const availability = await organizationEnvironmentService.checkAdminAvailability({
-                            organizationId: organization.id,
-                            environment: request.body.environment,
-                        })
-                        
-                        if (!availability.available) {
-                            throw new ActivepiecesError({
-                                code: ErrorCode.VALIDATION,
-                                params: {
-                                    message: `Admin slot already taken for ${request.body.organizationName} ${request.body.environment} by ${availability.adminEmail}`,
-                                },
-                            })
-                        }
+                        // No environment for ADMIN; org's shared project used on accept
                         
                         request.log.info({
                             organizationId: organization.id,
                             organizationName: organization.name,
-                            environment: request.body.environment,
                             inviteeEmail: email,
-                        }, '[POST /user-invitations] OWNER inviting ADMIN with organization')
+                        }, '[POST /user-invitations] OWNER inviting ADMIN with organization (no env slot check)')
                     }
                     
-                    // If ADMIN is inviting OPERATOR/MEMBER, store the admin's personal project ID and organizationId
-                    // This ensures the invited user is added to the correct admin's project and organization
+                    // If ADMIN is inviting OPERATOR/MEMBER, use the org's shared project (not admin's personal project)
                     if (user.platformRole === PlatformRole.ADMIN && 
                         (request.body.platformRole === PlatformRole.OPERATOR || request.body.platformRole === PlatformRole.MEMBER)) {
-                        const adminProject = await projectService.getOneByOwnerAndPlatform({
-                            ownerId: user.id,
-                            platformId: request.principal.platform.id,
-                        })
-                        if (adminProject) {
-                            targetProjectId = adminProject.id
-                            // Also get the admin's organizationId to pass to the invitation
-                            if (user.organizationId) {
-                                organizationId = user.organizationId
-                            }
-                            request.log.info({ 
-                                adminId: user.id,
-                                projectId: adminProject.id,
-                                projectName: adminProject.displayName,
-                                organizationId: organizationId,
-                                inviteeEmail: email,
-                                inviteeRole: request.body.platformRole
-                            }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - storing admin\'s project ID and organizationId for correct assignment')
-                        } else {
+                        if (!user.organizationId) {
                             throw new ActivepiecesError({
                                 code: ErrorCode.ENTITY_NOT_FOUND,
                                 params: {
-                                    message: 'Admin does not have a personal project. Cannot invite users.',
+                                    message: 'Admin is not associated with an organization. Cannot invite users.',
                                 },
                             })
                         }
+                        const org = await organizationService.getById(user.organizationId)
+                        if (!org?.projectId) {
+                            throw new ActivepiecesError({
+                                code: ErrorCode.ENTITY_NOT_FOUND,
+                                params: {
+                                    message: 'Organization does not have a shared project yet. Accept an admin invitation first.',
+                                },
+                            })
+                        }
+                        targetProjectId = org.projectId
+                        organizationId = user.organizationId
+                        request.log.info({ 
+                            adminId: user.id,
+                            projectId: org.projectId,
+                            organizationId: organizationId,
+                            inviteeEmail: email,
+                            inviteeRole: request.body.platformRole
+                        }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - using org shared project')
                     }
                 } else {
                     // For SERVICE principal, use EE hook
@@ -169,22 +151,18 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
         }
         const projectId = await getProjectIdAndAssertPermission(app, request, reply, request.principal, request.query)
         
-        // For PLATFORM invitations, ADMINs should only see invitations for their own project
+        // For PLATFORM invitations, ADMINs should see invitations for their org's shared project
         let filterProjectId = request.query.type === InvitationType.PROJECT ? projectId : null
         if (request.query.type === InvitationType.PLATFORM && request.principal.type === PrincipalType.USER) {
             const user = await userService.getOneOrFail({ id: request.principal.id })
-            if (user.platformRole === PlatformRole.ADMIN) {
-                // Get admin's personal project to filter invitations
-                const adminProject = await projectService.getOneByOwnerAndPlatform({
-                    ownerId: user.id,
-                    platformId: request.principal.platform.id,
-                })
-                if (adminProject) {
-                    filterProjectId = adminProject.id
+            if (user.platformRole === PlatformRole.ADMIN && user.organizationId) {
+                const org = await organizationService.getById(user.organizationId)
+                if (org?.projectId) {
+                    filterProjectId = org.projectId
                     request.log.info({ 
                         adminId: user.id,
-                        projectId: adminProject.id 
-                    }, '[GET /user-invitations] Filtering PLATFORM invitations for ADMIN to show only their project invitations')
+                        projectId: org.projectId 
+                    }, '[GET /user-invitations] Filtering PLATFORM invitations for ADMIN by org shared project')
                 }
             }
         }

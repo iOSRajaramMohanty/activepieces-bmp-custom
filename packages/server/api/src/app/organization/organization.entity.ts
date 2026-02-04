@@ -16,6 +16,10 @@ export const OrganizationEntity = new EntitySchema<OrganizationSchema>({
             type: String,
             nullable: false,
         },
+        projectId: {
+            type: String,
+            nullable: true,
+        },
         metadata: {
             type: 'jsonb',
             nullable: true,

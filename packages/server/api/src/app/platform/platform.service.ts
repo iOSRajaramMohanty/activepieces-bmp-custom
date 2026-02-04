@@ -38,6 +38,7 @@ export const platformService = {
                 platformId: user.platformId,
                 userId: user.id,
                 platformRole: user.platformRole,
+                userOrganizationId: user.organizationId ?? undefined,
             })
             return hasProjects ? user.platformId : null
         }))

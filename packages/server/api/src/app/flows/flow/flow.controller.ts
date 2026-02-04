@@ -48,7 +48,6 @@ const DEFAULT_PAGE_SIZE = 10
 export const flowController: FastifyPluginAsyncTypebox = async (app) => {
     app.addHook('preSerialization', entitiesMustBeOwnedByCurrentProject)
     app.post('/', CreateFlowRequestOptions, async (request, reply) => {
-        // Validate flow creation based on user role and project ownership
         if (request.principal.type === PrincipalType.USER) {
             const user = await userService.getOneOrFail({ id: request.principal.id })
             const project = await projectService.getOneOrThrow(request.projectId)
@@ -114,11 +113,15 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             }
         }
         
+        const creatorUser = request.principal.type === PrincipalType.USER
+            ? await userService.getOneOrFail({ id: request.principal.id })
+            : null
         const newFlow = await flowService(request.log).create({
             projectId: request.projectId,
             request: request.body,
             ownerId: request.principal.type === PrincipalType.SERVICE ? undefined : request.principal.id,
             templateId: request.body.templateId,
+            creatorPlatformRole: creatorUser?.platformRole,
         })
 
         applicationEvents(request.log).sendUserEvent(request, {
@@ -236,7 +239,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
     })
 
     app.get('/', ListFlowsRequestOptions, async (request) => {
-        return flowService(request.log).list({
+        const flowsPage = await flowService(request.log).list({
             projectIds: [request.projectId],
             folderId: request.query.folderId,
             cursorRequest: request.query.cursor ?? null,
@@ -248,6 +251,19 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             connectionExternalIds: request.query.connectionExternalIds,
             agentExternalIds: request.query.agentExternalIds,
         })
+
+        if (request.principal.type === PrincipalType.USER) {
+            const user = await userService.getOneOrFail({ id: request.principal.id })
+            if (user.platformRole === PlatformRole.MEMBER) {
+                const filteredData = flowsPage.data.filter((flow) => {
+                    const creatorRole = (flow.metadata as Record<string, string> | undefined)?.creatorPlatformRole
+                    if (creatorRole === PlatformRole.OPERATOR) return false
+                    return true
+                })
+                return { ...flowsPage, data: filteredData }
+            }
+        }
+        return flowsPage
     })
 
     app.get('/count', CountFlowsRequestOptions, async (request) => {
