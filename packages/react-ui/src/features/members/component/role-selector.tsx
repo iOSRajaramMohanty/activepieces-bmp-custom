@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { userHooks } from '@/hooks/user-hooks';
 import { PlatformRole } from '@activepieces/shared';
 
 type RoleConfig<T = string> = {
@@ -66,12 +67,24 @@ export const RoleSelector = ({
   placeholder,
   roles = [],
 }: RoleSelectorProps) => {
+  const { data: currentUser } = userHooks.useCurrentUser();
   const isPlatform = type === 'platform';
+  const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
+  const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
 
   const label = isPlatform ? t('Platform Roles') : t('Project Roles');
 
   const options = isPlatform
-    ? PLATFORM_ROLES.map((role) => ({
+    ? (isOwner
+        ? PLATFORM_ROLES.filter((r) => r.value === PlatformRole.ADMIN)
+        : isAdmin
+          ? PLATFORM_ROLES.filter(
+              (r) =>
+                r.value === PlatformRole.OPERATOR ||
+                r.value === PlatformRole.MEMBER,
+            )
+          : PLATFORM_ROLES
+      ).map((role) => ({
         value: role.value,
         label: role.label,
         description: role.description,
