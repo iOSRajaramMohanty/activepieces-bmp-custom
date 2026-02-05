@@ -54,7 +54,7 @@ echo ""
 
 # Ensure correct Node version and clean local artifacts before Docker build
 echo "Verifying Node.js version..."
-REQUIRED_NODE_VERSION="v20.19.6"
+REQUIRED_NODE_VERSION="v18.19.0"
 CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
 if [ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]; then
     echo -e "${RED}❌ Node version must be $REQUIRED_NODE_VERSION, found $CURRENT_NODE_VERSION${NC}"
