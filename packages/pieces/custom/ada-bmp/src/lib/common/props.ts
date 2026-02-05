@@ -27,7 +27,7 @@ export const adaBmpChannel = <R extends boolean>(required: R) =>
     displayName: 'Channel',
     description: 'Select the messaging channel (WhatsApp, Facebook, Line, Instagram)',
     required,
-    refreshers: [],
+    refreshers: ['auth'], // Auto-reset when connection changes
     async options({ auth, server, project }) {
       if (!auth) {
         return {
@@ -173,7 +173,7 @@ export const adaBmpChannelForBulk = <R extends boolean>(required: R) =>
     displayName: 'Channel',
     description: 'Select the messaging channel (WhatsApp, Facebook, Instagram)',
     required,
-    refreshers: [],
+    refreshers: ['auth'], // Auto-reset when connection changes
     async options({ auth, server, project }) {
       if (!auth) {
         return {
@@ -296,7 +296,7 @@ export const adaBmpAccount = <R extends boolean>(required: R) =>
     displayName: 'Account',
     description: 'Select the account to use for this channel',
     required,
-    refreshers: ['channel'], // Refresh when channel changes
+    refreshers: ['auth', 'channel'], // Auto-reset when connection or channel changes
     async options({ auth, channel, server, project }) {
       if (!auth) {
         return {
@@ -426,7 +426,7 @@ export const recipientFromList = <R extends boolean>(required: R) =>
     displayName: 'Select Recipient',
     description: 'Select a recipient from active conversations',
     required,
-    refreshers: ['channel', 'account'], // Refresh when channel or account changes
+    refreshers: ['auth', 'channel', 'account'], // Auto-reset when connection, channel, or account changes
     async options({ auth, channel, account, server, project }) {
       if (!auth) {
         return {
@@ -641,7 +641,7 @@ export const adaBmpContactCategory = <R extends boolean>(required: R) =>
     displayName: 'Contact Category',
     description: 'Select a contact category to send bulk messages to',
     required,
-    refreshers: ['channel'], // Refresh when channel changes
+    refreshers: ['auth', 'channel'], // Auto-reset when connection or channel changes
     async options({ auth, channel, server, project }): Promise<{ disabled: boolean; placeholder: string; options: Array<{ label: string; value: string }> }> {
       // Always return a valid structure - wrap everything in try-catch
       try {
@@ -855,7 +855,7 @@ export const adaBmpTemplate = <R extends boolean>(required: R) =>
     displayName: 'Template',
     description: 'Select a template to use for the message (optional)',
     required,
-    refreshers: ['account', 'messageType', 'templateCategory'], // Refresh when account, messageType, or templateCategory changes
+    refreshers: ['auth', 'account', 'messageType', 'templateCategory'], // Auto-reset when connection, account, messageType, or templateCategory changes
     async options({ auth, account, messageType, templateCategory, server, project }) {
       // Always log the templateCategory value received
       console.log('[ADA-BMP Template Options] Options function called', {

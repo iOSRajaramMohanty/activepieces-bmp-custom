@@ -10,17 +10,27 @@ type SimulationSectionProps = {
   note: React.ReactNode;
   resetSimulation: () => void;
   abortControllerRef: React.MutableRefObject<AbortController>;
+  triggerEnabled?: boolean;
 };
 
 export const SimulationNote = ({
   note,
   resetSimulation,
   abortControllerRef,
+  triggerEnabled,
 }: SimulationSectionProps) => {
   return (
     <div className="flex flex-col gap-4 w-full">
       <div className="flex gap-2 items-center justify-center w-full">
-        <LoadingSpinner className="size-4"></LoadingSpinner>
+        <LoadingSpinner
+          className={`size-4 ${
+            triggerEnabled !== undefined
+              ? triggerEnabled
+                ? 'stroke-emerald-600'
+                : 'stroke-red-500'
+              : ''
+          }`}
+        ></LoadingSpinner>
         <div>{t('Testing Trigger')}</div>
         <div className="grow"></div>
 

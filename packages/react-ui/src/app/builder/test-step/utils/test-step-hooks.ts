@@ -28,9 +28,11 @@ export const testStepHooks = {
   useSimulateTrigger: ({
     setErrorMessage,
     onSuccess,
+    onTriggerStatusChange,
   }: {
     setErrorMessage: ((msg: string | undefined) => void) | undefined;
     onSuccess: () => void;
+    onTriggerStatusChange?: (enabled: boolean) => void;
   }) => {
     const { form, builderState } = useRequiredStateToTestSteps();
     const flowId = builderState.flow.id;
@@ -48,12 +50,16 @@ export const testStepHooks = {
             limit: 5,
           })
         ).data.map((triggerEvent) => triggerEvent.id);
-        await triggerEventsApi.test({
+        const testResult = await triggerEventsApi.test({
           projectId: authenticationSession.getProjectId()!,
           flowId,
           flowVersionId,
           testStrategy: TriggerTestStrategy.SIMULATION,
         });
+        // Update trigger status if available in response
+        if (testResult && typeof testResult === 'object' && 'triggerEnabled' in testResult) {
+          onTriggerStatusChange?.(testResult.triggerEnabled as boolean);
+        }
         let attempt = 0;
         while (attempt < 1000) {
           if (abortSignal.aborted) {

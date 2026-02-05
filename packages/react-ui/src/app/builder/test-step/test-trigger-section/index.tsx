@@ -34,6 +34,9 @@ const TestTriggerSection = React.memo(
     const abortControllerRef = useRef<AbortController>(new AbortController());
     const lastTestDate = formValues.settings.sampleData?.lastTestDate;
     const [isTestingDialogOpen, setIsTestingDialogOpen] = useState(false);
+    const [triggerEnabled, setTriggerEnabled] = useState<boolean | undefined>(
+      undefined,
+    );
     const { pieceModel, isLoading: isPieceLoading } = piecesHooks.usePiece({
       name: formValues.settings.pieceName,
       version: formValues.settings.pieceVersion,
@@ -75,6 +78,9 @@ const TestTriggerSection = React.memo(
       onSuccess: async () => {
         await onTestSuccess();
         setIsTestingDialogOpen(false);
+      },
+      onTriggerStatusChange: (enabled) => {
+        setTriggerEnabled(enabled);
       },
     });
     const { mutate: pollTrigger, isPending: isPollingTesting } =
@@ -150,6 +156,7 @@ const TestTriggerSection = React.memo(
                     abortControllerRef.current = new AbortController();
                   }
                 }}
+                triggerEnabled={triggerEnabled}
               />
             </div>
           );
@@ -207,6 +214,7 @@ const TestTriggerSection = React.memo(
                 note={getSimulationNote()}
                 resetSimulation={resetSimulation}
                 abortControllerRef={abortControllerRef}
+                triggerEnabled={triggerEnabled}
               />
             )}
           </>

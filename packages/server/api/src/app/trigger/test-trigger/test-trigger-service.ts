@@ -45,14 +45,14 @@ export const testTriggerService = (log: FastifyBaseLogger) => {
                                     simulate: true,
                                     ignoreError: true,
                                 })
-                                return
+                                return { triggerEnabled: false }
                             }
                             await triggerSourceService(log).enable({
                                 flowVersion: populatedFlow.version,
                                 projectId: executeParams.projectId,
                                 simulate: true,
                             })
-                            return
+                            return { triggerEnabled: true }
                         }
                         case TriggerTestStrategy.TEST_FUNCTION: {
                             return triggerEventService(log).test({

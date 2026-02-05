@@ -10,11 +10,13 @@ import TestWebhookDialog from '../custom-test-step/test-webhook-dialog';
 type ManualWebhookTestButtonProps = {
   isWebhookTestingDialogOpen: boolean;
   setIsWebhookTestingDialogOpen: (open: boolean) => void;
+  triggerEnabled?: boolean;
 };
 
 export const ManualWebhookTestButton = ({
   isWebhookTestingDialogOpen,
   setIsWebhookTestingDialogOpen,
+  triggerEnabled,
 }: ManualWebhookTestButtonProps) => {
   const [id, setId] = useState<number>(0);
   const formValues = useFormContext<FlowTrigger>().getValues();
@@ -29,6 +31,18 @@ export const ManualWebhookTestButton = ({
           setIsWebhookTestingDialogOpen(true);
         }}
       >
+        {triggerEnabled !== undefined && (
+          <span
+            className={`h-2 w-2 rounded-full ${
+              triggerEnabled ? 'bg-orange-500' : 'bg-red-500'
+            }`}
+            title={
+              triggerEnabled
+                ? 'Trigger enabled - waiting for webhook data'
+                : 'Trigger disabled - click Test to enable'
+            }
+          />
+        )}
         {t('Generate Sample Data')}
       </Button>
 
