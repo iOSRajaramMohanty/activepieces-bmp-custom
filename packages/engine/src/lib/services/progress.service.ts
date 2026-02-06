@@ -86,6 +86,13 @@ export const progressService = {
         await lock.runExclusive(async () => {
             const params = updateParams
             const { flowExecutorContext, engineConstants } = params!
+            
+            console.log('[ENGINE DEBUG] backup called', {
+                stepNameToTest: engineConstants.stepNameToTest,
+                hasSteps: Object.keys(flowExecutorContext.steps).length > 0,
+                stepNames: Object.keys(flowExecutorContext.steps),
+            })
+            
             const executionState = await logSerializer.serialize({
                 executionState: {   
                     steps: flowExecutorContext.steps,
@@ -106,6 +113,11 @@ export const progressService = {
                 steps: flowExecutorContext.steps,
                 runId: engineConstants.flowRunId,
                 stepName: engineConstants.stepNameToTest,
+            })
+            
+            console.log('[ENGINE DEBUG] stepResponse', {
+                hasStepResponse: !isNil(stepResponse),
+                stepResponse,
             })
     
             const request: UploadRunLogsRequest = {
