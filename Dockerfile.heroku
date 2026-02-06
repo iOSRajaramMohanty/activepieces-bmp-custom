@@ -7,7 +7,7 @@ ENV LANG=en_US.UTF-8 \
     NX_DAEMON=false \
     NX_NO_CLOUD=true \
     DEBIAN_FRONTEND=noninteractive \
-    NODE_VERSION=20.19.1
+    NODE_VERSION=18.19.0
 
 # Install Node.js and system dependencies in a single layer
 RUN apt-get update && \
