@@ -1,0 +1,139 @@
+FROM ubuntu:22.04 AS base
+
+# Set environment variables early for better layer caching
+ENV LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    NX_DAEMON=false \
+    NX_NO_CLOUD=true \
+    DEBIAN_FRONTEND=noninteractive \
+    NODE_VERSION=20.19.1
+
+# Install Node.js and system dependencies in a single layer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        nodejs \
+        openssh-client \
+        python3 \
+        g++ \
+        build-essential \
+        git \
+        poppler-utils \
+        poppler-data \
+        procps \
+        locales \
+        unzip \
+        libcap-dev && \
+    locale-gen en_US.UTF-8 && \
+    npm install -g yarn && \
+    yarn config set python /usr/bin/python3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN export ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-x64-baseline.zip -o bun.zip; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-aarch64.zip -o bun.zip; \
+    fi
+    
+RUN unzip bun.zip \
+    && mv bun-*/bun /usr/local/bin/bun \
+    && chmod +x /usr/local/bin/bun \
+    && rm -rf bun.zip bun-*
+
+RUN bun --version
+
+# Install global npm packages in a single layer
+RUN --mount=type=cache,target=/root/.npm \
+    npm install -g --no-fund --no-audit \
+    node-gyp \
+    npm@9.9.3 \
+    pm2@6.0.10 \
+    typescript@4.9.4
+
+# Install isolated-vm globally (needed for sandboxes)
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@5.0.1 && rm -rf /tmp/bun-install
+
+### STAGE 1: Build ###
+FROM base AS build
+
+WORKDIR /usr/src/app
+
+# Copy only dependency files first for better layer caching
+COPY .npmrc package.json bun.lock ./
+# Include local workspace packages referenced as file: deps so bun can resolve them
+COPY packages/pieces/community/framework ./packages/pieces/community/framework
+COPY packages/shared ./packages/shared
+
+# Do a fresh install (ignore lockfile) to allow resolving latest compatible versions
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    rm -f bun.lock && bun install
+
+# Copy source code after dependency installation
+COPY . .
+
+# Build both projects (already has NX_NO_CLOUD from base stage)
+RUN npx nx run-many --target=build --projects=react-ui,server-api --configuration production --parallel=2 --skip-nx-cache
+
+# Install production dependencies only for the backend API
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    cd dist/packages/server/api && \
+    bun install --production --frozen-lockfile
+
+### STAGE 2: Run ###
+FROM base AS run
+
+WORKDIR /usr/src/app
+
+# Install Nginx and gettext in a single layer with cache mount
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends nginx gettext
+
+# Copy Heroku-specific nginx template and entrypoint
+COPY nginx.heroku.conf.template /etc/nginx/nginx.conf.template
+COPY --from=build /usr/src/app/packages/server/api/src/assets/default.cf /usr/local/etc/isolate
+COPY docker-entrypoint.heroku.sh /usr/src/app/docker-entrypoint.sh
+
+# Create all necessary directories in one layer
+RUN mkdir -p \
+    /usr/src/app/dist/packages/server \
+    /usr/src/app/dist/packages/engine \
+    /usr/src/app/dist/packages/shared \
+    /usr/src/app/dist/packages/pieces/custom \
+    /usr/src/app/dist/packages/pieces/community/framework \
+    /usr/src/app/dist/packages/pieces/community/common && \
+    chmod +x /usr/src/app/docker-entrypoint.sh && \
+    rm -f /usr/src/package.json || true
+
+# Copy built artifacts from build stage
+COPY --from=build /usr/src/app/package.json .
+COPY --from=build /usr/src/app/tsconfig.base.json .
+COPY --from=build /usr/src/app/nx.json .
+COPY --from=build /usr/src/app/LICENSE .
+COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
+COPY --from=build /usr/src/app/dist/packages/server/ ./dist/packages/server/
+COPY --from=build /usr/src/app/dist/packages/shared/ ./dist/packages/shared/
+# Ensure built pieces (community + custom) are available at runtime for linking
+COPY --from=build /usr/src/app/dist/packages/pieces/community/ ./dist/packages/pieces/community/
+COPY --from=build /usr/src/app/dist/packages/pieces/custom/ ./dist/packages/pieces/custom/
+COPY --from=build /usr/src/app/packages ./packages
+
+# Copy frontend files to Nginx document root
+COPY --from=build /usr/src/app/dist/packages/react-ui /usr/share/nginx/html/
+
+LABEL service=activepieces
+
+# Heroku dynamically assigns PORT
+CMD ["./docker-entrypoint.sh"]
