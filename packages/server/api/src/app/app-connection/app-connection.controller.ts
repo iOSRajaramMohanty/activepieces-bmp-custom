@@ -224,8 +224,7 @@ const ReplaceAppConnectionsRequest = {
             [PrincipalType.USER, PrincipalType.SERVICE],
             Permission.WRITE_APP_CONNECTION,
             {
-                type: ProjectResourceType.TABLE,
-                tableName: AppConnectionEntity,
+                type: ProjectResourceType.BODY,
             },
         ),
     },
