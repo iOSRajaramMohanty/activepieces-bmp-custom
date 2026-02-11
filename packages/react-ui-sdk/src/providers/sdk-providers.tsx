@@ -52,6 +52,8 @@ import { TooltipProvider } from '../../react-ui/src/components/ui/tooltip.tsx';
 import { EmbeddingProvider } from '../../react-ui/src/components/embed-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { SocketProvider } from '../../react-ui/src/components/socket-provider.tsx';
+// @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
+import { Toaster } from '../../react-ui/src/components/ui/sonner.tsx';
 
 // Initialize runtime EE checks
 if (typeof window !== 'undefined') {
@@ -151,6 +153,7 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
             <ThemeProvider storageKey="ap-react-ui-sdk-theme">
               <TooltipProvider>
                 {content}
+                <Toaster position="bottom-right" />
               </TooltipProvider>
             </ThemeProvider>
           </Suspense>

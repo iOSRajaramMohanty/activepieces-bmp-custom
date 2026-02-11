@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { NewConnectionDialog } from '@/app/connections/new-connection-dialog';
 import { ReconnectButtonDialog } from '@/app/connections/reconnect-button-dialog';
@@ -44,6 +45,7 @@ import {
   appConnectionsMutations,
   appConnectionsQueries,
 } from '@/features/connections/lib/app-connections-hooks';
+import { appConnectionsApi } from '@/features/connections/lib/api/app-connections';
 import { appConnectionUtils } from '@/features/connections/lib/utils';
 import PieceIconWithPieceName from '@/features/pieces/components/piece-icon-from-name';
 import { piecesHooks } from '@/features/pieces/lib/pieces-hooks';
@@ -352,7 +354,11 @@ function AppConnectionsPage() {
                     </>
                   }
                   mutationFn={async () => {
-                    await deleteConnections(selectedRows.map((row) => row.id));
+                    // Directly call API to properly handle errors
+                    const ids = selectedRows.map((row) => row.id);
+                    for (const id of ids) {
+                      await appConnectionsApi.delete(id);
+                    }
                     refetch();
                     resetSelection();
                     setSelectedRows([]);
@@ -361,6 +367,31 @@ function AppConnectionsPage() {
                   open={showDeleteDialog}
                   onOpenChange={setShowDeleteDialog}
                   showToast
+                  onError={(error: any) => {
+                    console.error('[Delete Connection Error]', error);
+                    // Extract error message from Axios error response
+                    const responseData = error?.response?.data;
+                    const errorMessage = responseData?.params?.message 
+                      || responseData?.message
+                      || error?.message;
+                    
+                    // Check for BMP auto-connection deletion attempt
+                    if (errorMessage?.includes('Auto-created BMP')) {
+                      toast.error(t('Cannot Delete Connection'), {
+                        description: t('This connection is managed by the system and cannot be deleted.'),
+                        duration: 5000,
+                      });
+                    } else if (errorMessage) {
+                      toast.error(t('Failed to delete connection'), {
+                        description: errorMessage,
+                        duration: 5000,
+                      });
+                    } else {
+                      toast.error(t('An unexpected error occurred'));
+                    }
+                    // Close the dialog on error
+                    setShowDeleteDialog(false);
+                  }}
                 >
                   <Button
                     variant="destructive"

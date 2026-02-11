@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
 import { LockedFeatureGuard } from '@/app/components/locked-feature-guard';
@@ -249,14 +250,32 @@ const GlobalConnectionsTable = () => {
                 )}
                 entityName="connections"
                 mutationFn={async () => {
-                  try {
-                    await bulkDeleteGlobalConnections.mutateAsync(
-                      selectedRows.map((row) => row.id),
-                    );
-                    resetSelection();
-                    setSelectedRows([]);
-                  } catch (error) {
-                    console.error('Error deleting connections:', error);
+                  await bulkDeleteGlobalConnections.mutateAsync(
+                    selectedRows.map((row) => row.id),
+                  );
+                  resetSelection();
+                  setSelectedRows([]);
+                }}
+                onError={(error: any) => {
+                  // Extract error message from Axios error response
+                  const responseData = error?.response?.data;
+                  const errorMessage = responseData?.params?.message 
+                    || responseData?.message
+                    || error?.message;
+                  
+                  // Check for BMP auto-connection deletion attempt
+                  if (errorMessage?.includes('Auto-created BMP')) {
+                    toast.error(t('Cannot Delete Connection'), {
+                      description: t('This connection is managed by the system and cannot be deleted.'),
+                      duration: 5000,
+                    });
+                  } else if (errorMessage) {
+                    toast.error(t('Failed to delete connection'), {
+                      description: errorMessage,
+                      duration: 5000,
+                    });
+                  } else {
+                    toast.error(t('An unexpected error occurred'));
                   }
                 }}
               >

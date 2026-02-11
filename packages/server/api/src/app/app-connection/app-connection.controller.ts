@@ -1,11 +1,13 @@
 import { ApplicationEventName } from '@activepieces/ee-shared'
 import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
 import {
+    ActivepiecesError,
     ApId,
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,
     EnvironmentType,
+    ErrorCode,
     isBmpPiece,
     ListAppConnectionOwnersRequestQuery,
     ListAppConnectionsRequestQuery,
@@ -154,6 +156,18 @@ export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts
             platformId: request.principal.platform.id,
             projectId: request.projectId,
         })
+        
+        // Prevent deletion of auto-created BMP connections
+        // These connections are managed by the system and should not be deleted by users
+        if (connection.externalId?.startsWith('bmp-auto-')) {
+            throw new ActivepiecesError({
+                code: ErrorCode.AUTHORIZATION,
+                params: {
+                    message: 'Auto-created BMP connections cannot be deleted. This connection is managed by the system.',
+                },
+            })
+        }
+        
         applicationEvents(request.log).sendUserEvent(request, {
             action: ApplicationEventName.CONNECTION_DELETED,
             data: {
