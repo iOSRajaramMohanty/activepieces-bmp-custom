@@ -1,23 +1,51 @@
-import React, { useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
+import React, { useEffect, useRef, useMemo } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
-import { API_BASE_URL } from '@/lib/api';
 import { authenticationSession } from '@/lib/authentication-session';
 
-const socket = io(API_BASE_URL, {
-  transports: ['websocket'],
-  path: '/api/socket.io',
-  autoConnect: false,
-  reconnection: true,
-});
+// Get API base URL dynamically - supports late SDK configuration
+const getAPIBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sdkConfig = (window as any).__AP_SDK_CONFIG__;
+    if (sdkConfig?.apiUrl) {
+      return sdkConfig.apiUrl;
+    }
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
 
-const SocketContext = React.createContext<typeof socket>(socket);
+// Module-level socket instance (created lazily on first access)
+let socketInstance: Socket | null = null;
+
+const getOrCreateSocket = (): Socket => {
+  if (!socketInstance) {
+    const apiBaseUrl = getAPIBaseUrl();
+    console.log('Creating socket connection to:', apiBaseUrl);
+    socketInstance = io(apiBaseUrl, {
+      transports: ['websocket'],
+      path: '/api/socket.io',
+      autoConnect: false,
+      reconnection: true,
+    });
+  }
+  return socketInstance;
+};
+
+// Create initial socket - this will use the URL available at the time
+// For SDK usage, ensure __AP_SDK_CONFIG__ is set before SocketProvider mounts
+const initialSocket = getOrCreateSocket();
+
+const SocketContext = React.createContext<Socket>(initialSocket);
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const token = authenticationSession.getToken();
   const projectId = authenticationSession.getProjectId();
   const toastIdRef = useRef<string | null>(null);
+  
+  // Get the socket instance (will reuse existing or create new with current config)
+  const socket = useMemo(() => getOrCreateSocket(), []);
 
   useEffect(() => {
     if (token) {
@@ -55,7 +83,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       socket.off('disconnect');
       socket.disconnect();
     };
-  }, [token, projectId]);
+  }, [token, projectId, socket]);
 
   return (
     <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>

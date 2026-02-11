@@ -205,10 +205,14 @@ export const BuilderHeader = () => {
 
   const leftContent = embedState.isEmbedded ? <HomeButton /> : null;
 
+  if (embedState.hidePageHeader) {
+    return null;
+  }
+
   return (
     <div
       style={{
-        height: `$${flowCanvasConsts.BUILDER_HEADER_HEIGHT}px`,
+        height: `${flowCanvasConsts.BUILDER_HEADER_HEIGHT}px`,
       }}
     >
       <PageHeader

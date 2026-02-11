@@ -22,20 +22,23 @@ type EmbeddingState = {
   hidePageHeader: boolean;
 };
 
+// Check if we're in SDK mode (embedded via react-ui-sdk)
+const isSDKMode = typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
+
 const defaultState: EmbeddingState = {
-  isEmbedded: false,
-  hideSideNav: false,
+  isEmbedded: isSDKMode, // SDK mode = embedded (hides left sidebar)
+  hideSideNav: false, // Don't hide the top navigation tabs - only affects EE embed SDK
   hideFlowsPageNavbar: false,
   disableNavigationInBuilder: false,
   hideFolders: false,
   hideFlowNameInBuilder: false,
   hideExportAndImportFlow: false,
-  useDarkBackground: window.opener !== null,
-  hideHomeButtonInBuilder: false,
+  useDarkBackground: typeof window !== 'undefined' && window.opener !== null,
+  hideHomeButtonInBuilder: isSDKMode, // Hide home/back button in SDK - project name click navigates back
   emitHomeButtonClickedEvent: false,
   homeButtonIcon: 'logo',
   hideDuplicateFlow: false,
-  hidePageHeader: false,
+  hidePageHeader: false, // Show page header for navigation in SDK
 };
 
 const EmbeddingContext = createContext<{

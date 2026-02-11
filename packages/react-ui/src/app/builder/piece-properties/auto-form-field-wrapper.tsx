@@ -55,9 +55,9 @@ function AutoFormFieldWrapper({
     >
       <FormItem className="flex flex-col">
         {(!hideLabel || placeBeforeLabelText) && (
-          <FormLabel className="flex items-center gap-1 h-7.5 max-h-7.5">
+          <FormLabel className="flex items-center gap-1 h-7.5 max-h-7.5 min-h-0">
             {placeBeforeLabelText && !dynamicInputModeToggled && children}
-            <div className="pt-1">
+            <div className="flex items-center shrink-0">
               <span>
                 {isAuthProperty ? t('Connection') : property.displayName}
               </span>{' '}

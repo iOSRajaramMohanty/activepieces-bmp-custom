@@ -10,11 +10,38 @@ import qs from 'qs';
 import { authenticationSession } from '@/lib/authentication-session';
 import { ApErrorParams, ErrorCode, isNil } from '@activepieces/shared';
 
-export const API_BASE_URL =
-  import.meta.env.MODE === 'cloud'
-    ? 'https://cloud.activepieces.com'
-    : window.location.origin;
-export const API_URL = `${API_BASE_URL}/api`;
+// Check for SDK-configured API URL first (for embedded SDK usage)
+// This is called dynamically on each request to support late configuration
+const getSDKApiUrl = (): string | null => {
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sdkConfig = (window as any).__AP_SDK_CONFIG__;
+    if (sdkConfig?.apiUrl) {
+      return sdkConfig.apiUrl;
+    }
+  }
+  return null;
+};
+
+// Get API base URL dynamically - called on each request for SDK support
+const getAPIBaseUrl = (): string => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if ((import.meta as any).env?.MODE === 'cloud') {
+    return 'https://cloud.activepieces.com';
+  }
+  const sdkUrl = getSDKApiUrl();
+  if (sdkUrl) {
+    return sdkUrl;
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
+
+// Get full API URL dynamically
+const getAPIUrl = (): string => `${getAPIBaseUrl()}/api`;
+
+// Export static values for backward compatibility (but prefer dynamic functions)
+export const API_BASE_URL = getAPIBaseUrl();
+export const API_URL = getAPIUrl();
 
 const disallowedRoutes = [
   '/v1/managed-authn/external-token',
@@ -55,10 +82,12 @@ function request<TResponse>(
   url: string,
   config: AxiosRequestConfig = {},
 ): Promise<TResponse> {
-  const resolvedUrl = !isUrlRelative(url) ? url : `${API_URL}${url}`;
-  const isApWebsite = resolvedUrl.startsWith(API_URL);
+  // Get API URL dynamically to support late SDK configuration
+  const currentApiUrl = getAPIUrl();
+  const resolvedUrl = !isUrlRelative(url) ? url : `${currentApiUrl}${url}`;
+  const isApWebsite = resolvedUrl.startsWith(currentApiUrl);
   const unAuthenticated = disallowedRoutes.some((route) =>
-    resolvedUrl.replace(API_URL, '').startsWith(route),
+    resolvedUrl.replace(currentApiUrl, '').startsWith(route),
   );
 
   return axios({
