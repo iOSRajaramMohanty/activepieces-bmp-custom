@@ -288,21 +288,26 @@ export const appConnectionsQueries = {
         const { data: owners } = await appConnectionsApi.getOwners({
           projectId,
         });
+        
+        // Skip project-members API call when embedded (SDK mode)
+        // The project-members endpoint may not be available in SDK context
+        if (isEmbedding) {
+          return owners;
+        }
+        
+        // Only fetch project members when not embedded
         const { data: projectMembers } = await projectMembersApi.list({
           projectId,
         });
-        if (isEmbedding) {
-          return owners.filter(
-            (owner) =>
-              !isNil(
-                projectMembers.find(
-                  (member) => member.user.email === owner.email,
-                ),
-              ),
-          );
-        }
 
-        return owners;
+        return owners.filter(
+          (owner) =>
+            !isNil(
+              projectMembers.find(
+                (member) => member.user.email === owner.email,
+              ),
+            ),
+        );
       },
     });
   },

@@ -110,6 +110,7 @@ export const projectService = {
             ...spreadIfDefined('releasesEnabled', request.releasesEnabled),
             ...spreadIfDefined('metadata', request.metadata),
             ...spreadIfDefined('maxConcurrentJobs', request.maxConcurrentJobs),
+            ...spreadIfDefined('organizationId', request.organizationId),
         }
 
         const teamUpdate = request.type === ProjectType.TEAM ? {
@@ -384,6 +385,7 @@ type UpdateTeamProjectParams = {
     metadata?: Metadata
     maxConcurrentJobs?: number
     icon?: ProjectIcon
+    organizationId?: string
 }
 
 type UpdatePersonalProjectParams = {
@@ -392,6 +394,7 @@ type UpdatePersonalProjectParams = {
     releasesEnabled?: boolean
     metadata?: Metadata
     maxConcurrentJobs?: number
+    organizationId?: string
 }
 
 type UpdateParams = UpdateTeamProjectParams | UpdatePersonalProjectParams

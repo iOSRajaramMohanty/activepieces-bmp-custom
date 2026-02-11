@@ -483,4 +483,81 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             userId: currentUserId,
         }
     })
+
+    // Assign current user to an organization (auto-setup endpoint)
+    // This allows the frontend to automatically assign users to organizations
+    app.post('/assign-user', {
+        config: {
+            security: securityAccess.publicPlatform([PrincipalType.USER]),
+        },
+        schema: {
+            tags: ['organizations'],
+            summary: 'Assign current user to an organization',
+            body: Type.Object({
+                organizationId: Type.String(),
+                platformRole: Type.Optional(Type.Enum(PlatformRole)),
+            }),
+            response: {
+                [StatusCodes.OK]: Type.Object({
+                    success: Type.Boolean(),
+                    userId: Type.String(),
+                    organizationId: Type.String(),
+                    platformRole: Type.String(),
+                }),
+            },
+        },
+    }, async (request) => {
+        const { organizationId, platformRole } = request.body
+        const currentUserId = request.principal.id
+        const platformId = request.principal.platform.id
+
+        // Verify the organization exists
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService.getOneOrFail({ id: currentUserId })
+
+        const organization = await organizationService.getById(
+            organizationId,
+            currentUserId,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
+        if (!organization) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: {
+                    entityId: organizationId,
+                    entityType: 'organization',
+                },
+            })
+        }
+
+        // Determine the role to assign
+        // If user has no platformRole or is MEMBER, and they're being assigned to an org,
+        // promote them to ADMIN so they can manage environments
+        let roleToAssign = platformRole || currentUser.platformRole
+        if (!roleToAssign || roleToAssign === PlatformRole.MEMBER) {
+            roleToAssign = PlatformRole.ADMIN
+        }
+
+        // Update the user's organizationId and platformRole
+        await userService.update({
+            id: currentUserId,
+            platformId,
+            organizationId,
+            platformRole: roleToAssign,
+        })
+
+        console.log('[organization.controller] User assigned to organization:', {
+            userId: currentUserId,
+            organizationId,
+            platformRole: roleToAssign,
+        })
+
+        return {
+            success: true,
+            userId: currentUserId,
+            organizationId,
+            platformRole: roleToAssign,
+        }
+    })
 }
