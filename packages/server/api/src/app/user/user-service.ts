@@ -264,10 +264,14 @@ export const userService = {
             platformId,
         })
 
-        // Also delete the user_identity (email/password) so the user is completely purged
-        // This means the email can be re-invited and will require setting a new password
+        // Delete user_identity only if no other users reference it (same identity can exist on multiple platforms)
         if (identityId) {
-            await userIdentityService(system.globalLogger()).delete({ id: identityId })
+            const otherUsersWithSameIdentity = await userRepo().count({
+                where: { identityId },
+            })
+            if (otherUsersWithSameIdentity === 0) {
+                await userIdentityService(system.globalLogger()).delete({ id: identityId })
+            }
         }
     },
 

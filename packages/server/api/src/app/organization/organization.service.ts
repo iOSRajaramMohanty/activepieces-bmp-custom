@@ -1,7 +1,14 @@
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEntity } from './organization.entity'
+import { OrganizationEnvironmentEntity } from './organization-environment.entity'
 import { Organization, apId, SeekPage } from '@activepieces/shared'
 import { ActivepiecesError, ErrorCode } from '@activepieces/shared'
+import { UserEntity } from '../user/user-entity'
+import { AppConnectionEntity } from '../app-connection/app-connection.entity'
+import { Like, In } from 'typeorm'
+import { FlowEntity } from '../flows/flow/flow.entity'
+import { ProjectEntity } from '../project/project-entity'
+import { userService } from '../user/user-service'
 
 export const organizationService = {
     async create(params: CreateOrganizationParams): Promise<Organization> {
@@ -125,6 +132,69 @@ export const organizationService = {
     },
 
     async delete(id: string): Promise<void> {
+        // 1. Delete organization environments first (they reference projects)
+        await databaseConnection()
+            .getRepository(OrganizationEnvironmentEntity)
+            .delete({ organizationId: id })
+
+        // 2. Get all users that belong to this organization
+        const usersInOrg = await databaseConnection()
+            .getRepository(UserEntity)
+            .find({ where: { organizationId: id } })
+        
+        const userIds = usersInOrg.map(u => u.id)
+
+        if (userIds.length > 0) {
+            // 3. Delete projects (and related flows) owned by users in this organization
+            const projectsOwnedByOrgUsers = await databaseConnection()
+                .getRepository(ProjectEntity)
+                .find({ where: { ownerId: In(userIds) } })
+            
+            const projectIds = projectsOwnedByOrgUsers.map(p => p.id)
+
+            if (projectIds.length > 0) {
+                await databaseConnection()
+                    .getRepository(FlowEntity)
+                    .delete({ projectId: In(projectIds) })
+                await databaseConnection()
+                    .getRepository(ProjectEntity)
+                    .delete({ id: In(projectIds) })
+            }
+
+            // 4. Delete app connections owned by users in this organization
+            await databaseConnection()
+                .getRepository(AppConnectionEntity)
+                .delete({ ownerId: In(userIds) })
+
+            // 5. Delete users and user_identity (userService deletes user, then user_identity when no other users reference it)
+            for (const user of usersInOrg) {
+                if (!user.platformId) {
+                    await databaseConnection()
+                        .getRepository(UserEntity)
+                        .update({ id: user.id }, { organizationId: null as any })
+                    continue
+                }
+                try {
+                    await userService.delete({ id: user.id, platformId: user.platformId })
+                } catch (error: any) {
+                    if (error?.message?.includes('fk_platform') || error?.code === '23503') {
+                        await databaseConnection()
+                            .getRepository(UserEntity)
+                            .update({ id: user.id }, { organizationId: null as any })
+                    } else {
+                        throw error
+                    }
+                }
+            }
+        }
+
+        // Delete all BMP auto-created app connections (externalId starts with 'bmp-auto-')
+        // These connections are created automatically for users in this organization
+        await databaseConnection()
+            .getRepository(AppConnectionEntity)
+            .delete({ externalId: Like('bmp-auto-%') })
+
+        // Finally delete the organization itself
         await databaseConnection().getRepository(OrganizationEntity).delete(id)
     },
 

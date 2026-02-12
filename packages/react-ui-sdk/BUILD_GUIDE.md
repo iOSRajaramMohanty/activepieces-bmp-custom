@@ -31,6 +31,10 @@ dist/packages/react-ui-sdk-bundled/
 │   ├── ActivepiecesTodo.png
 │   ├── External_Channel_Todo.png
 │   └── ada-logo.png
+├── locales/          # i18n translations (ar, de, en, es, fr, ja, nl, pt, ru, zh, zh-TW)
+│   ├── ar/translation.json
+│   ├── en/translation.json
+│   └── ...
 ├── index.js          # Main SDK bundle (~12 MB)
 ├── LICENSE
 ├── README.md
@@ -42,22 +46,23 @@ dist/packages/react-ui-sdk-bundled/
 After building, copy all SDK files to your Angular project:
 
 ```bash
-# Copy all SDK files (preserves your custom styles)
-cp dist/packages/react-ui-sdk-bundled/index.js /path/to/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/LICENSE /path/to/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/README.md /path/to/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/package.json /path/to/bmp-fe-web/src/assets/sdk/
+mkdir -p /path/to/bmp-fe-web/src/assets/sdk/{assets,locales}
+cp dist/packages/react-ui-sdk-bundled/{index.js,LICENSE,README.md,package.json} \
+   /path/to/bmp-fe-web/src/assets/sdk/
 cp -r dist/packages/react-ui-sdk-bundled/assets/* /path/to/bmp-fe-web/src/assets/sdk/assets/
+cp -r dist/packages/react-ui-sdk-bundled/locales/* /path/to/bmp-fe-web/src/assets/sdk/locales/
 ```
 
 For bmp-fe-web specifically:
 
 ```bash
-cp dist/packages/react-ui-sdk-bundled/index.js /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/LICENSE /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/README.md /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/package.json /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/
-cp -r dist/packages/react-ui-sdk-bundled/assets/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/assets/
+mkdir -p /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/{assets,locales} && \
+cp dist/packages/react-ui-sdk-bundled/{index.js,LICENSE,README.md,package.json} \
+   /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/ && \
+cp -r dist/packages/react-ui-sdk-bundled/assets/* \
+   /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/assets/ && \
+cp -r dist/packages/react-ui-sdk-bundled/locales/* \
+   /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/locales/
 ```
 
 **Note:** Don't overwrite `bmp-overrides.css` and `styles.css` - these contain your custom BMP styling.
@@ -80,11 +85,13 @@ cd "$SDK_SRC"
 npx nx run react-ui-sdk:bundle --skip-nx-cache
 
 # Copy all SDK files to bmp-fe-web (preserving custom styles)
+mkdir -p "$SDK_DEST/assets" "$SDK_DEST/locales"
 cp dist/packages/react-ui-sdk-bundled/index.js "$SDK_DEST/"
 cp dist/packages/react-ui-sdk-bundled/LICENSE "$SDK_DEST/"
 cp dist/packages/react-ui-sdk-bundled/README.md "$SDK_DEST/"
 cp dist/packages/react-ui-sdk-bundled/package.json "$SDK_DEST/"
 cp -r dist/packages/react-ui-sdk-bundled/assets/* "$SDK_DEST/assets/"
+cp -r dist/packages/react-ui-sdk-bundled/locales/* "$SDK_DEST/locales/"
 
 echo "SDK built and copied successfully!"
 echo "Files in $SDK_DEST:"
@@ -158,6 +165,7 @@ BMP style overrides are applied via `bmp-overrides.css` in the Angular app:
 ```
 bmp-fe-web/src/assets/sdk/
 ├── index.js
+├── locales/           # SDK i18n translations (bundled with SDK)
 ├── styles.css         # SDK default styles
 ├── bmp-overrides.css  # Your custom styles
 └── assets/

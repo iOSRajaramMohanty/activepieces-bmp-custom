@@ -86,6 +86,18 @@ module.exports = composePlugins(withNx(), (config) => {
                 '{ env: { MODE: "development" }, url: (typeof window !== "undefined" ? window.location.href : "") }'
               );
               
+              // Fix publicPath for SDK script-tag loading: prefer window.__AP_SDK_BASE_PATH__ (set by
+              // host before loading), fallback to document.currentScript or script search
+              modifiedSource = modifiedSource.replace(
+                /if \(typeof \(typeof window !== "undefined" \? window\.location\.href : ""\) === "string"\) scriptUrl = \(typeof window !== "undefined" \? window\.location\.href : ""\)/,
+                'if (typeof window !== "undefined" && window.__AP_SDK_BASE_PATH__) { scriptUrl = window.__AP_SDK_BASE_PATH__; } else if (typeof document !== "undefined") { if (document.currentScript && document.currentScript.src) { scriptUrl = document.currentScript.src; } else { var _sc = document.getElementsByTagName("script"); for (var _i = _sc.length - 1; _i >= 0; _i--) { var _src = _sc[_i].src; if (_src && _src.indexOf("sdk/index.js") !== -1) { scriptUrl = _src; break; } } } } if (!scriptUrl && typeof (typeof window !== "undefined" ? window.location.href : "") === "string") { scriptUrl = (typeof window !== "undefined" ? window.location.href : ""); }'
+              );
+              // Set locales path in same block so i18n finds it (must run before i18n init)
+              modifiedSource = modifiedSource.replace(
+                /(__webpack_require__\.p = scriptUrl;)/,
+                '$1; if (typeof window !== "undefined" && scriptUrl) { window.__ACTIVEPIECES_SDK_LOCALES_PATH__ = scriptUrl + "locales/{{lng}}/{{ns}}.json"; }'
+              );
+              
               // Webpack generates require() calls for externalized modules
               // We need to replace these with a polyfill that works in browser context
               // The key is to replace require() BEFORE webpack's external handling code runs
