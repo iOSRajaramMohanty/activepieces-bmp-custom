@@ -158,7 +158,10 @@ module.exports = composePlugins(withNx(), (config) => {
           return;
         }
         
-        console.warn('⚠️ Could not find webpack exports. Module may not be accessible.');
+        // Only warn if module was not already exposed by the primary export conversion
+        if (typeof window.__AP_SDK_MODULE__ === 'undefined') {
+          console.warn('⚠️ Could not find webpack exports. Module may not be accessible.');
+        }
       } catch(e) {
         console.error('❌ Error exposing SDK module:', e);
       }
@@ -313,15 +316,24 @@ module.exports = composePlugins(withNx(), (config) => {
   config.module = config.module || {};
   config.module.rules = config.module.rules || [];
   
-  // Add CSS loader rule if not present
-  const hasCssRule = config.module.rules.some(rule => 
+  // Add/update CSS rule to include postcss-loader for Tailwind (react-ui styles.css)
+  const cssRuleIndex = config.module.rules.findIndex(rule => 
     rule.test && rule.test.toString().includes('css')
   );
-  
-  if (!hasCssRule) {
+  const cssLoaders = ['style-loader', 'css-loader', {
+    loader: 'postcss-loader',
+    options: {
+      postcssOptions: {
+        config: path.resolve(__dirname, '../react-ui/postcss.config.js'),
+      },
+    },
+  }];
+  if (cssRuleIndex >= 0) {
+    config.module.rules[cssRuleIndex].use = cssLoaders;
+  } else {
     config.module.rules.push({
       test: /\.css$/i,
-      use: ['style-loader', 'css-loader'],
+      use: cssLoaders,
     });
   }
   

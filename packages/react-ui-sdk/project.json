@@ -59,6 +59,11 @@
             "output": "assets"
           },
           {
+            "glob": "**/*.woff2",
+            "input": "packages/react-ui/src/assets/fonts",
+            "output": "assets/fonts"
+          },
+          {
             "glob": "**/*",
             "input": "packages/react-ui/public/locales",
             "output": "locales"
@@ -79,6 +84,15 @@
         "^build",
         "validate-no-ee-imports"
       ]
+    },
+    "fix-bundle-package": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/packages/react-ui-sdk-bundled/package.json"],
+      "options": {
+        "command": "node packages/react-ui-sdk/scripts/fix-bundle-package-json.js",
+        "cwd": "{workspaceRoot}"
+      },
+      "dependsOn": ["bundle"]
     },
     "build:skip-angular-check": {
       "executor": "nx:run-commands",
