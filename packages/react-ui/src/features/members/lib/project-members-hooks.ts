@@ -25,6 +25,7 @@ export const projectMembersHooks = {
         return res.data;
       },
       enabled: !!data,
+      retry: false,
     });
     return {
       projectMembers: query.data,

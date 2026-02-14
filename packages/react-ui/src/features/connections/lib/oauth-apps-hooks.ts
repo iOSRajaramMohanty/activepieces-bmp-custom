@@ -72,6 +72,12 @@ export const oauthAppsQueries = {
     return useQuery<PiecesOAuth2AppsMap, Error>({
       queryKey: ['oauth-apps'],
       queryFn: async () => {
+        // [AP OAuth] Temporary logging: how piecesOAuth2AppsMap is built
+        console.log('[AP OAuth] Building piecesOAuth2AppsMap', {
+          edition,
+          cloudAuthEnabled: platform.cloudAuthEnabled,
+        });
+
         const apps =
           edition === ApEdition.COMMUNITY
             ? {
@@ -81,9 +87,29 @@ export const oauthAppsQueries = {
                 limit: 1000000,
                 cursor: undefined,
               });
+
+        if (edition === ApEdition.COMMUNITY) {
+          console.log('[AP OAuth] Platform apps: skipped (COMMUNITY edition, using empty list)');
+        } else {
+          console.log('[AP OAuth] Platform apps: GET /v1/oauth-apps', {
+            count: apps.data.length,
+            pieceNames: apps.data.map((a) => a.pieceName),
+          });
+        }
+
         const cloudApps = !platform.cloudAuthEnabled
           ? {}
           : await oauthAppsApi.listCloudOAuth2Apps(edition!);
+
+        if (!platform.cloudAuthEnabled) {
+          console.log('[AP OAuth] Cloud apps: skipped (cloudAuthEnabled is false)');
+        } else {
+          console.log('[AP OAuth] Cloud apps: GET https://secrets.activepieces.com/apps', {
+            pieceNames: Object.keys(cloudApps),
+            count: Object.keys(cloudApps).length,
+          });
+        }
+
         const appsMap: PiecesOAuth2AppsMap = {};
 
         Object.entries(cloudApps).forEach(([pieceName, app]) => {
@@ -103,6 +129,19 @@ export const oauthAppsQueries = {
             },
             cloudOAuth2App: appsMap[app.pieceName]?.cloudOAuth2App ?? null,
           };
+        });
+
+        console.log('[AP OAuth] piecesOAuth2AppsMap result', {
+          pieceNames: Object.keys(appsMap),
+          byPiece: Object.fromEntries(
+            Object.entries(appsMap).map(([name, entry]) => [
+              name,
+              {
+                cloud: !!entry?.cloudOAuth2App,
+                platform: !!entry?.platformOAuth2App,
+              },
+            ]),
+          ),
         });
         return appsMap;
       },

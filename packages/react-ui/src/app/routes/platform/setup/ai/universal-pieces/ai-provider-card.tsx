@@ -32,7 +32,7 @@ const AIProviderCard = ({
     <Card className="w-full px-5 py-4">
       <div className="flex w-full gap-2 justify-center items-center">
         <div className="flex flex-col gap-2 text-center mr-2">
-          {logoUrl && <img src={logoUrl} alt="icon" width={32} height={32} loading="lazy" decoding="async" fetchPriority="low" />}
+          {logoUrl && <img src={logoUrl} alt="icon" width={32} height={32} loading="lazy" decoding="async" />}
         </div>
         <div className="flex grow flex-col">
           <div className="text-lg flex items-center">

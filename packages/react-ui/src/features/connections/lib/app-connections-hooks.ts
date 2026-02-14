@@ -316,18 +316,27 @@ export const appConnectionsQueries = {
         }
         
         // Only fetch project members when not embedded
-        const { data: projectMembers } = await projectMembersApi.list({
-          projectId,
-        });
+        // Handle 404 gracefully as endpoint may not be available in all environments
+        try {
+          const { data: projectMembers } = await projectMembersApi.list({
+            projectId,
+          });
 
-        return owners.filter(
-          (owner) =>
-            !isNil(
-              projectMembers.find(
-                (member) => member.user.email === owner.email,
+          return owners.filter(
+            (owner) =>
+              !isNil(
+                projectMembers.find(
+                  (member) => member.user.email === owner.email,
+                ),
               ),
-            ),
-        );
+          );
+        } catch (error: any) {
+          // Handle 404 errors gracefully - endpoint may not be available in all environments
+          if (error?.response?.status === 404) {
+            return owners;
+          }
+          throw error;
+        }
       },
     });
   },

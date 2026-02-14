@@ -487,17 +487,19 @@ export default function UsersPage() {
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
-                    <TooltipTrigger>
-                      <UpdateUserDialog
-                        userId={row.id}
-                        role={row.platformRole}
-                        externalId={row.externalId ?? undefined}
-                        onUpdate={() => refetch()}
-                      >
-                        <Button variant="ghost" className="size-8 p-0">
-                          <Pencil className="size-4" />
-                        </Button>
-                      </UpdateUserDialog>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <UpdateUserDialog
+                          userId={row.id}
+                          role={row.platformRole}
+                          externalId={row.externalId ?? undefined}
+                          onUpdate={() => refetch()}
+                        >
+                          <Button variant="ghost" className="size-8 p-0">
+                            <Pencil className="size-4" />
+                          </Button>
+                        </UpdateUserDialog>
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
                       {t('Edit user')}
@@ -513,37 +515,39 @@ export default function UsersPage() {
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       {!isAdmin ? (
-                        <ConfirmationDeleteDialog
-                          title={isActive ? t('Deactivate User') : t('Activate User')}
-                          message={
-                            isActive
-                              ? t('Are you sure you want to deactivate this user? They will not be able to log in.')
-                              : t('Are you sure you want to activate this user? They will be able to log in.')
-                          }
-                          entityName={`${t('User')} ${row.email}`}
-                          mutationFn={async () => {
-                            updateUserStatus({
-                              userId: row.id,
-                              status: isActive ? UserStatus.INACTIVE : UserStatus.ACTIVE,
-                            });
-                          }}
-                          buttonText={isActive ? t('Deactivate') : t('Activate')}
-                        >
-                          <Button
-                            disabled={isUpdatingStatus}
-                            variant="ghost"
-                            className="size-8 p-0"
-                            loading={isUpdatingStatus}
+                        <div>
+                          <ConfirmationDeleteDialog
+                            title={isActive ? t('Deactivate User') : t('Activate User')}
+                            message={
+                              isActive
+                                ? t('Are you sure you want to deactivate this user? They will not be able to log in.')
+                                : t('Are you sure you want to activate this user? They will be able to log in.')
+                            }
+                            entityName={`${t('User')} ${row.email}`}
+                            mutationFn={async () => {
+                              updateUserStatus({
+                                userId: row.id,
+                                status: isActive ? UserStatus.INACTIVE : UserStatus.ACTIVE,
+                              });
+                            }}
+                            buttonText={isActive ? t('Deactivate') : t('Activate')}
                           >
-                            {isActive ? (
-                              <CircleMinus className="size-4" />
-                            ) : (
-                              <RotateCcw className="size-4" />
-                            )}
-                          </Button>
-                        </ConfirmationDeleteDialog>
+                            <Button
+                              disabled={isUpdatingStatus}
+                              variant="ghost"
+                              className="size-8 p-0"
+                              loading={isUpdatingStatus}
+                            >
+                              {isActive ? (
+                                <CircleMinus className="size-4" />
+                              ) : (
+                                <RotateCcw className="size-4" />
+                              )}
+                            </Button>
+                          </ConfirmationDeleteDialog>
+                        </div>
                       ) : (
                         <Button
                           disabled={true}
@@ -579,26 +583,28 @@ export default function UsersPage() {
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       {canDelete ? (
-                        <ConfirmationDeleteDialog
-                          title={t('Delete User')}
-                          message={t(
-                            'Are you sure you want to delete this user?',
-                          )}
-                          entityName={`${t('User')} ${row.email}`}
-                          mutationFn={async () => {
-                            deleteUser(row.id);
-                          }}
-                        >
-                          <Button
-                            loading={isDeleting}
-                            variant="ghost"
-                            className="size-8 p-0"
+                        <div>
+                          <ConfirmationDeleteDialog
+                            title={t('Delete User')}
+                            message={t(
+                              'Are you sure you want to delete this user?',
+                            )}
+                            entityName={`${t('User')} ${row.email}`}
+                            mutationFn={async () => {
+                              deleteUser(row.id);
+                            }}
                           >
-                            <Trash className="size-4 text-destructive" />
-                          </Button>
-                        </ConfirmationDeleteDialog>
+                            <Button
+                              loading={isDeleting}
+                              variant="ghost"
+                              className="size-8 p-0"
+                            >
+                              <Trash className="size-4 text-destructive" />
+                            </Button>
+                          </ConfirmationDeleteDialog>
+                        </div>
                       ) : (
                         <Button
                           disabled={true}

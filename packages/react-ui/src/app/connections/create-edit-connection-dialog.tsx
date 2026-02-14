@@ -417,16 +417,31 @@ function getInitiallySelectedAuthListItem(
     return null;
   }
   if (authProperty.type === PropertyType.OAUTH2) {
+    const predefinedApp = oauth2Utils.getPredefinedOAuth2App(
+      piecesOAuth2AppsMap,
+      pieceName,
+    );
+    const oauth2App = predefinedApp ?? {
+      oauth2Type: AppConnectionType.OAUTH2,
+      clientId: null,
+    };
+    // [AP OAuth] Temporary logging: which Connect UI will show for this piece
+    console.log('[AP OAuth] getInitiallySelectedAuthListItem', {
+      pieceName,
+      hasPredefinedApp: !!predefinedApp,
+      oauth2Type: oauth2App.oauth2Type,
+      ui: predefinedApp
+        ? predefinedApp.oauth2Type === AppConnectionType.CLOUD_OAUTH2
+          ? 'simplified (Connect only, cloud app)'
+          : predefinedApp.oauth2Type === AppConnectionType.PLATFORM_OAUTH2
+            ? 'simplified (Connect only, platform app)'
+            : 'form (Client ID/Secret)'
+        : 'form (Client ID/Secret, manual OAUTH2)',
+    });
     return {
       authProperty,
       grantType: oauth2Utils.getGrantType(authProperty),
-      oauth2App: oauth2Utils.getPredefinedOAuth2App(
-        piecesOAuth2AppsMap,
-        pieceName,
-      ) ?? {
-        oauth2Type: AppConnectionType.OAUTH2,
-        clientId: null,
-      },
+      oauth2App,
     };
   }
   return {

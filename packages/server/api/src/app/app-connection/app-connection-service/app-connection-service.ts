@@ -64,6 +64,15 @@ export const appConnectionsRepo = repoFactory(AppConnectionEntity)
 export const appConnectionService = (log: FastifyBaseLogger) => ({
     async upsert(params: UpsertParams): Promise<AppConnectionWithoutSensitiveData> {
         const { projectIds, externalId, value, displayName, pieceName, ownerId, platformId, scope, type, status, metadata, creatorPlatformRole } = params
+        
+        // [AP OAuth] Temporary logging: upsert entry
+        log.info({
+            pieceName,
+            connectionType: type,
+            displayName,
+            hasCode: !!(value as any)?.code,
+        }, '[AP OAuth] appConnectionService.upsert: entry')
+
         const pieceVersion = params.pieceVersion ?? ( await pieceMetadataService(log).getOrThrow({
             name: pieceName,
             platformId,
@@ -408,6 +417,13 @@ const validateConnectionValue = async (
 ): Promise<AppConnectionValue> => {
     const { value, pieceName, projectId, platformId } = params
 
+    // [AP OAuth] Temporary logging: validateConnectionValue entry
+    log.info({
+        pieceName,
+        connectionType: value.type,
+        hasCode: !!(value as any)?.code,
+    }, '[AP OAuth] validateConnectionValue: entry')
+
     switch (value.type) {
         case AppConnectionType.PLATFORM_OAUTH2: {
             const tokenUrl = await oauth2Util(log).getOAuth2TokenUrl({
@@ -432,6 +448,13 @@ const validateConnectionValue = async (
             })
         }
         case AppConnectionType.CLOUD_OAUTH2: {
+            // [AP OAuth] Temporary logging: CLOUD_OAUTH2 claim path
+            log.info({
+                pieceName,
+                clientId: value.client_id,
+                hasCode: !!value.code,
+            }, '[AP OAuth] validateConnectionValue: CLOUD_OAUTH2 path, calling claim')
+
             const tokenUrl = await oauth2Util(log).getOAuth2TokenUrl({
                 pieceName,
                 platformId,

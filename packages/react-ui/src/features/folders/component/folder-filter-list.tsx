@@ -46,10 +46,9 @@ const FolderItem = ({
 }: FolderItemProps) => {
   return (
     <div key={folder.id} className="group">
-      <Button
-        variant="ghost"
+      <div
         className={cn(
-          'w-full  items-center justify-start group/item gap-2 pl-4 pr-0',
+          'w-full flex items-center justify-start group/item gap-2 pl-4 pr-0 rounded-md transition-colors cursor-pointer hover:bg-accent hover:text-accent-foreground',
           {
             'bg-accent dark:bg-accent/50': selectedFolderId === folder.id,
           },
@@ -78,7 +77,7 @@ const FolderItem = ({
             hideFlowCount={true}
           />
         </TextWithIcon>
-      </Button>
+      </div>
     </div>
   );
 };

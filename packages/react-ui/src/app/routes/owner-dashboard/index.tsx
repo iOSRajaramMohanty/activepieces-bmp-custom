@@ -824,37 +824,39 @@ export default function OwnerDashboard() {
                           {/* Delete button for ADMIN users only */}
                           {canDelete && (
                             <Tooltip>
-                              <ConfirmationDeleteDialog
-                                title={t('Delete Admin Account')}
-                                message={
-                                  totalChildUsers > 0
-                                    ? t(
-                                        'Are you sure you want to delete admin "{{email}}"? This will also permanently delete all {{count}} operator(s) and member(s) associated with this admin account.',
-                                        {
-                                          email: row.original.email,
-                                          count: totalChildUsers,
-                                        },
-                                      )
-                                    : t(
-                                        'Are you sure you want to delete admin "{{email}}"?',
-                                        { email: row.original.email },
-                                      )
-                                }
-                                entityName={`${t('Admin')} ${row.original.email}`}
-                                mutationFn={async () => {
-                                  deleteUserMutation.mutate(row.original.id);
-                                }}
-                              >
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    loading={deleteUserMutation.isPending}
-                                    variant="ghost"
-                                    className="size-8 p-0"
+                              <TooltipTrigger asChild>
+                                <div>
+                                  <ConfirmationDeleteDialog
+                                    title={t('Delete Admin Account')}
+                                    message={
+                                      totalChildUsers > 0
+                                        ? t(
+                                            'Are you sure you want to delete admin "{{email}}"? This will also permanently delete all {{count}} operator(s) and member(s) associated with this admin account.',
+                                            {
+                                              email: row.original.email,
+                                              count: totalChildUsers,
+                                            },
+                                          )
+                                        : t(
+                                            'Are you sure you want to delete admin "{{email}}"?',
+                                            { email: row.original.email },
+                                          )
+                                    }
+                                    entityName={`${t('Admin')} ${row.original.email}`}
+                                    mutationFn={async () => {
+                                      deleteUserMutation.mutate(row.original.id);
+                                    }}
                                   >
-                                    <Trash className="size-4 text-destructive" />
-                                  </Button>
-                                </TooltipTrigger>
-                              </ConfirmationDeleteDialog>
+                                    <Button
+                                      loading={deleteUserMutation.isPending}
+                                      variant="ghost"
+                                      className="size-8 p-0"
+                                    >
+                                      <Trash className="size-4 text-destructive" />
+                                    </Button>
+                                  </ConfirmationDeleteDialog>
+                                </div>
+                              </TooltipTrigger>
                               <TooltipContent side="bottom">
                                 {t('Delete admin account')}
                               </TooltipContent>

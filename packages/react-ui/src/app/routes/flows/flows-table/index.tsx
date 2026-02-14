@@ -14,7 +14,6 @@ import {
   folderIdParamName,
 } from '@/features/folders/component/folder-filter-list';
 import { piecesHooks } from '@/features/pieces/lib/pieces-hooks';
-import { ownerColumnHooks } from '@/hooks/owner-column-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
 import { useNewWindow } from '@/lib/navigation-utils';
 import { formatUtils } from '@/lib/utils';
@@ -83,14 +82,11 @@ export const FlowsTable = ({ refetch: parentRefetch }: FlowsTableProps) => {
     }
   };
 
-  const columns = ownerColumnHooks.useOwnerColumn<PopulatedFlow>(
-    flowsTableColumns({
-      refetch: handleRefetch,
-      refresh,
-      setRefresh,
-    }),
-    3,
-  );
+  const columns = flowsTableColumns({
+    refetch: handleRefetch,
+    refresh,
+    setRefresh,
+  });
 
   const filters: DataTableFilters<
     keyof PopulatedFlow | 'connectionExternalId' | 'name'

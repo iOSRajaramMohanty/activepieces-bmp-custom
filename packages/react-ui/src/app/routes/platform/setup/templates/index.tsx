@@ -239,15 +239,17 @@ const PlatformTemplatesPage = () => {
               return (
                 <div className="flex items-end justify-end">
                   <Tooltip>
-                    <TooltipTrigger>
-                      <UpdateTemplateDialog
-                        onDone={() => refetch()}
-                        template={row}
-                      >
-                        <Button variant="ghost" className="size-8 p-0">
-                          <Pencil className="size-4" />
-                        </Button>
-                      </UpdateTemplateDialog>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <UpdateTemplateDialog
+                          onDone={() => refetch()}
+                          template={row}
+                        >
+                          <Button variant="ghost" className="size-8 p-0">
+                            <Pencil className="size-4" />
+                          </Button>
+                        </UpdateTemplateDialog>
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
                       {t('Edit template')}

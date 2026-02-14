@@ -23,6 +23,15 @@ if lsof -ti :3000 > /dev/null 2>&1; then
     sleep 2
 fi
 
-# Run backend API and Engine concurrently (same as npm run dev:backend)
-echo "📦 Starting server-api and engine..."
-npm run dev:backend
+# Run backend API and Engine concurrently in background (same as npm run dev:backend)
+LOG_FILE="${PROJECT_ROOT}/backend.log"
+echo "📦 Starting server-api and engine in background..."
+echo "   Logs: $LOG_FILE"
+echo ""
+nohup npm run dev:backend >> "$LOG_FILE" 2>&1 &
+BACKEND_PID=$!
+echo "   PID: $BACKEND_PID"
+echo "   To stop: kill $BACKEND_PID"
+echo "   To follow logs: tail -f $LOG_FILE"
+echo ""
+echo "✅ Backend running in background."

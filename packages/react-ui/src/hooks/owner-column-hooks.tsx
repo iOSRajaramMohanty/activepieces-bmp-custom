@@ -29,6 +29,7 @@ function useOwnerColumn<T extends HasOwner | HasOwnerId>(
   }
 
   const ownerColumn: ColumnDef<RowDataWithActions<T>, unknown> = {
+    id: 'owner',
     accessorKey: 'owner',
     size: 180,
     header: ({ column }) => (

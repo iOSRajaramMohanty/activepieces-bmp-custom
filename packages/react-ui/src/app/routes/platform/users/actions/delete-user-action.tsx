@@ -29,23 +29,25 @@ export const DeleteUserAction = ({
   return (
     <div className="flex items-end justify-end">
       <Tooltip>
-        <TooltipTrigger>
-          <ConfirmationDeleteDialog
-            title={isInvitation ? t('Delete Invitation') : t('Delete User')}
-            message={
-              isInvitation
-                ? t('Are you sure you want to delete this invitation?')
-                : t('Are you sure you want to delete this user?')
-            }
-            entityName={`${entityType} ${email}`}
-            mutationFn={async () => {
-              onDelete(isInvitation ? row.id : row.data.id, isInvitation);
-            }}
-          >
-            <Button loading={isDeleting} variant="ghost" className="size-8 p-0">
-              <Trash className="size-4 text-destructive" />
-            </Button>
-          </ConfirmationDeleteDialog>
+        <TooltipTrigger asChild>
+          <div>
+            <ConfirmationDeleteDialog
+              title={isInvitation ? t('Delete Invitation') : t('Delete User')}
+              message={
+                isInvitation
+                  ? t('Are you sure you want to delete this invitation?')
+                  : t('Are you sure you want to delete this user?')
+              }
+              entityName={`${entityType} ${email}`}
+              mutationFn={async () => {
+                onDelete(isInvitation ? row.id : row.data.id, isInvitation);
+              }}
+            >
+              <Button loading={isDeleting} variant="ghost" className="size-8 p-0">
+                <Trash className="size-4 text-destructive" />
+              </Button>
+            </ConfirmationDeleteDialog>
+          </div>
         </TooltipTrigger>
         <TooltipContent side="bottom">
           {isInvitation ? t('Delete invitation') : t('Delete user')}

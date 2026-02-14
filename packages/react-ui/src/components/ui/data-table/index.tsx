@@ -10,9 +10,8 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { t } from 'i18next';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDeepCompareEffect } from 'react-use';
 
 import {
   Table,
@@ -215,11 +214,26 @@ export function DataTable<
     enrichPageData(page?.data ?? []),
   );
 
-  useDeepCompareEffect(() => {
-    setNextPageCursor(page?.next ?? undefined);
-    setPreviousPageCursor(page?.previous ?? undefined);
-    setTableData(enrichPageData(page?.data ?? []));
-  }, [page?.data]);
+  // Use ref to track previous page values for comparison
+  const prevPageDataRef = useRef(page?.data);
+  const prevPageNextRef = useRef(page?.next);
+  const prevPagePreviousRef = useRef(page?.previous);
+  
+  useEffect(() => {
+    // Compare page data, next, and previous to detect changes
+    const dataChanged = prevPageDataRef.current !== page?.data;
+    const nextChanged = prevPageNextRef.current !== page?.next;
+    const previousChanged = prevPagePreviousRef.current !== page?.previous;
+    
+    if (dataChanged || nextChanged || previousChanged) {
+      setNextPageCursor(page?.next ?? undefined);
+      setPreviousPageCursor(page?.previous ?? undefined);
+      setTableData(enrichPageData(page?.data ?? []));
+      prevPageDataRef.current = page?.data;
+      prevPageNextRef.current = page?.next;
+      prevPagePreviousRef.current = page?.previous;
+    }
+  }, [page?.data, page?.next, page?.previous]);
 
   const table = useReactTable({
     data: tableData,
@@ -248,11 +262,13 @@ export function DataTable<
     });
   }, []);
 
-  useDeepCompareEffect(() => {
+  const selectedRows = table.getSelectedRowModel().rows;
+  
+  useEffect(() => {
     onSelectedRowsChange?.(
-      table.getSelectedRowModel().rows.map((row) => row.original),
+      selectedRows.map((row) => row.original),
     );
-  }, [table.getSelectedRowModel().rows]);
+  }, [selectedRows, onSelectedRowsChange]);
 
   useEffect(() => {
     if (hidePagination) {

@@ -106,7 +106,8 @@ export const flowsTableColumns = ({
     ? []
     : [
         {
-          accessorKey: 'owner',
+          id: 'flowOwner',
+          accessorKey: 'ownerId',
           size: 150,
           header: ({ column }: { column: any }) => (
             <DataTableColumnHeader
@@ -129,6 +130,7 @@ export const flowsTableColumns = ({
           },
         },
         {
+          id: 'flowUpdatedBy',
           accessorKey: 'updatedBy',
           size: 150,
           header: ({ column }: { column: any }) => (

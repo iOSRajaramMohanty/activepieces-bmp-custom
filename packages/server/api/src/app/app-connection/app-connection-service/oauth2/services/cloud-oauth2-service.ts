@@ -28,11 +28,28 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
             authorizationMethod: connectionValue.authorization_method,
             tokenUrl: connectionValue.token_url,
         }
+        // [AP OAuth Cloud] Temporary logging: refresh flow
+        log.info({
+            pieceName,
+            clientId: connectionValue.client_id,
+            edition: system.getEdition(),
+            tokenUrl: connectionValue.token_url,
+            url: 'https://secrets.activepieces.com/refresh',
+        }, '[AP OAuth Cloud] refresh: calling secrets.activepieces.com/refresh')
+
         const response = (
             await apAxios.post('https://secrets.activepieces.com/refresh', requestBody, {
                 timeout: 20000,
             })
         ).data
+
+        log.info({
+            pieceName,
+            clientId: connectionValue.client_id,
+            hasAccessToken: !!response?.access_token,
+            hasRefreshToken: !!response?.refresh_token,
+        }, '[AP OAuth Cloud] refresh: success')
+
         return {
             ...connectionValue,
             ...response,
@@ -54,6 +71,18 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
                 pieceName,
                 edition: system.getEdition(),
             }
+
+            // [AP OAuth Cloud] Temporary logging: claim flow (token exchange)
+            log.info({
+                pieceName,
+                clientId: request.clientId,
+                edition: system.getEdition(),
+                tokenUrl: request.tokenUrl,
+                codeLength: request.code?.length ?? 0,
+                hasCodeVerifier: !!request.codeVerifier,
+                url: 'https://secrets.activepieces.com/claim',
+            }, '[AP OAuth Cloud] claim: calling secrets.activepieces.com/claim')
+
             const value = (
                 await apAxios.post<CloudOAuth2ConnectionValue>(
                     'https://secrets.activepieces.com/claim',
@@ -63,6 +92,14 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
                     },
                 )
             ).data
+
+            log.info({
+                pieceName,
+                clientId: request.clientId,
+                hasAccessToken: !!value?.access_token,
+                hasRefreshToken: !!value?.refresh_token,
+            }, '[AP OAuth Cloud] claim: success')
+
             return {
                 ...value,
                 token_url: request.tokenUrl,

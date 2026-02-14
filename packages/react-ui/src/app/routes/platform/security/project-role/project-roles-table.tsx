@@ -122,22 +122,24 @@ export const ProjectRolesTable = ({
               </Tooltip>
 
               <Tooltip>
-                <TooltipTrigger>
-                  <ProjectRoleDialog
-                    mode="edit"
-                    projectRole={row}
-                    platformId={platform.id}
-                    onSave={() => refetch()}
-                    disabled={row.type === RoleType.DEFAULT}
-                  >
-                    <Button variant="ghost" className="size-8 p-0">
-                      {row.type === RoleType.DEFAULT ? (
-                        <Eye className="size-4" />
-                      ) : (
-                        <Pencil className="size-4" />
-                      )}
-                    </Button>
-                  </ProjectRoleDialog>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ProjectRoleDialog
+                      mode="edit"
+                      projectRole={row}
+                      platformId={platform.id}
+                      onSave={() => refetch()}
+                      disabled={row.type === RoleType.DEFAULT}
+                    >
+                      <Button variant="ghost" className="size-8 p-0">
+                        {row.type === RoleType.DEFAULT ? (
+                          <Eye className="size-4" />
+                        ) : (
+                          <Pencil className="size-4" />
+                        )}
+                      </Button>
+                    </ProjectRoleDialog>
+                  </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   {row.type === RoleType.DEFAULT
@@ -148,28 +150,30 @@ export const ProjectRolesTable = ({
 
               {row.type !== RoleType.DEFAULT && (
                 <Tooltip>
-                  <TooltipTrigger>
-                    <ConfirmationDeleteDialog
-                      isDanger={true}
-                      title={t('Delete Role')}
-                      message={t(
-                        `Deleting this role will remove ${
-                          row.userCount
-                        } project member${
-                          row.userCount === 1 ? '' : 's'
-                        } and all associated invitations. Are you sure you want to proceed?`,
-                      )}
-                      entityName={`${t('Project Role')} ${row.name}`}
-                      mutationFn={async () => deleteProjectRole(row.name)}
-                    >
-                      <Button
-                        loading={isDeleting}
-                        variant="ghost"
-                        className="size-8 p-0"
+                  <TooltipTrigger asChild>
+                    <div>
+                      <ConfirmationDeleteDialog
+                        isDanger={true}
+                        title={t('Delete Role')}
+                        message={t(
+                          `Deleting this role will remove ${
+                            row.userCount
+                          } project member${
+                            row.userCount === 1 ? '' : 's'
+                          } and all associated invitations. Are you sure you want to proceed?`,
+                        )}
+                        entityName={`${t('Project Role')} ${row.name}`}
+                        mutationFn={async () => deleteProjectRole(row.name)}
                       >
-                        <Trash className="size-4 text-destructive" />
-                      </Button>
-                    </ConfirmationDeleteDialog>
+                        <Button
+                          loading={isDeleting}
+                          variant="ghost"
+                          className="size-8 p-0"
+                        >
+                          <Trash className="size-4 text-destructive" />
+                        </Button>
+                      </ConfirmationDeleteDialog>
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     {t('Delete Role')}
