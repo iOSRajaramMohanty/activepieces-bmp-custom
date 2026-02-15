@@ -99,6 +99,7 @@ export class ReactUIWrapperComponent implements OnInit, OnDestroy {
     }
 
     const containerElement = createReactContainer();
+    containerElement.setAttribute('data-ap-view', this.component);
     this.container.element.nativeElement.appendChild(containerElement);
 
     const config: ReactUISDKConfig = {

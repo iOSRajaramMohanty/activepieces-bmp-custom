@@ -149,7 +149,7 @@ cp -r dist/packages/react-ui-sdk-bundled/assets/* /Users/rajarammohanty/Document
 cp -r dist/packages/react-ui-sdk-bundled/locales/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/locales/
 ```
 
-**Note:** Don’t overwrite `bmp-overrides.css` or other custom styles you maintain in the host app.
+**Note:** Don’t overwrite `bmp-overrides.css` or other custom styles you maintain in the host app. See [BMP_OVERRIDES.md](./BMP_OVERRIDES.md) for how to customize the Connections page (and other SDK views) from bmp-fe-web using `bmp-overrides.css`.
 
 ## Full Build Script (manual copy)
 
