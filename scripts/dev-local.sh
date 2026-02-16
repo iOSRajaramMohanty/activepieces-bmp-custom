@@ -47,6 +47,32 @@ print_warning() {
     echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
+# Function to ensure sqlite3 bindings are properly set up
+ensure_sqlite3_bindings() {
+    local sqlite3_dir="$PROJECT_ROOT/node_modules/sqlite3"
+    local binding_dir="$sqlite3_dir/lib/binding/node-v137-darwin-arm64"
+    local built_binding="$sqlite3_dir/build/Release/node_sqlite3.node"
+    
+    # Skip if bindings already exist
+    if [ -f "$binding_dir/node_sqlite3.node" ]; then
+        return 0
+    fi
+    
+    # Check if compiled binding exists
+    if [ ! -f "$built_binding" ]; then
+        print_info "Compiling sqlite3 native bindings..."
+        npm rebuild sqlite3 >/dev/null 2>&1 || true
+    fi
+    
+    # Create symlink if built binding exists
+    if [ -f "$built_binding" ]; then
+        print_info "Setting up sqlite3 bindings symlink..."
+        mkdir -p "$binding_dir"
+        ln -sf ../../../build/Release/node_sqlite3.node "$binding_dir/node_sqlite3.node"
+        print_success "SQLite3 bindings configured"
+    fi
+}
+
 # Function to check if port is in use
 check_port() {
     local port=$1
@@ -147,6 +173,9 @@ start_all_services() {
     print_info "Starting all services (Backend API, Engine, Frontend UI)..."
     
     cd "$PROJECT_ROOT"
+    
+    # Ensure sqlite3 bindings are set up (for fast piece cache)
+    ensure_sqlite3_bindings
     
     # Ensure Postgres and Redis are running on 5433 and 6379
     ensure_local_db

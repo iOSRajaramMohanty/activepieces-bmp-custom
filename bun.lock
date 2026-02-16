@@ -6,7 +6,7 @@
       "name": "activepieces",
       "dependencies": {
         "@activepieces/import-fresh-webpack": "3.3.0",
-        "@activepieces/pieces-framework": "link:@activepieces/pieces-framework",
+        "@activepieces/pieces-framework": "file:packages/pieces/community/framework",
         "@activepieces/shared": "file:packages/shared",
         "@ai-sdk/anthropic": "^3.0.0",
         "@ai-sdk/azure": "^3.0.0",
@@ -414,7 +414,7 @@
   "packages": {
     "@activepieces/import-fresh-webpack": ["@activepieces/import-fresh-webpack@3.3.0", "", { "dependencies": { "parent-module": "^2.0.0", "resolve-from": "^5.0.0" } }, "sha512-lSNLON5thmhQfBt1Fw57wkux4MkMF+7GJszq8NaT+fsz2jKtWLIp156bOYgjGK/6y4AAp23RvXAlv4sPxmF3ow=="],
 
-    "@activepieces/pieces-framework": ["@activepieces/pieces-framework@link:@activepieces/pieces-framework", {}],
+    "@activepieces/pieces-framework": ["@activepieces/pieces-framework@file:packages/pieces/community/framework", {}],
 
     "@activepieces/shared": ["@activepieces/shared@file:packages/shared", {}],
 
