@@ -269,6 +269,23 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             email: params.email,
             platformId,
         })
+        // Verify that the platform still exists before proceeding
+        // This prevents sign-in with deleted platform IDs
+        const platform = await platformService.getOne(platformId)
+        if (isNil(platform)) {
+            log.error({ 
+                email: params.email, 
+                platformId,
+                identityId: identity.id 
+            }, '[signInWithPassword] Platform does not exist')
+            throw new ActivepiecesError({
+                code: ErrorCode.SESSION_EXPIRED,
+                params: {
+                    message: 'The platform associated with this account no longer exists.',
+                },
+            })
+        }
+        
         log.info(`[signInWithPassword] Looking up user with identityId: ${identity.id}, platformId: ${platformId}`)
         
         const user = await userService.getOneByIdentityAndPlatform({

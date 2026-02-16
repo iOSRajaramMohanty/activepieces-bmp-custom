@@ -57,7 +57,12 @@ const disallowedRoutes = [
   '/v1/webhooks',
 ];
 //This is important to avoid redirecting to sign-in page when the user is deleted for embedding scenarios
-const ignroedGlobalErrorHandlerRoutes = ['/v1/users/me'];
+//Also ignore sign-in/sign-up routes so form error handlers can display errors properly
+const ignroedGlobalErrorHandlerRoutes = [
+  '/v1/users/me',
+  '/v1/authentication/sign-in',
+  '/v1/authentication/sign-up',
+];
 function isUrlRelative(url: string) {
   return !url.startsWith('http') && !url.startsWith('https');
 }

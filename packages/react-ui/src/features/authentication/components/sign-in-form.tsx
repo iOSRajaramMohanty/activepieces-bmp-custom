@@ -120,6 +120,12 @@ const SignInForm: React.FC = () => {
             });
             break;
           }
+          case ErrorCode.SESSION_EXPIRED: {
+            form.setError('root.serverError', {
+              message: t('Your account is no longer associated with a valid platform. Please contact your administrator.'),
+            });
+            break;
+          }
           default: {
             form.setError('root.serverError', {
               message: t('Something went wrong, please try again later'),

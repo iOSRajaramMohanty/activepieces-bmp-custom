@@ -1,7 +1,8 @@
-import { ActivepiecesError, apId, assertNotNullOrUndefined, EnginePrincipal, ErrorCode, PlatformId, Principal, PrincipalType, ProjectId, UserStatus, WorkerPrincipal } from '@activepieces/shared'
+import { ActivepiecesError, apId, assertNotNullOrUndefined, EnginePrincipal, ErrorCode, isNil, PlatformId, Principal, PrincipalType, ProjectId, UserStatus, WorkerPrincipal } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { jwtUtils } from '../../helper/jwt-utils'
 import { system } from '../../helper/system/system'
+import { platformService } from '../../platform/platform.service'
 import { userService } from '../../user/user-service'
 import { userIdentityService } from '../user-identity/user-identity-service'
 
@@ -77,6 +78,21 @@ export const accessTokenManager = {
 }
 
 async function assertUserSession(decoded: Principal | Principal): Promise<void> {
+    // Verify that the platform from the token still exists
+    // This prevents using tokens with deleted platform IDs
+    // Only UserPrincipal, ServicePrincipal, and EnginePrincipal have platform property
+    if ('platform' in decoded && !isNil(decoded.platform?.id)) {
+        const platform = await platformService.getOne(decoded.platform.id)
+        if (isNil(platform)) {
+            throw new ActivepiecesError({
+                code: ErrorCode.SESSION_EXPIRED,
+                params: {
+                    message: 'The platform associated with this session no longer exists.',
+                },
+            })
+        }
+    }
+    
     if (decoded.type !== PrincipalType.USER) return
     
     const user = await userService.getOneOrFail({ id: decoded.id })
