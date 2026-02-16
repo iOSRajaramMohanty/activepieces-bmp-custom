@@ -70,7 +70,7 @@
           }
         ],
         "webpackConfig": "packages/react-ui-sdk/webpack.config.js",
-        "generatePackageJson": true,
+        "generatePackageJson": false,
         "babelUpwardRootMode": true
       },
       "configurations": {
@@ -82,17 +82,22 @@
       },
       "dependsOn": [
         "^build",
-        "validate-no-ee-imports"
+        "validate-no-ee-imports",
+        "validate-bundle-config"
       ]
     },
     "fix-bundle-package": {
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/packages/react-ui-sdk-bundled/package.json"],
+      "outputs": [
+        "{workspaceRoot}/dist/packages/react-ui-sdk-bundled/package.json"
+      ],
       "options": {
         "command": "node packages/react-ui-sdk/scripts/fix-bundle-package-json.js",
         "cwd": "{workspaceRoot}"
       },
-      "dependsOn": ["bundle"]
+      "dependsOn": [
+        "bundle"
+      ]
     },
     "build:skip-angular-check": {
       "executor": "nx:run-commands",
@@ -104,6 +109,13 @@
       "executor": "nx:run-commands",
       "options": {
         "command": "ts-node --project tools/tsconfig.tools.json packages/react-ui-sdk/scripts/validate-ee-exclusion.ts",
+        "cwd": "{workspaceRoot}"
+      }
+    },
+    "validate-bundle-config": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node packages/react-ui-sdk/scripts/validate-bundle-config.js",
         "cwd": "{workspaceRoot}"
       }
     },
