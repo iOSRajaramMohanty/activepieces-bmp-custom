@@ -79,7 +79,7 @@ export const userService = {
     async updateLastActiveDate({ id }: UpdateLastActiveDateParams): Promise<void> {
         await userRepo().update({ id }, { lastActiveDate: dayjs().toISOString() })
     },
-    async update({ id, status, platformId, platformRole, externalId, organizationId }: UpdateParams): Promise<UserWithMetaInformation> {
+    async update({ id, status, platformId, platformRole, externalId, organizationId, clientId }: UpdateParams): Promise<UserWithMetaInformation> {
         const user = await this.getOrThrow({ id })
         assertNotNullOrUndefined(user.platformId, 'platformId')
 
@@ -111,6 +111,7 @@ export const userService = {
             ...spreadIfDefined('platformRole', platformRole),
             ...spreadIfDefined('externalId', externalId),
             ...spreadIfDefined('organizationId', organizationId),
+            ...spreadIfDefined('clientId', clientId),
         })
 
         return this.getMetaInformation({ id })
@@ -292,6 +293,17 @@ export const userService = {
             externalId,
         })
     },
+    async getByClientIdAndPlatform({
+        clientId,
+        platformId,
+    }: { clientId: string, platformId: string }): Promise<User[]> {
+        return userRepo().find({
+            where: {
+                clientId,
+                platformId,
+            },
+        })
+    },
     async getMetaInformation({ id }: IdParams): Promise<UserWithMetaInformation> {
         const user = await userRepo().findOneByOrFail({ id })
         const identity = await userIdentityService(system.globalLogger()).getBasicInformation(user.identityId)
@@ -452,6 +464,7 @@ type UpdateParams = {
     platformRole?: PlatformRole
     externalId?: string
     organizationId?: string
+    clientId?: string
 }
 
 type CreateParams = {

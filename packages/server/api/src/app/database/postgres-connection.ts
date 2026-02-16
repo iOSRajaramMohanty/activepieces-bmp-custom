@@ -340,6 +340,7 @@ import { AddProjectIdToOrganization1769127600000 } from './migration/postgres/17
 import { AddMissingOrganizationEnvironments1769127700000 } from './migration/postgres/1769127700000-AddMissingOrganizationEnvironments'
 import { AddEventStreaming1769084311004 } from './migration/postgres/1769084311004-AddEventStreaming'
 import { RemoveOperatorRole1769613456917 } from './migration/postgres/1769613456917-RemoveOperatorRole'
+import { AddClientIdToUser1771241733000 } from './migration/postgres/1771241733000-AddClientIdToUser'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -696,6 +697,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddProjectIdToOrganization1769127600000,
         AddMissingOrganizationEnvironments1769127700000,
         RemoveOperatorRole1769613456917,
+        AddClientIdToUser1771241733000,
     ]
     return migrations
 }

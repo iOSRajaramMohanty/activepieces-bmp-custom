@@ -60,6 +60,7 @@ export const User = Type.Object({
     platformId: Nullable(Type.String()),
     lastActiveDate: Nullable(Type.String()),
     organizationId: Nullable(Type.String()),
+    clientId: Nullable(Type.String()),
 })
 
 export type User = Static<typeof User>

@@ -4,7 +4,8 @@ import { AppSystemProp } from '@activepieces/server-shared'
 import { ApEdition, ApEnvironment } from '@activepieces/shared'
 import { DataSource, MigrationInterface } from 'typeorm'
 import { system } from '../helper/system/system'
-import 'sqlite3'
+// Lazy import sqlite3 - only load when actually needed (for SQLite migrations)
+// This prevents loading sqlite3 native bindings when using PostgreSQL
 import { AddPieceTypeAndPackageTypeToFlowVersion1696245170061 } from './migration/common/1696245170061-add-piece-type-and-package-type-to-flow-version'
 import { StoreCodeInsideFlow1697969398200 } from './migration/common/1697969398200-store-code-inside-flow'
 import { UpdateUserStatusRenameShadowToInvited1699818680567 } from './migration/common/1699818680567-update-user-status-rename-shadow-to-invited'
@@ -381,6 +382,17 @@ const getMigrationConfig = (): MigrationConfig => {
  * @deprecated SQLite3 is deprecated and only exists for migration purposes. Use PGLite instead.
  */
 export const createSqlLiteDataSourceForMigrations = (): DataSource => {
+    // Lazy import sqlite3 - only load when this function is called
+    // This prevents loading sqlite3 native bindings when using PostgreSQL
+    try {
+        require('sqlite3')
+    } catch (error) {
+        // If sqlite3 is not available, that's okay - this function should only be called
+        // when migrating from SQLite to PGLite, which is rare
+        const log = system.globalLogger()
+        log.warn({ error }, '[createSqlLiteDataSourceForMigrations] sqlite3 not available, but continuing')
+    }
+    
     return new DataSource({
         type: 'sqlite',
         database: getSqliteDatabase(),

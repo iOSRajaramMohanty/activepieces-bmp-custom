@@ -39,6 +39,10 @@ export const UserEntity = new EntitySchema<UserSchema>({
             type: String,
             nullable: true,
         },
+        clientId: {
+            type: String,
+            nullable: true,
+        },
     },
     indices: [
         {

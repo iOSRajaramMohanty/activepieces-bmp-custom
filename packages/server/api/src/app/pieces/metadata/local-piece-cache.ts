@@ -2,7 +2,8 @@ import path from 'path'
 import { pieceTranslation } from '@activepieces/pieces-framework'
 import { AppSystemProp, filePiecesUtils, memoryLock, rejectedPromiseHandler } from '@activepieces/server-shared'
 import { ApEnvironment, apId, isEmpty, isNil, LocalesEnum, PackageType, PieceType } from '@activepieces/shared'
-import KeyvSqlite from '@keyv/sqlite'
+// Lazy import KeyvSqlite - only load when cache is created (prevents loading sqlite3 when using PostgreSQL)
+// import KeyvSqlite from '@keyv/sqlite'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import Keyv from 'keyv'
@@ -235,12 +236,25 @@ async function getOrCreateCache(): Promise<KVCacheInstance> {
             const pm2Enabled = system.getBoolean(AppSystemProp.PM2_ENABLED) ?? false
             const cacheId = pm2Enabled ? (process.env.NODE_APP_INSTANCE ?? '0') : 'default'
             const dbPath = path.resolve(path.join(process.cwd(), `pieces-cache-db-${cacheId}.sqlite`))
-            const db = new Keyv({
-                store: new KeyvSqlite({
-                    uri: `sqlite://${dbPath}`,
-                    busyTimeout: 15000, // Wait up to 15s if DB is locked (e.g. during Nx watch restart)
-                }),
-            })
+
+            let db: Keyv
+            try {
+                // Try SQLite store (requires sqlite3 native bindings)
+                const KeyvSqlite = require('@keyv/sqlite').default || require('@keyv/sqlite')
+                db = new Keyv({
+                    store: new KeyvSqlite({
+                        uri: `sqlite://${dbPath}`,
+                        busyTimeout: 15000, // Wait up to 15s if DB is locked (e.g. during Nx watch restart)
+                    }),
+                })
+            } catch (err) {
+                // Fallback to in-memory when sqlite3 is not available (e.g. PostgreSQL-only setups)
+                system.globalLogger().info(
+                    { err: err instanceof Error ? err.message : String(err) },
+                    '[localPieceCache] SQLite not available, using in-memory piece cache (cache resets on restart)',
+                )
+                db = new Keyv()
+            }
 
             const registry = ((await db.get(META_REGISTRY_KEY)) as PieceRegistryEntry[] | undefined) ?? []
             cacheInstance = {

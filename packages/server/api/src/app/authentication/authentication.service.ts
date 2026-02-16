@@ -288,13 +288,14 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         
         log.info(`[signInWithPassword] Looking up user with identityId: ${identity.id}, platformId: ${platformId}`)
         
-        const user = await userService.getOneByIdentityAndPlatform({
+        let user = await userService.getOneByIdentityAndPlatform({
             identityId: identity.id,
             platformId,
         })
         log.info(`[signInWithPassword] User lookup result: ${user ? user.id : 'NULL'}`)
         
         assertNotNullOrUndefined(user, 'User not found')
+        
         return authenticationUtils.getProjectAndToken({
             userId: user.id,
             platformId,

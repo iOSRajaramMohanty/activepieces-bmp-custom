@@ -24,10 +24,190 @@ import { userService } from '../user/user-service'
 import { userInvitationsService } from '../user-invitations/user-invitation.service'
 import { authenticationService } from './authentication.service'
 import { isMultiTenantMode, multiTenantAuthService } from './multi-tenant-auth.service'
+import { FastifyBaseLogger } from 'fastify'
 
+/**
+ * Map roleName string to PlatformRole enum
+ * Valid values: SUPER_ADMIN, OWNER, ADMIN, MEMBER, OPERATOR
+ * Defaults to ADMIN if roleName is not provided or invalid
+ */
+function mapRoleNameToPlatformRole(roleName?: string): PlatformRole {
+    if (!roleName) {
+        return PlatformRole.ADMIN // Default role
+    }
+    
+    const normalizedRoleName = roleName.toUpperCase().trim()
+    
+    // Map roleName to PlatformRole enum
+    switch (normalizedRoleName) {
+        case 'SUPER_ADMIN':
+            return PlatformRole.SUPER_ADMIN
+        case 'OWNER':
+            return PlatformRole.OWNER
+        case 'ADMIN':
+            return PlatformRole.ADMIN
+        case 'MEMBER':
+            return PlatformRole.MEMBER
+        case 'OPERATOR':
+            return PlatformRole.OPERATOR
+        default:
+            // Invalid role name, default to ADMIN
+            return PlatformRole.ADMIN
+    }
+}
+
+/**
+ * Helper function to handle SDK clientId and organization creation/assignment
+ * This ensures users with the same clientId share the same organization
+ */
+async function handleSDKClientIdAndOrganization({
+    user,
+    clientId,
+    clientName,
+    platformId,
+    log,
+}: {
+    user: { id: string; clientId?: string | null; organizationId?: string | null }
+    clientId: string
+    clientName?: string
+    platformId: string
+    log: FastifyBaseLogger
+}): Promise<void> {
+    if (!user.clientId) {
+        // Store clientId
+        await userService.update({
+            id: user.id,
+            platformId,
+            clientId,
+        })
+        log.info({
+            userId: user.id,
+            clientId,
+        }, '[handleSDKClientIdAndOrganization] Stored clientId for user')
+        
+        // Reload user to get updated clientId
+        const updatedUser = await userService.getOneOrFail({ id: user.id })
+        
+        // Check if any other user with the same clientId already has an organization
+        const usersWithSameClientId = await userService.getByClientIdAndPlatform({
+            clientId,
+            platformId,
+        })
+        
+        const existingOrgUser = usersWithSameClientId.find(u => u.id !== updatedUser.id && u.organizationId)
+        
+        let organization
+        if (existingOrgUser && existingOrgUser.organizationId) {
+            // Another user with same clientId already has an organization - use it
+            const { organizationService } = await import('../organization/organization.service')
+            organization = await organizationService.getById(existingOrgUser.organizationId)
+            if (organization) {
+                log.info({
+                    userId: updatedUser.id,
+                    existingUserId: existingOrgUser.id,
+                    organizationId: organization.id,
+                    organizationName: organization.name,
+                    clientId,
+                }, '[handleSDKClientIdAndOrganization] Found existing organization from another user with same clientId')
+            }
+        }
+        
+        // If no existing organization found and clientName provided, create one
+        if (!organization && clientName) {
+            const { organizationService } = await import('../organization/organization.service')
+            try {
+                // Convert clientName to uppercase and extract only letters (organization name must match pattern ^[A-Z]+$)
+                const orgName = clientName.toUpperCase().replace(/[^A-Z]/g, '')
+                if (orgName && orgName.length >= 1 && orgName.length <= 50) {
+                    organization = await organizationService.getOrCreate({
+                        name: orgName,
+                        platformId,
+                    })
+                    
+                    log.info({
+                        userId: updatedUser.id,
+                        organizationId: organization.id,
+                        organizationName: organization.name,
+                        clientId,
+                    }, '[handleSDKClientIdAndOrganization] Created new organization for clientId')
+                } else {
+                    log.warn({
+                        userId: updatedUser.id,
+                        clientName,
+                        processedOrgName: orgName,
+                    }, '[handleSDKClientIdAndOrganization] Invalid organization name after processing (must be 1-50 uppercase letters)')
+                }
+            } catch (orgError: any) {
+                log.error({
+                    userId: updatedUser.id,
+                    error: orgError,
+                    clientName,
+                    clientId,
+                }, '[handleSDKClientIdAndOrganization] Failed to create organization')
+            }
+        }
+        
+        // Assign user to organization if not already assigned and organization exists
+        if (organization && organization.id && !updatedUser.organizationId) {
+            await userService.update({
+                id: updatedUser.id,
+                platformId,
+                organizationId: organization.id,
+            })
+            
+            log.info({
+                userId: updatedUser.id,
+                organizationId: organization.id,
+                organizationName: organization.name,
+                clientId,
+            }, '[handleSDKClientIdAndOrganization] Assigned user to organization')
+        } else if (!clientName) {
+            log.info({
+                userId: updatedUser.id,
+                clientId,
+            }, '[handleSDKClientIdAndOrganization] clientId stored but no clientName provided and no existing organization found, skipping organization assignment')
+        }
+    } else if (user.clientId !== clientId) {
+        // Update clientId if different
+        log.warn({
+            userId: user.id,
+            existingClientId: user.clientId,
+            providedClientId: clientId,
+        }, '[handleSDKClientIdAndOrganization] ClientId mismatch, updating user clientId')
+        
+        await userService.update({
+            id: user.id,
+            platformId,
+            clientId,
+        })
+    } else {
+        log.info({
+            userId: user.id,
+            clientId,
+        }, '[handleSDKClientIdAndOrganization] User already has matching clientId')
+    }
+}
+
+/**
+ * Authentication Controller
+ * 
+ * SDK API Usage:
+ * ==============
+ * 
+ * For SDK integration, use the /auto-provision endpoint:
+ * POST /v1/authentication/auto-provision
+ * 
+ * See the auto-provision endpoint documentation below for SDK usage details.
+ */
 export const authenticationController: FastifyPluginAsyncTypebox = async (
     app,
 ) => {
+    /**
+     * POST /v1/authentication/sign-up
+     * 
+     * Standard signup endpoint for non-SDK users.
+     * For SDK integration, use /auto-provision instead.
+     */
     app.post('/sign-up', SignUpRequestOptions, async (request) => {
         // Check if public signup is disabled (only for multi-tenant mode)
         const publicSignupEnabled = system.get(AppSystemProp.PUBLIC_SIGNUP_ENABLED) !== 'false'
@@ -113,12 +293,18 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
         return signUpResponse
     })
 
+    /**
+     * POST /v1/authentication/sign-in
+     * 
+     * Standard signin endpoint for non-SDK users.
+     * For SDK integration, use /auto-provision instead.
+     */
     app.post('/sign-in', SignInRequestOptions, async (request) => {
         // In multi-tenant mode, don't use predefined platform - let the service find the user's platform
         const multiTenantMode = isMultiTenantMode()
         const predefinedPlatformId = multiTenantMode ? null : await platformUtils.getPlatformIdForRequest(request)
         
-        request.log.info(`[authenticationController] Sign-in attempt, multi-tenant: ${multiTenantMode}, predefinedPlatformId: ${predefinedPlatformId}`)
+        request.log.info(`[authenticationController] Sign-in attempt, predefinedPlatformId: ${predefinedPlatformId}`)
         
         const response = await authenticationService(request.log).signInWithPassword({
             email: request.body.email,
@@ -150,33 +336,92 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
     })
 
     /**
-     * Auto-provision endpoint for BMP integration.
-     * This endpoint creates an invitation for a user (if they don't have one) and then signs them up.
-     * Used when BMP frontend needs to automatically create Activepieces accounts.
+     * POST /v1/authentication/auto-provision
+     * 
+     * Auto-provision endpoint for SDK integration (BMP and other SDK clients).
+     * This endpoint handles both signup and signin automatically.
+     * 
+     * SDK Usage (Required):
+     * ====================
+     * 
+     * Request Body:
+     * {
+     *   "email": "user@example.com",
+     *   "password": "password123",
+     *   "firstName": "John",
+     *   "lastName": "Doe",
+     *   "platformId": "2Y6xAoWbvjiBgdRsBDcbP",  // Required: Platform ID of OWNER role user
+     *   "clientId": "unique-client-id-123",     // Required: Unique client identifier
+     *   "clientName": "MyClient",                // Optional: From localStorage (ada.clientName) - used for organization creation
+     *   "roleName": "ADMIN"                      // Optional: From localStorage (ada.roleName) - platform role (SUPER_ADMIN, OWNER, ADMIN, MEMBER, OPERATOR). Defaults to ADMIN if not provided.
+     * }
+     * 
+     * Important Notes:
+     * - platformId must be the platform ID of a user with role type OWNER (tenant owner)
+     * - clientId is required when platformId is provided
+     * - clientId is stored in the user record for identification
+     * - Users with the same clientId automatically share the same organization
+     * - Organization name is derived from clientName (uppercase letters only, max 50 chars)
+     * - Example: "MyClient" → "MYCLIENT"
+     * - roleName: Valid values are SUPER_ADMIN, OWNER, ADMIN, MEMBER, OPERATOR (case-insensitive)
+     * - If roleName is not provided or invalid, defaults to ADMIN
      * 
      * Flow:
-     * 1. Check if user already exists and can sign in
-     * 2. If not, auto-create an ADMIN invitation (so they get a project)
-     * 3. Sign up the user with the invitation
-     * 4. If identity already exists but user doesn't exist on this platform, create user directly
-     * 5. Return the auth response
+     * 1. Try to sign in first (user may already exist)
+     * 2. If sign-in fails, proceed to sign-up:
+     *    - Check if identity exists (from another platform)
+     *    - If identity exists: verify password and create user on this platform
+     *    - If identity doesn't exist: create invitation and sign up
+     * 3. Handle clientId and organization:
+     *    - Store clientId in user record
+     *    - Check if other users with same clientId have an organization
+     *    - If yes: assign user to existing organization
+     *    - If no: create organization from clientName (if provided)
+     * 4. Return authentication response with isNewUser flag
      */
     app.post('/auto-provision', AutoProvisionRequestOptions, async (request) => {
         const { email, password, firstName, lastName } = request.body
-        const platformId = await platformUtils.getPlatformIdForRequest(request)
+        const providedPlatformId = request.body.platformId
+        const clientId = request.body.clientId
+        const clientName = request.body.clientName
+        const roleName = request.body.roleName // From localStorage: ada.roleName
+        
+        // SDK mode: Use provided platformId, otherwise resolve from request
+        const platformId = providedPlatformId || await platformUtils.getPlatformIdForRequest(request)
         
         if (!platformId) {
             throw new ActivepiecesError({
                 code: ErrorCode.VALIDATION,
                 params: {
-                    message: 'Platform ID could not be determined. Ensure the request is made to a valid platform.',
+                    message: 'Platform ID could not be determined. Please provide platformId parameter or ensure the request is made to a valid platform.',
                 },
             })
         }
         
+        // SDK mode: If platformId is provided, clientId should also be provided
+        if (providedPlatformId && !clientId) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'SDK mode requires both platformId and clientId. Please provide clientId when using platformId.',
+                },
+            })
+        }
+        
+        // SDK mode: If platformId and clientId provided, use SDK auth flow
+        const isSDKMode = !!providedPlatformId && !!clientId
+        
+        // Map roleName to PlatformRole, default to ADMIN if not provided
+        const platformRole = mapRoleNameToPlatformRole(roleName)
+        
         request.log.info({ 
             email, 
-            platformId 
+            platformId,
+            isSDKMode,
+            hasClientId: !!clientId,
+            hasClientName: !!clientName,
+            roleName,
+            platformRole,
         }, '[auto-provision] Starting auto-provision for BMP user')
         
         // Import user identity service for direct identity lookup
@@ -190,9 +435,22 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 predefinedPlatformId: platformId,
             })
             
+            // SDK mode: Handle clientId and organization after successful sign-in
+            if (isSDKMode && clientId) {
+                const user = await userService.getOneOrFail({ id: signInResponse.id })
+                await handleSDKClientIdAndOrganization({
+                    user,
+                    clientId,
+                    clientName,
+                    platformId,
+                    log: request.log,
+                })
+            }
+            
             request.log.info({ 
                 email, 
-                userId: signInResponse.id 
+                userId: signInResponse.id,
+                isSDKMode,
             }, '[auto-provision] User already exists, signed in successfully')
             
             return {
@@ -203,7 +461,8 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             // User doesn't exist or wrong password - continue to sign-up flow
             request.log.info({ 
                 email, 
-                errorCode: signInError?.params?.code || signInError?.code 
+                errorCode: signInError?.params?.code || signInError?.code,
+                isSDKMode,
             }, '[auto-provision] Sign-in failed, proceeding to auto-provision')
         }
         
@@ -299,9 +558,23 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 const newUser = await userService.create({
                     identityId: existingIdentity.id,
                     platformId,
-                    platformRole: PlatformRole.ADMIN, // Grant ADMIN so they get a project
+                    platformRole, // Use custom role from roleName or default ADMIN
                 })
                 userId = newUser.id
+                
+                // SDK mode: Handle clientId and organization for new user
+                if (isSDKMode && clientId) {
+                    await handleSDKClientIdAndOrganization({
+                        user: newUser,
+                        clientId,
+                        clientName,
+                        platformId,
+                        log: request.log,
+                    })
+                    // Reload user to get updated organizationId
+                    const updatedUser = await userService.getOneOrFail({ id: userId })
+                    userId = updatedUser.id
+                }
                 
                 // Create a project for this user
                 const newProject = await projectService.create({
@@ -356,17 +629,19 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
         })
         
         if (existingInvitations.length === 0) {
-            // No invitation - create one with ADMIN role so user gets a project
+            // No invitation - create one with specified role (or default ADMIN)
             request.log.info({ 
                 email, 
-                platformId 
-            }, '[auto-provision] Creating auto-invitation with ADMIN role')
+                platformId,
+                platformRole,
+                roleName,
+            }, '[auto-provision] Creating auto-invitation with platform role')
             
             await userInvitationsService(request.log).create({
                 email,
                 type: InvitationType.PLATFORM,
                 platformId,
-                platformRole: PlatformRole.ADMIN,
+                platformRole, // Use custom role from roleName or default ADMIN
                 projectId: null,
                 projectRoleId: null,
                 organizationId: null,
@@ -397,6 +672,18 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             provider: UserIdentityProvider.EMAIL,
             platformId,
         })
+        
+        // SDK mode: Handle clientId and organization after signup
+        if (isSDKMode && clientId) {
+            const user = await userService.getOneOrFail({ id: signUpResponse.id })
+            await handleSDKClientIdAndOrganization({
+                user,
+                clientId,
+                clientName,
+                platformId,
+                log: request.log,
+            })
+        }
         
         request.log.info({ 
             email, 
@@ -472,12 +759,45 @@ const AutoProvisionRequestOptions = {
     schema: {
         tags: ['authentication'],
         summary: 'Auto-provision a user account (for BMP integration)',
-        description: 'Creates an invitation and signs up a user automatically. If user exists, signs them in.',
+        description: 'Creates an invitation and signs up a user automatically. If user exists, signs them in. Supports SDK mode with platformId, clientId, and clientName.',
         body: Type.Object({
             email: Type.String({ format: 'email' }),
             password: Type.String({ minLength: 1 }),
             firstName: Type.String({ minLength: 1 }),
             lastName: Type.String({ minLength: 1 }),
+            /**
+             * SDK Mode (Optional):
+             * Platform ID of the tenant/platform. If provided, clientId should also be provided.
+             * If not provided, platformId is resolved from request context (hostname/domain).
+             */
+            platformId: Type.Optional(Type.String({
+                description: '[SDK Optional] Platform ID - If provided with clientId, uses SDK authentication flow. Otherwise resolves from request.',
+            })),
+            /**
+             * SDK Mode (Optional):
+             * Unique client identifier. Required when platformId is provided.
+             * Stored in user record and used for organization creation.
+             */
+            clientId: Type.Optional(Type.String({
+                description: '[SDK Optional] Client ID - Required when platformId is provided. Used for organization creation.',
+            })),
+            /**
+             * SDK Mode (Optional):
+             * Client name from localStorage (ada.clientName). Used to create organization
+             * if user doesn't have clientId.
+             */
+            clientName: Type.Optional(Type.String({
+                description: '[SDK Optional] Client name from localStorage (ada.clientName) - Used for organization creation.',
+            })),
+            /**
+             * SDK Mode (Optional):
+             * Platform role name from localStorage (ada.roleName). Valid values:
+             * SUPER_ADMIN, OWNER, ADMIN, MEMBER, OPERATOR
+             * If not provided, defaults to ADMIN.
+             */
+            roleName: Type.Optional(Type.String({
+                description: '[SDK Optional] Platform role name from localStorage (ada.roleName) - Valid: SUPER_ADMIN, OWNER, ADMIN, MEMBER, OPERATOR. Defaults to ADMIN if not provided.',
+            })),
         }),
     },
 }
