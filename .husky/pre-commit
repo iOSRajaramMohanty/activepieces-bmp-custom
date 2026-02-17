@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# License compliance validation - ensure changes are MIT only (no EE modifications)
+./scripts/validate-license-compliance.sh

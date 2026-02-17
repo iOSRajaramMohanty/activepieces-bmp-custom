@@ -136,6 +136,8 @@ To validate your code changes against MIT/EE license terms, run:
 ./scripts/validate-license-compliance.sh
 ```
 
+**Pre-commit hook:** The validator runs automatically before every `git commit` via `.husky/pre-commit`. Commits with EE changes will be blocked. To skip once: `git commit --no-verify`.
+
 See [SECURITY_AND_COMPLIANCE_VALIDATION.md §1.6](./SECURITY_AND_COMPLIANCE_VALIDATION.md#16-validating-your-code-changes-license-compliance) for details.
 
 ---
@@ -164,4 +166,3 @@ See [SECURITY_AND_COMPLIANCE_VALIDATION.md §1.6](./SECURITY_AND_COMPLIANCE_VALI
 ---
 
 *Last updated: February 2025*
-test
