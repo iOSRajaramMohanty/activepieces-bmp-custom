@@ -16,7 +16,7 @@ Since the full implementation requires extensive service layer changes, here's a
 
 ```bash
 # This works NOW - login as demo@user.com and get all platforms
-curl http://localhost:4200/api/v1/platforms \
+curl http://localhost:4300/api/v1/platforms \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -24,7 +24,7 @@ curl http://localhost:4200/api/v1/platforms \
 
 **Method 1: Via Signup API** (When `AP_MULTI_TENANT_MODE=true`)
 ```bash
-curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-up \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newtenant@example.com",
@@ -194,7 +194,7 @@ ORDER BY p.created DESC;
 ##SecurePassword123
 ```bash
 # As super admin, just use the signup API
-curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-up \
   -H "Content-Type: application/json" \
   -d '{
     "email": "tenant@company.com",
@@ -349,7 +349,7 @@ EOF
 
 ```bash
 # 1. Login as super admin
-curl -X POST http://localhost:4200/api/v1/authentication/sign-in \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-in \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@user.com","password":"Test@123"}'
 

@@ -17,8 +17,8 @@ echo "🛑 Stopping Backend (Port 3000)..."
 lsof -ti :3000 | xargs kill -9 2>/dev/null
 sleep 1
 
-echo "🛑 Stopping Frontend (Port 4200)..."
-lsof -ti :4200 | xargs kill -9 2>/dev/null
+echo "🛑 Stopping Frontend (Port 4300)..."
+lsof -ti :4300 | xargs kill -9 2>/dev/null
 sleep 2
 
 echo "✅ Services stopped"
@@ -58,8 +58,8 @@ else
 fi
 
 # Check if frontend started
-if lsof -i :4200 > /dev/null 2>&1; then
-    echo "   ✅ Frontend running on http://localhost:4200"
+if lsof -i :4300 > /dev/null 2>&1; then
+    echo "   ✅ Frontend running on http://localhost:4300"
 else
     echo "   ⏳ Frontend still starting... (may take 30-60 seconds)"
 fi
@@ -71,7 +71,7 @@ echo "════════════════════════�
 echo ""
 echo "📊 Service Status:"
 echo "   Backend:  http://localhost:3000"
-echo "   Frontend: http://localhost:4200"
+echo "   Frontend: http://localhost:4300"
 echo ""
 echo "📝 View Logs:"
 echo "   All Services: tail -f backend.log"

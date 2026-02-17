@@ -89,7 +89,7 @@ server {
     server_name *.yourapp.com;
     
     location / {
-        proxy_pass http://activepieces:4200;
+        proxy_pass http://activepieces:4300;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -229,7 +229,7 @@ User 1 signs up → Platform A created
 User 2 signs up → Platform B created  
 User 3 signs up → Platform C created
 
-Each on same domain (localhost:4200), but isolated data
+Each on same domain (localhost:4300), but isolated data
 ```
 
 ### Platform Switching

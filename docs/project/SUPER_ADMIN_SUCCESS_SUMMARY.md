@@ -54,7 +54,7 @@ return platformRole === PlatformRole.ADMIN || platformRole === PlatformRole.SUPE
 3. Click **"Super Admin Dashboard"** in sidebar (top of General section)
 
 ### Method 2: Direct URL
-Navigate to: `http://localhost:4200/super-admin`
+Navigate to: `http://localhost:4300/super-admin`
 
 ---
 
@@ -218,5 +218,5 @@ Super Admin users (like demo@user.com) can now:
 
 **Implementation Date**: 2026-01-13  
 **Status**: ✅ Production Ready  
-**Access URL**: http://localhost:4200/super-admin  
+**Access URL**: http://localhost:4300/super-admin  
 **Super Admin Email**: demo@user.com

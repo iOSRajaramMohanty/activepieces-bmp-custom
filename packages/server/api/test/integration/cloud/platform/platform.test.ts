@@ -127,7 +127,7 @@ describe('Platform API', () => {
             expect(responseBody.updated).toBeDefined()
             expect(responseBody.name).toBe('updated name')
 
-            const baseUrl = 'http://localhost:4200/api/v1/platforms/assets'
+            const baseUrl = 'http://localhost:4300/api/v1/platforms/assets'
             expect(responseBody.logoIconUrl.startsWith(baseUrl)).toBeTruthy()
             expect(responseBody.fullLogoUrl.startsWith(baseUrl)).toBeTruthy()
             expect(responseBody.favIconUrl.startsWith(baseUrl)).toBeTruthy()

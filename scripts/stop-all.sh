@@ -15,9 +15,9 @@ else
 fi
 
 # Stop Frontend
-echo "🛑 Stopping Frontend (Port 4200)..."
-if lsof -i :4200 > /dev/null 2>&1; then
-    lsof -ti :4200 | xargs kill -9 2>/dev/null
+echo "🛑 Stopping Frontend (Port 4300)..."
+if lsof -i :4300 > /dev/null 2>&1; then
+    lsof -ti :4300 | xargs kill -9 2>/dev/null
     echo "   ✅ Frontend stopped"
 else
     echo "   ℹ️  Frontend not running"
@@ -33,6 +33,6 @@ echo "   ./scripts/restart-all.sh"
 echo ""
 echo "   Or start individually:"
 echo "   Backend + Frontend:  ./scripts/run-dev.sh"
-echo "   (React UI runs on port 4200 as part of run-dev.sh)"
+echo "   (React UI runs on port 4300 as part of run-dev.sh)"
 echo ""
 echo "════════════════════════════════════════════════════════"

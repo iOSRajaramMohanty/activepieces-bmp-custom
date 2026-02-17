@@ -129,7 +129,7 @@ activepieces:
   # ============================================================================
   
   # The URL where Activepieces will be accessible (e.g., https://activepieces.yourdomain.com)
-  frontendUrl: "http://localhost:4200"
+  frontendUrl: "http://localhost:4300"
   
   # Edition: ce (Community) or ee (Enterprise)
   # Community Edition (ce) is the default open-source version

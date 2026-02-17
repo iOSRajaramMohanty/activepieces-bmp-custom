@@ -6,7 +6,7 @@
 #
 # This script runs Activepieces locally for fast development iteration:
 #   - Backend API: http://localhost:3000
-#   - Frontend UI: http://localhost:4200
+#   - Frontend UI: http://localhost:4300
 #   - PostgreSQL: localhost:5433 (starts via Docker if not running - uses existing data)
 #   - Redis: localhost:6379 (starts via Docker if not running)
 #
@@ -219,7 +219,7 @@ stop_services() {
     # Kill processes on ports (cleanup)
     kill_port 3000  # Backend
     kill_port 3001  # Engine (if it binds)
-    kill_port 4200  # Frontend
+    kill_port 4300  # Frontend
     
     print_success "Services stopped"
 }
@@ -246,9 +246,9 @@ show_status() {
         print_error "Engine: ❌ Not running"
     fi
     
-    # Check frontend (port 4200)
-    if check_port 4200; then
-        print_success "Frontend UI: ✅ Running on http://localhost:4200"
+    # Check frontend (port 4300)
+    if check_port 4300; then
+        print_success "Frontend UI: ✅ Running on http://localhost:4300"
     else
         print_error "Frontend UI: ❌ Not running"
     fi
@@ -285,7 +285,7 @@ start_all() {
     echo ""
     print_success "Development environment starting!"
     echo ""
-    echo "🌐 Frontend: http://localhost:4200"
+    echo "🌐 Frontend: http://localhost:4300"
     echo "📊 Backend:  http://localhost:3000"
     echo "⚙️  Engine:   http://localhost:3001"
     echo ""

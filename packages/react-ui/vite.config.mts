@@ -29,12 +29,12 @@ export default defineConfig(({ command, mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
           headers: {
-            Host: '127.0.0.1:4200',
+            Host: '127.0.0.1:4300',
           },
           ws: true,
         },
       },
-      port: 4200,
+      port: 4300,
       host: '0.0.0.0',
     },
 

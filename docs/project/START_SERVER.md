@@ -14,7 +14,7 @@ The script will:
 1. ✅ Load Node.js v20
 2. ✅ Set environment variables for ADA BMP piece
 3. ✅ Start three services:
-   - **Frontend (GUI)**: http://localhost:4200
+   - **Frontend (GUI)**: http://localhost:4300
    - **Backend API**: http://localhost:3000
    - **Engine**: Worker process
 
@@ -23,7 +23,7 @@ The script will:
 Look for these success indicators:
 
 ```
-[GUI] ➜  Local:   http://localhost:4200/
+[GUI] ➜  Local:   http://localhost:4300/
 [API] Server listening on port 3000
 [ENG] Engine started successfully
 ```
@@ -35,7 +35,7 @@ This usually takes **30-60 seconds** on first startup.
 Once you see the success messages:
 
 1. Open your browser
-2. Go to: **http://localhost:4200**
+2. Go to: **http://localhost:4300**
 3. Log in or create an account
 4. Create a new flow
 5. Search for "**ADA BMP**" in the pieces list
@@ -113,4 +113,4 @@ cd /Users/rajarammohanty/Documents/POC/activepieces
 ./start-ada-bmp.sh
 ```
 
-Then wait for the success messages and open **http://localhost:4200** in your browser! 🎉
+Then wait for the success messages and open **http://localhost:4300** in your browser! 🎉

@@ -29,7 +29,7 @@ To test the trigger, publish the flow, perform the event. Then check the flow ru
 To make your webhook accessible from the internet, you need to expose your local development instance to the internet, do the following:
 
 1. Install [localxpose](https://localxpose.io/docs#start-your-first-tunnel).
-2. Follow the documentation to start your first tunnel to localhost:4200.
+2. Follow the documentation to start your first tunnel to localhost:4300.
 3. Copy the tunnel domain, i.e wozcsvaint.loclx.io, and replace the `AP_FRONTEND_URL` environment variable in `packages/server/api/.env` with the exposed url, i.e https://wozcsvaint.loclx.io
 4. Go to /packages/react-ui/vite.config.ts, uncomment allowedHosts and replace the value with the same tunnel domain, i.e wozcsvaint.loclx.io.
 

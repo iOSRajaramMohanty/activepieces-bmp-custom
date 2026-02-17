@@ -501,7 +501,7 @@ server: {
       ws: true,  // WebSocket support
     },
   },
-  port: 4200,
+  port: 4300,
 },
 ```
 
@@ -630,7 +630,7 @@ export default defineConfig({
   cacheDir: '../../node_modules/.vite/packages/react-ui',
   
   server: {
-    port: 4200,              // Dev server port
+    port: 4300,              // Dev server port
     host: '0.0.0.0',         // Allow external access
   },
   

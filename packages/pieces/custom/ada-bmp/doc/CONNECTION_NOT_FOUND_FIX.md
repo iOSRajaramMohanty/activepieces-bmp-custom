@@ -21,7 +21,7 @@ ConnectionNotFound: {
 
 ### **Step 1: Create a NEW Connection**
 
-1. Go to http://localhost:4200/
+1. Go to http://localhost:4300/
 2. Click on **Connections** in the left sidebar
 3. Click **+ New Connection**
 4. Select **ADA BMP**

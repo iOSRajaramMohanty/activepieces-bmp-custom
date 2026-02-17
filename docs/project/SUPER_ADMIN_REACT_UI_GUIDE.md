@@ -64,7 +64,7 @@ Make sure both backend and frontend are running:
 
 ### Step 2: Login as Super Admin
 
-1. Open your browser and go to: **http://localhost:4200**
+1. Open your browser and go to: **http://localhost:4300**
 2. Login with super admin credentials:
    - **Email**: `demo@user.com`
    - **Password**: `Test@123` (or your configured password)
@@ -79,7 +79,7 @@ Once logged in as a super admin, you have **two ways** to access the dashboard:
 3. Click on it to open the dashboard
 
 #### Option 2: Direct URL
-- Navigate directly to: **http://localhost:4200/super-admin**
+- Navigate directly to: **http://localhost:4300/super-admin**
 
 ## 📊 Dashboard Features
 
@@ -280,4 +280,4 @@ Your React UI now has a fully functional Super Admin Dashboard! Login as `demo@u
 
 **Created**: 2026-01-13  
 **Location**: `/Users/rajarammohanty/Documents/POC/activepieces/`  
-**Access URL**: `http://localhost:4200/super-admin`
+**Access URL**: `http://localhost:4300/super-admin`

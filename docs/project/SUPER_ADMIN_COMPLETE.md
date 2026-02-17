@@ -69,7 +69,7 @@ export AP_PUBLIC_SIGNUP_ENABLED=false
 
 Login test:
 ```bash
-curl -X POST http://localhost:4200/api/v1/authentication/sign-in \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-in \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@user.com","password":"Test@123"}'
 ```
@@ -79,7 +79,7 @@ Response shows: `"platformRole": "SUPER_ADMIN"` ✅
 ### 5. ✅ Server Running
 
 ```bash
-✅ Frontend: http://localhost:4200
+✅ Frontend: http://localhost:4300
 ✅ API: http://localhost:3000
 ✅ Edition: Community Edition (ce)
 ✅ Multi-Tenant: Enabled
@@ -107,7 +107,7 @@ ORDER BY p.created DESC;
 ### Create New Tenant
 ##SecurePassword123
 ```bash
-curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-up \
   -H "Content-Type: application/json" \
   -d '{
     "email": "tenant@company.com",
@@ -202,17 +202,17 @@ cd /Users/rajarammohanty/Documents/POC/activepieces
 
 ### 2. Login as Super Admin
 
-- **URL**: http://localhost:4200/sign-in
+- **URL**: http://localhost:4300/sign-in
 - **Email**: demo@user.com
 - **Password**: Test@123
 
 ### 3. Create New Tenants
 
-Use the signup form at http://localhost:4200/sign-up (if public signup is enabled)
+Use the signup form at http://localhost:4300/sign-up (if public signup is enabled)
 
 Or via API:
 ```bash
-curl -X POST http://localhost:4200/api/v1/authentication/sign-up \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-up \
   -H "Content-Type: application/json" \
   -d '{
     "email": "newtenant@example.com",
@@ -351,14 +351,14 @@ export AP_PUBLIC_SIGNUP_ENABLED=false
 
 # Other settings
 export AP_ENVIRONMENT=development
-export AP_FRONTEND_URL=http://localhost:4200
+export AP_FRONTEND_URL=http://localhost:4300
 export AP_API_URL=http://localhost:3000
 ```
 
 ## 🧪 Testing Checklist
 
 - ✅ Super admin can login (demo@user.com)
-- ✅ Server is running on ports 3000 and 4200
+- ✅ Server is running on ports 3000 and 4300
 - ✅ Multi-tenant mode creates new platforms on signup
 - ✅ Super admin role is properly set in database
 - ✅ Public signup can be disabled via environment variable

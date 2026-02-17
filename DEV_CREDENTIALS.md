@@ -4,7 +4,7 @@
 
 ### Local Development:
 ```
-URL:      http://localhost:4200
+URL:      http://localhost:4300
 Email:    demo@user.com
 Password: SuperAdmin2024!
 ```
@@ -28,7 +28,7 @@ Password: SuperAdmin2024!
 ## 🔧 **Dev Account** (Auto-created in dev mode)
 
 ```
-URL:      http://localhost:4200
+URL:      http://localhost:4300
 Email:    dev@ap.com
 Password: 12345678
 ```

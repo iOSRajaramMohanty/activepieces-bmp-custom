@@ -182,7 +182,7 @@ Dashboard refreshes platform list
 
 ### Prerequisites
 1. Backend running on `http://localhost:3000`
-2. Frontend running on `http://localhost:4200`
+2. Frontend running on `http://localhost:4300`
 3. Logged in as Super Admin (`demo@user.com`)
 
 ### Steps to Test

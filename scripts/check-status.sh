@@ -26,15 +26,15 @@ fi
 echo ""
 
 # Check Frontend
-echo "🔍 Frontend UI (Port 4200):"
-if lsof -i :4200 > /dev/null 2>&1; then
-    PID=$(lsof -ti :4200)
+echo "🔍 Frontend UI (Port 4300):"
+if lsof -i :4300 > /dev/null 2>&1; then
+    PID=$(lsof -ti :4300)
     echo "   Status: ✅ RUNNING"
     echo "   PID: $PID"
-    echo "   URL: http://localhost:4200"
+    echo "   URL: http://localhost:4300"
     
     # Test if responding
-    if curl -s http://localhost:4200 > /dev/null 2>&1; then
+    if curl -s http://localhost:4300 > /dev/null 2>&1; then
         echo "   Health: ✅ RESPONDING"
     else
         echo "   Health: ⚠️  NOT RESPONDING (may be starting)"

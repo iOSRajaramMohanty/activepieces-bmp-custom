@@ -12,7 +12,7 @@
 
 | Service | Status | URL | Details |
 |---------|--------|-----|---------|
-| **Frontend (GUI)** | ✅ RUNNING | http://localhost:4200/ | Vite dev server |
+| **Frontend (GUI)** | ✅ RUNNING | http://localhost:4300/ | Vite dev server |
 | **Backend API** | ✅ RUNNING | http://localhost:3000/ | Node.js API server |
 | **Engine** | ✅ RUNNING | - | Workflow engine |
 | **Custom Piece (ada-bmp)** | ✅ BUILT | - | TypeScript compiled successfully |
@@ -22,15 +22,15 @@
 ## 📍 Access Points
 
 ### Primary Access
-**Open in Browser**: http://localhost:4200/
+**Open in Browser**: http://localhost:4300/
 
 ### API Access
 - **Direct**: http://localhost:3000/ (404 is normal for root)
-- **Via Proxy**: http://localhost:4200/api/
+- **Via Proxy**: http://localhost:4300/api/
 
 ### Network Access
 The services are also accessible on your local network:
-- **GUI**: http://192.168.1.100:4200/
+- **GUI**: http://192.168.1.100:4300/
 - **API**: http://192.168.1.100:3000/
 
 ---
@@ -49,7 +49,7 @@ The services are also accessible on your local network:
 
 ### Frontend
 ```
-✅ Vite server running (port 4200)
+✅ Vite server running (port 4300)
 ✅ TypeScript compilation: 0 errors
 ✅ Hot Module Replacement (HMR) active
 ```
@@ -87,7 +87,7 @@ The services are also accessible on your local network:
 **Key Log Entries**:
 - Line 10-13: Configuration (ce edition, test environment, ada-bmp)
 - Line 350-360: Server started successfully
-- Line 52: Frontend URL: http://localhost:4200/
+- Line 52: Frontend URL: http://localhost:4300/
 - "Building 1 piece(s): pieces-ada-bmp..." - Your piece is being compiled
 - "✨ Changes are ready!" - Build successful
 
@@ -98,7 +98,7 @@ The services are also accessible on your local network:
 ### 1. Open the Application
 ```bash
 # Open in your browser
-open http://localhost:4200/
+open http://localhost:4300/
 ```
 
 ### 2. Sign Up / Sign In
@@ -193,7 +193,7 @@ Using embedded PGLite database in test environment
 - ✅ **Community Edition (ce)** running
 - ✅ **Test Environment** with embedded database
 - ✅ **Custom ada-bmp piece** loaded and built
-- ✅ **Frontend** accessible on port 4200
+- ✅ **Frontend** accessible on port 4300
 - ✅ **API** running on port 3000
 - ✅ **Engine** compiled and watching
 - ✅ **Database** migrations completed
@@ -218,7 +218,7 @@ NODE_VERSION=v20.19.6        # Correct Node.js version
 **All services are running successfully!**
 
 You can now:
-- ✅ Access the UI at http://localhost:4200/
+- ✅ Access the UI at http://localhost:4300/
 - ✅ Create flows and test your ADA BMP piece
 - ✅ Make changes to your piece (hot reload enabled)
 - ✅ Build and test integrations

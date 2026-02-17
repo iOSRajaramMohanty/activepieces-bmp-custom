@@ -20,7 +20,7 @@ DB_USER="postgres"
 DB_PASSWORD="A79Vm5D4p2VQHOp2gd5"
 
 # API URL
-API_URL="http://localhost:4200"
+API_URL="http://localhost:4300"
 
 # Function to execute SQL
 run_sql() {
@@ -107,7 +107,7 @@ create_super_admin() {
             echo "  Role:     SUPER_ADMIN"
             echo ""
             echo -e "${CYAN}Access:${NC}"
-            echo "  Local:    http://localhost:4200"
+            echo "  Local:    http://localhost:4300"
             echo "  Docker:   http://localhost:8080"
             echo ""
             echo -e "${YELLOW}Note: This super admin has the SAME access as all other super admins.${NC}"

@@ -39,7 +39,7 @@ User 3 Signs Up → Platform C Created (Isolated)
 
 ### Test Multi-Tenant Signups
 
-1. **Open your browser**: http://localhost:4200
+1. **Open your browser**: http://localhost:4300
 
 2. **Sign up User 1**:
    - Email: `user1@test.com`
@@ -407,7 +407,7 @@ You now have a **fully functional multi-tenant** Activepieces instance running o
 - ✅ SaaS-ready deployment
 
 **Test it now:**
-1. Visit http://localhost:4200
+1. Visit http://localhost:4300
 2. Sign up multiple users
 3. Verify each gets their own isolated platform
 4. Build flows - no data leakage!

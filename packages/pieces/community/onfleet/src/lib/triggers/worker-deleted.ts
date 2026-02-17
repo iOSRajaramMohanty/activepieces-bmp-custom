@@ -63,8 +63,8 @@ export const workerDeleted = createTrigger({
     data: {
       worker: {
         id: 'sccpOkp3SassNmJxHjm1UFc5',
-        timeCreated: 1623274200000,
-        timeLastModified: 1623274200799,
+        timeCreated: 1623274300000,
+        timeLastModified: 1623274300799,
         organization: '1MWYTEQf6jioThhHhH4~KmVI',
         name: 'John Smith',
         displayName: '',
@@ -86,7 +86,7 @@ export const workerDeleted = createTrigger({
           description: '1996 Honda Accord',
           licensePlate: null,
           color: 'Green',
-          timeLastModified: 1623274200789,
+          timeLastModified: 1623274300789,
         },
       },
     },

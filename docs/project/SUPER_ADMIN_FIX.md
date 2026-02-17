@@ -60,7 +60,7 @@ You should now see **"Platform Admin"** option (with Shield icon 🛡️) in the
 
 You can also navigate directly to:
 ```
-http://localhost:4200/platform
+http://localhost:4300/platform
 ```
 
 Then click on "Super Admin Dashboard" in the sidebar.

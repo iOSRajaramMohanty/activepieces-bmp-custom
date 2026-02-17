@@ -4,8 +4,8 @@
 
 ### **What's Running:**
 
-1. **Frontend (GUI)**: http://localhost:4200/
-2. **Backend API**: http://localhost:3000/ (proxied through frontend at http://localhost:4200/api/)
+1. **Frontend (GUI)**: http://localhost:4300/
+2. **Backend API**: http://localhost:3000/ (proxied through frontend at http://localhost:4300/api/)
 3. **Your Custom Piece**: `ada-bmp` is loaded and watching for changes!
 
 ---
@@ -82,7 +82,7 @@ npm run dev
 
 ## **Testing Your Piece in the UI**
 
-1. **Open** http://localhost:4200/
+1. **Open** http://localhost:4300/
 2. **Sign up** for a new account
 3. **Create a new flow**
 4. **Add "ADA BMP" piece** from the pieces list
@@ -175,7 +175,7 @@ Once connected to real API endpoints, test:
 ## **Terminal Windows**
 
 Keep these terminals open:
-- **Terminal 1**: Frontend - http://localhost:4200/
+- **Terminal 1**: Frontend - http://localhost:4300/
 - **Terminal 2**: Backend API - http://localhost:3000/
 - **Terminal 3**: (Optional) Engine if you stopped it
 

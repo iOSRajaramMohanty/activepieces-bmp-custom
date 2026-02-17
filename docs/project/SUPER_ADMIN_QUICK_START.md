@@ -8,13 +8,13 @@
 ```
 
 ### 2️⃣ Login
-- Open: **http://localhost:4200**
+- Open: **http://localhost:4300**
 - Email: **demo@user.com**
 - Password: **Test@123**
 
 ### 3️⃣ Access Dashboard
 **Option A**: Click **"Super Admin Dashboard"** in the sidebar (Shield icon)  
-**Option B**: Navigate to **http://localhost:4200/super-admin**
+**Option B**: Navigate to **http://localhost:4300/super-admin**
 
 ---
 
@@ -172,6 +172,6 @@ For detailed information, see: **SUPER_ADMIN_REACT_UI_GUIDE.md**
 
 ---
 
-**Quick Access URL**: http://localhost:4200/super-admin  
+**Quick Access URL**: http://localhost:4300/super-admin  
 **Super Admin Email**: demo@user.com  
 **Created**: 2026-01-13

@@ -429,6 +429,36 @@ organization {
 - ✅ Case-insensitive role names work correctly
 - ✅ Login preserves existing role (no change)
 - ✅ Platform isolation works (different platformId)
+- ✅ New user's project inherits user's `organizationId` automatically
+- ✅ Existing identity with new platform user → Project gets correct `organizationId`
+
+---
+
+## Auto-Create Default BMP Connection (Frontend)
+
+The default BMP connection is created by the **BMP frontend** (`bmp-fe-web`) using the `ensureBmpConnection` function in `activepieces.component.ts`.
+
+### How It Works
+
+1. After successful authentication, the frontend calls `ensureBmpConnection`
+2. It fetches the real BMP API key from `GET /client/apikey`
+3. Checks if a BMP connection already exists for the project
+4. If an auto-connection exists, **updates the token** to keep it in sync
+5. If no connection exists, **creates a new one** with the real API key
+
+### Benefits of Frontend Approach
+
+- Uses the **real BMP API key** (not a placeholder)
+- **Updates tokens** on each visit to keep them in sync
+- Runs in the **user's session context** where BMP credentials are available
+
+### Related Files
+
+- Frontend: `bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts`
+  - `ensureBmpConnection()` - Main function
+  - `getBmpApiKey()` - Fetches API key from BMP backend
+  - `createBmpConnection()` - Creates new connection
+  - `updateBmpConnectionToken()` - Updates existing connection token
 
 ---
 
@@ -440,6 +470,7 @@ organization {
 4. **Client Isolation** - Different clients remain completely separate
 5. **Backward Compatible** - Existing integrations continue to work
 6. **Secure** - Server-side role validation and assignment
+7. **Auto BMP Connection** - Default connection created by frontend with real API key
 
 ---
 
@@ -447,6 +478,7 @@ organization {
 February 16, 2026
 
 ## Related Files
-- Implementation: `/packages/server/api/src/app/authentication/authentication.controller.ts`
+- Backend Implementation: `/packages/server/api/src/app/authentication/authentication.controller.ts`
 - User Service: `/packages/server/api/src/app/user/user-service.ts`
 - User Entity: `/packages/server/api/src/app/user/user-entity.ts`
+- Frontend BMP Connection: `bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts`

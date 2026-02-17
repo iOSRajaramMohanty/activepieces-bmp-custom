@@ -19,7 +19,7 @@ implements MigrationInterface {
                 "remoteUrl" character varying NOT NULL,
                 "branch" character varying NOT NULL,
                 "sshPrivateKey" character varying,
-                CONSTRAINT "REL_5b59d96420074128fc1d269b9c" UNIQUE ("projectId"),
+                CONSTRAINT "REL_5b59d96430074128fc1d269b9c" UNIQUE ("projectId"),
                 CONSTRAINT "PK_de881ac6eac39e4d9ba7c5ed3e6" PRIMARY KEY ("id")
             )
         `)

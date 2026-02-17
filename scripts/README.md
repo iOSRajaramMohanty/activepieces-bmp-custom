@@ -102,7 +102,7 @@ Starts the local development server with proper environment:
 - Uses Node v20
 - Sets up PostgreSQL database mode
 - Enables custom pieces (ada-bmp)
-- Runs on http://localhost:4200
+- Runs on http://localhost:4300
 
 **Usage:**
 ```bash
@@ -258,7 +258,7 @@ Interactive script to create and manage super admin accounts:
 
 | Mode | Config File | PostgreSQL | Redis | Frontend |
 |------|-------------|------------|-------|----------|
-| **Local dev** (`dev-local.sh`, `restart-all.sh`, `run-dev.sh`) | `.env` | `localhost:5433` (auto-started via `docker-compose.local-db.yml` if needed) | `localhost:6379` | `http://localhost:4200` |
+| **Local dev** (`dev-local.sh`, `restart-all.sh`, `run-dev.sh`) | `.env` | `localhost:5433` (auto-started via `docker-compose.local-db.yml` if needed) | `localhost:6379` | `http://localhost:4300` |
 | **Docker build** (`docker-compose.dev.yml`) | `.env.dev.backup` | Container `postgres-dev` (host port 5434) | Container `redis-dev` (host port 6380) | `http://localhost:8080` |
 
 **Local dev**: If Postgres/Redis aren't running, `dev-local.sh` and `restart-all.sh` auto-start them via `docker-compose.local-db.yml` using your existing data volume. Manual control: `./scripts/dev-local.sh db-start` / `./scripts/dev-local.sh db-stop`.
@@ -273,7 +273,7 @@ cp .env.example .env
 nano .env
 ```
 
-**Key variables for local dev (existing data visible on FE 4200):**
+**Key variables for local dev (existing data visible on FE 4300):**
 - `AP_POSTGRES_HOST` - `localhost` (existing DB)
 - `AP_POSTGRES_PORT` - `5433` (existing DB with your data)
 - `AP_REDIS_HOST` - `localhost` (existing Redis)

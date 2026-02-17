@@ -52,7 +52,7 @@ DELETE FROM app_connection;
 ## 🚀 **Next Steps**
 
 1. **Server is restarting** with fixed encryption keys
-2. **Go to http://localhost:4200/**
+2. **Go to http://localhost:4300/**
 3. **Add ADA BMP piece** and enter your token
 4. **Save the connection**
 
@@ -85,7 +85,7 @@ DELETE FROM app_connection;
 ## 🧪 **Test It Now**
 
 1. Wait for server to finish starting (15-20 seconds)
-2. Refresh browser: http://localhost:4200/
+2. Refresh browser: http://localhost:4300/
 3. Add ADA BMP piece
 4. Enter your **new valid token**
 5. Click **Save**

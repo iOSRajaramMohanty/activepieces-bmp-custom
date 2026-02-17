@@ -36,7 +36,7 @@ Contact your API team or log into your ADA BMP system to get a **NEW token**.
 
 Once you have the new token:
 
-1. Go to http://localhost:4200/
+1. Go to http://localhost:4300/
 2. Click **Connections** in the sidebar
 3. Find your **ADA BMP** connection
 4. Click **Edit** (or delete and recreate)

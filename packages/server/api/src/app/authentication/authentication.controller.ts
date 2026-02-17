@@ -411,6 +411,18 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
         // SDK mode: If platformId and clientId provided, use SDK auth flow
         const isSDKMode = !!providedPlatformId && !!clientId
         
+        // Ensure platform exists (avoids 500 later when sign-in/sign-up uses it)
+        const { platformService } = await import('../platform/platform.service')
+        const platform = await platformService.getOne(platformId)
+        if (!platform) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: `Platform not found: ${platformId}. Please use a valid platform ID (tenant owner's platform).`,
+                },
+            })
+        }
+        
         // Map roleName to PlatformRole, default to ADMIN if not provided
         const platformRole = mapRoleNameToPlatformRole(roleName)
         
@@ -563,6 +575,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 userId = newUser.id
                 
                 // SDK mode: Handle clientId and organization for new user
+                let userOrganizationId: string | null = null
                 if (isSDKMode && clientId) {
                     await handleSDKClientIdAndOrganization({
                         user: newUser,
@@ -574,14 +587,16 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                     // Reload user to get updated organizationId
                     const updatedUser = await userService.getOneOrFail({ id: userId })
                     userId = updatedUser.id
+                    userOrganizationId = updatedUser.organizationId ?? null
                 }
                 
-                // Create a project for this user
+                // Create a project for this user (with organization if assigned)
                 const newProject = await projectService.create({
                     displayName: `${existingIdentity.firstName}'s Project`,
                     ownerId: userId,
                     platformId,
                     type: ProjectType.PERSONAL,
+                    organizationId: userOrganizationId ?? undefined,
                 })
                 projectId = newProject.id
                 isNewUser = true
@@ -601,6 +616,13 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 projectId,
             })
             
+            request.log.info({ 
+                email, 
+                userId,
+                projectId: authResponse.projectId,
+                hasToken: !!authResponse.token,
+            }, '[auto-provision] Got auth response, about to return')
+            
             if (isNewUser) {
                 applicationEvents(request.log).sendUserEvent({
                     platformId: authResponse.platformId!,
@@ -615,10 +637,19 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 })
             }
             
-            return {
+            const finalResponse = {
                 ...authResponse,
                 isNewUser,
             }
+            
+            request.log.info({ 
+                email, 
+                hasProjectId: !!finalResponse.projectId,
+                hasToken: !!finalResponse.token,
+                isNewUser: finalResponse.isNewUser,
+            }, '[auto-provision] Returning final response')
+            
+            return finalResponse
         }
         
         // Identity doesn't exist - create invitation and sign up normally
@@ -683,6 +714,21 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 platformId,
                 log: request.log,
             })
+            
+            // Update the project's organizationId to match the user's organization
+            const updatedUser = await userService.getOneOrFail({ id: signUpResponse.id })
+            if (updatedUser.organizationId && signUpResponse.projectId) {
+                const { projectService } = await import('../project/project-service')
+                const { ProjectType } = await import('@activepieces/shared')
+                await projectService.update(signUpResponse.projectId, {
+                    type: ProjectType.PERSONAL,
+                    organizationId: updatedUser.organizationId,
+                })
+                request.log.info({
+                    projectId: signUpResponse.projectId,
+                    organizationId: updatedUser.organizationId,
+                }, '[auto-provision] Updated project organizationId')
+            }
         }
         
         request.log.info({ 

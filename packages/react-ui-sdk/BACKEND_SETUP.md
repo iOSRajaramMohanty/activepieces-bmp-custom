@@ -38,7 +38,7 @@ When everything is running:
 ```
 ✅ Backend API: ✅ Running on http://localhost:3000
 ✅ Engine:      ✅ Running
-✅ Frontend UI: ✅ Running on http://localhost:4200
+✅ Frontend UI: ✅ Running on http://localhost:4300
 ```
 
 ## Troubleshooting
@@ -52,6 +52,6 @@ If backend fails to start:
 ## Testing SDK After Backend Starts
 
 1. Ensure backend is running: `./scripts/dev-local.sh status`
-2. Refresh Angular app in browser: `http://localhost:4200`
+2. Refresh Angular app in browser: `http://localhost:4300`
 3. Check browser console - API calls should succeed
 4. Verify React UI components render correctly

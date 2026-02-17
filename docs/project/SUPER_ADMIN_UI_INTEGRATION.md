@@ -3,7 +3,7 @@
 ## ✅ Super Admin API Endpoints Are Live!
 
 All endpoints are working and accessible at:
-- **Base URL**: `http://localhost:4200/api/v1/super-admin`
+- **Base URL**: `http://localhost:4300/api/v1/super-admin`
 - **Authentication**: Bearer token from login
 - **Access**: Only users with `platformRole: 'SUPER_ADMIN'`
 
@@ -202,7 +202,7 @@ You can test these endpoints directly in the browser console:
 ### Step 1: Login and Get Token
 ```javascript
 // Login as super admin
-const loginResponse = await fetch('http://localhost:4200/api/v1/authentication/sign-in', {
+const loginResponse = await fetch('http://localhost:4300/api/v1/authentication/sign-in', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -217,19 +217,19 @@ console.log('Token:', token);
 ### Step 2: Call Super Admin APIs
 ```javascript
 // Get all platforms
-const platforms = await fetch('http://localhost:4200/api/v1/super-admin/platforms', {
+const platforms = await fetch('http://localhost:4300/api/v1/super-admin/platforms', {
   headers: { 'Authorization': `Bearer ${token}` }
 }).then(r => r.json());
 console.log('Platforms:', platforms);
 
 // Get all users
-const users = await fetch('http://localhost:4200/api/v1/super-admin/users', {
+const users = await fetch('http://localhost:4300/api/v1/super-admin/users', {
   headers: { 'Authorization': `Bearer ${token}` }
 }).then(r => r.json());
 console.log('Users:', users);
 
 // Get system stats
-const stats = await fetch('http://localhost:4200/api/v1/super-admin/stats', {
+const stats = await fetch('http://localhost:4300/api/v1/super-admin/stats', {
   headers: { 'Authorization': `Bearer ${token}` }
 }).then(r => r.json());
 console.log('Stats:', stats);
@@ -552,7 +552,7 @@ Create `super-admin-test.html` in your public folder:
 </html>
 ```
 
-Save this file and access it at `http://localhost:4200/super-admin-test.html`
+Save this file and access it at `http://localhost:4300/super-admin-test.html`
 
 ## ✅ Summary
 
@@ -575,12 +575,12 @@ Your Super Admin API is **fully functional** and ready for UI integration!
 **Test It Now:**
 ```bash
 # Login as super admin
-curl -X POST http://localhost:4200/api/v1/authentication/sign-in \
+curl -X POST http://localhost:4300/api/v1/authentication/sign-in \
   -H "Content-Type: application/json" \
   -d '{"email":"demo@user.com","password":"Test@123"}'
 
 # Use the token from the response
-curl http://localhost:4200/api/v1/super-admin/platforms \
+curl http://localhost:4300/api/v1/super-admin/platforms \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 

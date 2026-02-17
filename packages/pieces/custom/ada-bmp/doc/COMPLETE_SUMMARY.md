@@ -158,7 +158,7 @@ Wait for:
 
 ### **Step 2: Access the UI**
 
-Open: http://localhost:4200
+Open: http://localhost:4300
 
 ### **Step 3: Create a Connection**
 

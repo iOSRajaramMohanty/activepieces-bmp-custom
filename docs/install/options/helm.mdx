@@ -169,7 +169,7 @@ kubectl rollout status deployment/activepieces
 kubectl logs deployment/activepieces -f
 
 # Port forward for testing
-kubectl port-forward svc/activepieces 4200:80 --namespace default
+kubectl port-forward svc/activepieces 4300:80 --namespace default
 
 # Get all resources
 kubectl get all --namespace default

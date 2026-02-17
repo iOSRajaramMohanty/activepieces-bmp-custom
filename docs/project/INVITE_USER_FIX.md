@@ -42,7 +42,7 @@ The backend has been restarted to pick up the changes.
 
 ### Step 2: Try Inviting a User Again
 
-1. Go to your React UI at `http://localhost:4200`
+1. Go to your React UI at `http://localhost:4300`
 2. Make sure you're logged in as `demo@user.com`
 3. Click on "Demo User" at the bottom left
 4. Click "Invite User"
@@ -61,7 +61,7 @@ The invitation should now work successfully! ✅
 You can test the API directly:
 
 ```bash
-curl 'http://localhost:4200/api/v1/user-invitations' \
+curl 'http://localhost:4300/api/v1/user-invitations' \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_TOKEN' \
   --data-raw '{"email":"test@example.com","type":"PLATFORM","platformRole":"ADMIN"}'

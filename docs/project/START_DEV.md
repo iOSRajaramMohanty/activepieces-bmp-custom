@@ -55,10 +55,10 @@ You should see:
 [API] Server listening on port 3000
 [API] Building dev pieces: ada-bmp
 [ENG] Engine ready
-[GUI] ➜  Local: http://localhost:4200/
+[GUI] ➜  Local: http://localhost:4300/
 ```
 
-Then open: **http://localhost:4200**
+Then open: **http://localhost:4300**
 
 ---
 

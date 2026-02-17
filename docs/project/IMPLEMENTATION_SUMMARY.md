@@ -71,14 +71,14 @@ Added sidebar link:
 ```
 
 ### Step 2: Login as Super Admin
-1. Open: http://localhost:4200
+1. Open: http://localhost:4300
 2. Login with:
    - Email: `demo@user.com`
    - Password: `Test@123`
 
 ### Step 3: Access Dashboard
 **Method 1**: Click "Super Admin Dashboard" in the sidebar (Shield icon)  
-**Method 2**: Navigate to http://localhost:4200/super-admin
+**Method 2**: Navigate to http://localhost:4300/super-admin
 
 ---
 
@@ -342,6 +342,6 @@ Your React UI now has a **fully functional Super Admin Dashboard** that allows s
 ---
 
 **Implementation Date**: 2026-01-13  
-**Access URL**: http://localhost:4200/super-admin  
+**Access URL**: http://localhost:4300/super-admin  
 **Super Admin Email**: demo@user.com  
 **Status**: ✅ PRODUCTION READY

@@ -15,7 +15,7 @@ pkill -f "nx serve"
 
 ### Step 2: Try to Connect Again
 
-1. Go to http://localhost:4200/
+1. Go to http://localhost:4300/
 2. Create a flow
 3. Add ADA BMP piece
 4. Enter your token

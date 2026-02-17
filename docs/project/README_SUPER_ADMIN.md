@@ -2,7 +2,7 @@
 
 ## 🎯 Quick Access
 
-**URL**: http://localhost:4200/super-admin  
+**URL**: http://localhost:4300/super-admin  
 **Login**: demo@user.com / Test@123  
 **Location**: Sidebar → "Super Admin Dashboard" (Shield icon)
 
@@ -26,7 +26,7 @@
 ./scripts/restart-all.sh
 
 # 2. Open browser
-open http://localhost:4200
+open http://localhost:4300
 
 # 3. Login
 Email: demo@user.com
@@ -166,4 +166,4 @@ curl http://localhost:3000/v1/super-admin/stats \
 **Created**: 2026-01-13  
 **Version**: 1.0.0  
 **Maintained by**: Development Team  
-**Access URL**: http://localhost:4200/super-admin
+**Access URL**: http://localhost:4300/super-admin

@@ -56,7 +56,7 @@ activepieces-admin-ui/
 - **Styling**: SCSS + Tailwind CSS (optional)
 - **HTTP**: Angular HttpClient with Interceptors
 - **Routing**: Angular Router with Guards
-- **Port**: 4201 (separate from React UI on 4200)
+- **Port**: 4201 (separate from React UI on 4300)
 
 ## 📁 Recommended Project Structure
 

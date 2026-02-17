@@ -407,6 +407,7 @@ type CreateParams = {
     externalId?: string
     metadata?: Metadata
     maxConcurrentJobs?: number
+    organizationId?: string
 }
 
 type GetByPlatformIdAndExternalIdParams = {

@@ -39,7 +39,7 @@ const config: PlaywrightTestConfig = {
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:4200',
+    baseURL: 'http://localhost:4300',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -65,7 +65,7 @@ const config: PlaywrightTestConfig = {
     command: process.env.CI
       ? 'npm run dev'
       : 'export $(cat .env.e2e | xargs) && npm run dev',
-    url: 'http://localhost:4200/api/v1/flags',
+    url: 'http://localhost:4300/api/v1/flags',
     reuseExistingServer: !process.env.CI,
     timeout: 100000,
     stdout: 'pipe',
