@@ -435,7 +435,7 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
         await organizationService.delete(id)
 
-        return reply.status(StatusCodes.NO_CONTENT).send()
+        return reply.status(StatusCodes.NO_CONTENT).send(null)
     })
 
     // Get allowed environments for current user based on their adminUserId
