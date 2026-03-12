@@ -15,8 +15,9 @@ This document explains how multiple users from the same BMP client are handled i
 2. [Platform Roles](#platform-roles)
 3. [Custom Role Assignment](#custom-role-assignment)
 4. [BMP Frontend Integration](#bmp-frontend-integration)
-5. [API Examples](#api-examples)
-6. [Use Cases](#use-cases)
+5. [Auth Data Flow Diagrams](#auth-data-flow-diagrams)
+6. [API Examples](#api-examples)
+7. [Use Cases](#use-cases)
 
 ---
 
@@ -200,6 +201,123 @@ localStorage.setItem('ada.roleName', 'MEMBER')    // For regular users
 localStorage.setItem('ada.roleName', 'ADMIN')     // For administrators
 localStorage.setItem('ada.roleName', 'OPERATOR')  // For operators
 ```
+
+---
+
+## Auth Data Flow Diagrams
+
+The React UI SDK does **not** authenticate users itself; the host application supplies the token and config (`apiUrl`, `token`, `projectId`). Two flows are described below: the **original SDK flow** (generic host passing config to the SDK) and the **bmp-fe-web flow** (host uses `/auto-provision` and then passes config to the SDK). Implementation reference: `bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts`.
+
+### Role of platformId
+
+- **bmp-fe-web:** `platformId` comes from the host **environment** (e.g. `environment.activepieces?.platformId`). It scopes auto-provision to a tenant (together with `clientId`), and when set it triggers `ensureOrganizationSetup` after auth.
+- **Activepieces (backend):** **platformId is required on the Activepieces side for multi-tenant handling.** Each platform is a tenant; user, project, and organization are scoped by `platformId`. For SDK/embedded use (e.g. one host like bmp-fe-web serving multiple tenants), the client must send `platformId` in the request body so Activepieces knows which tenant to use; otherwise the API may return a validation error or resolve to the wrong tenant.
+
+### How platformId from environment is set up
+
+When **platformId** is set in the host (e.g. bmp-fe-web), it comes from the **build-time / runtime environment config** — typically `environment.activepieces.platformId` in the Angular app (e.g. in `environments/environment.ts` or environment-specific files). That value is the Activepieces platform (tenant) ID, usually the platform of the tenant owner.
+
+**When platformId is set, the flow is:**
+
+1. **Before auto-provision:** bmp-fe-web reads `platformId` from `environment.activepieces?.platformId` and includes it (with `clientId`, `clientName`, `roleName`) in the POST body to `/auto-provision`. The backend uses it to scope the user and project to that tenant.
+2. **After auth (token/projectId received):** If `platformId` is set, bmp-fe-web calls **ensureOrganizationSetup(apiBaseUrl, token, projectId, platformId)**. That does:
+   - **Step 1:** GET project — check if the project already has an organization.
+   - **Step 2:** If no org: POST **organizations/get-or-create** with `name` and **platformId** (so the org is created under the correct tenant).
+   - **Step 3:** POST **organizations/assign-user** — assign the current user to that organization.
+   - **Step 4:** PATCH/POST project — assign the project to that organization.
+   - **Step 5:** **ensureEnvironmentExists** — initialize org environments (Dev/Staging/Prod) if needed, then set environment metadata **ADA_BMP_API_URL** (and optionally ADA_BMP_TIMEOUT, ADA_BMP_DEBUG) from `environment.api` so the BMP piece can call the correct BMP API.
+
+If `platformId` is not set, `ensureOrganizationSetup` is skipped (no org/env setup). For SDK embedding with multiple tenants, **platformId must be set** in the environment so the correct tenant and org/env are used.
+
+### Importance of platformId for the SDK config
+
+The **SDK config** (what the host passes to the SDK) is `apiUrl`, `token`, and `projectId` (optional `flowId`). The SDK does **not** receive `platformId` as a config field; it only uses `apiUrl`, `token`, and `projectId` for API calls.
+
+1. **platformId is required on the Activepieces side for multi-tenant handling** — each platform is a tenant; the backend needs `platformId` to scope the request and to create/return the correct token and projectId.
+2. The host must set the correct `platformId` (e.g. in environment) when calling auto-provision so the resulting SDK config is for the intended tenant; wrong or missing `platformId` yields wrong or failed SDK auth.
+
+### Diagram 1: Original SDK Authentication Flow
+
+The SDK does not perform login. The host application obtains a token (e.g. its own login or standard Activepieces sign-in) and passes `apiUrl`, `token`, and `projectId` into the SDK; the SDK only stores and uses them for API calls.
+
+```mermaid
+sequenceDiagram
+  participant Host as HostApp
+  participant SDK as ReactUISDK
+  participant Storage as WindowStorage
+  participant ReactUI as ReactComponents
+  participant API as ApiClient
+  participant Backend as APBackend
+
+  Note over Host,Backend: Host already has token from sign-in or external auth
+  Host->>SDK: Pass apiUrl token projectId
+  SDK->>Storage: Set config and localStorage token projectId
+  SDK->>ReactUI: Mount component with config
+  ReactUI->>API: getSDKApiUrl getToken from storage
+  API->>Backend: REST with Bearer token and apiUrl
+  Backend-->>API: JSON responses
+```
+
+**Caption:** Host obtains token (e.g. standard sign-in/sign-up or its own auth). Host passes `apiUrl`, `token`, `projectId` to the SDK via Angular inputs or `SDKProviders` config. SDK writes these to `window.__AP_SDK_CONFIG__` and to localStorage. React UI (and `api.ts`) read config and token from storage for all API requests; the SDK never calls sign-in or sign-up itself. When the host uses platform-scoped auth such as auto-provision, the correct `platformId` in the host environment is what ensures the token and projectId passed to the SDK are for the right tenant (see "Importance of platformId for the SDK config" above).
+
+### Diagram 2: bmp-fe-web Authentication Flow
+
+**platformId is required on the Activepieces side for multi-tenant handling:** each platform is a tenant; the backend needs `platformId` to determine which tenant to use and will return a validation error if it cannot be determined. The sequence below matches `bmp-fe-web` (ActivepiecesComponent): `ngAfterViewInit` → read **platformId from environment** (see [How platformId from environment is set up](#how-platformid-from-environment-is-set-up)) → `exchangeToken` (POST auto-provision with platformId + clientId) → **ensureOrganizationSetup** when platformId is set (GET project → get-or-create org with platformId → assign-user → assign project → env metadata ADA_BMP_API_URL) → `ensureBmpConnection` → set config → load SDK → mount component.
+
+```mermaid
+sequenceDiagram
+  participant User as User
+  participant BMPFe as BMPFeWeb
+  participant Env as EnvConfig
+  participant LocalStorage as LocalStorage
+  participant APBackend as APBackend
+  participant BMPBackend as BMPBackend
+  participant SDK as ReactUISDK
+
+  User->>BMPFe: Navigate to Activepieces page
+  BMPFe->>BMPFe: ngAfterViewInit effectiveApiUrl
+  alt No token or projectId as inputs
+    BMPFe->>LocalStorage: Read ada.email ada.id ada.clientId ada.clientName ada.roleName
+    BMPFe->>Env: Read platformId from environment.activepieces.platformId
+    Env-->>BMPFe: platformId
+    Note over BMPFe: platformId required for multi-tenant scope
+    BMPFe->>BMPFe: Build body with platformId clientId roleName
+    BMPFe->>APBackend: POST auto-provision body includes platformId clientId
+    APBackend->>APBackend: Sign-in or sign-up scope by platformId clientId org role
+    APBackend-->>BMPFe: token projectId isNewUser
+    BMPFe->>LocalStorage: saveAuthResponseAndReturn
+    opt platformId set from environment
+      Note over BMPFe,APBackend: ensureOrganizationSetup using platformId from env
+      BMPFe->>APBackend: GET projects projectId
+      APBackend-->>BMPFe: project with or without organizationId
+      alt Project has no organization
+        BMPFe->>APBackend: POST organizations get-or-create name and platformId
+        APBackend-->>BMPFe: orgId
+        BMPFe->>APBackend: POST organizations assign-user organizationId
+        BMPFe->>APBackend: POST projects projectId assign organizationId
+        BMPFe->>APBackend: POST init envs then PATCH env metadata ADA_BMP_API_URL
+      else Project already has organization
+        BMPFe->>APBackend: POST organizations assign-user if needed
+        BMPFe->>APBackend: ensureEnvironmentExists ADA_BMP_API_URL in metadata
+      end
+    end
+    BMPFe->>BMPBackend: GET client apikey Bearer ada.accessToken
+    BMPBackend-->>BMPFe: BMP API key
+    BMPFe->>APBackend: GET app-connections list
+    alt No BMP auto-connection
+      BMPFe->>APBackend: POST app-connections create
+    else Auto-connection exists
+      BMPFe->>APBackend: POST app-connections update token
+    end
+  end
+  BMPFe->>LocalStorage: Set config token projectId dispatch storage
+  BMPFe->>BMPFe: loadSDKModule
+  BMPFe->>SDK: configureAPI mountReactComponent
+  SDK->>APBackend: API calls Bearer token
+  APBackend-->>SDK: JSON responses
+```
+
+**Caption:** bmp-fe-web reads `ada.email`, `ada.id` (used as password), `ada.clientId`, `ada.clientName`, and `ada.roleName` from localStorage, and **platformId** from **environment** (`environment.activepieces.platformId`). It POSTs to `/v1/authentication/auto-provision` with platformId and clientId so the backend scopes the user to that tenant (same platformId + same clientId → same organization). Backend signs in or signs up, applies clientId/organization and role, returns token and projectId. Frontend stores them. If platformId is set, it runs `ensureOrganizationSetup` (org + env with ADA_BMP_API_URL) using that platformId; then `ensureBmpConnection` (GET BMP API key from BMP backend, then create/update BMP app-connection via Activepieces API). Finally it sets `__AP_SDK_CONFIG__`, loads the SDK script, calls `configureAPI` and `mountReactComponent`. From then on, SDK behavior matches the original SDK flow (Diagram 1).
 
 ---
 
@@ -459,6 +577,40 @@ The default BMP connection is created by the **BMP frontend** (`bmp-fe-web`) usi
   - `getBmpApiKey()` - Fetches API key from BMP backend
   - `createBmpConnection()` - Creates new connection
   - `updateBmpConnectionToken()` - Updates existing connection token
+
+### Required request body for POST /v1/app-connections (BMP / Custom Auth)
+
+The API expects a **body** that matches the **Custom Auth** schema. A **400 Bad Request** usually means a required field is missing or the shape is wrong.
+
+- **Required body fields** (all must be present):
+  - `projectId` (string) – **Must be in the body**; used for authorization. Use the current project ID (e.g. from `/auto-provision` or project context).
+  - `type`: `"CUSTOM_AUTH"`
+  - `externalId` (string) – e.g. a stable id for the BMP connection
+  - `displayName` (string)
+  - `pieceName`: `"@activepieces/piece-ada-bmp"`
+  - `value`: `{ type: "CUSTOM_AUTH", props: { apiToken: "<BMP API key>", environment: "Dev" | "Staging" | "Production" } }`
+- **Optional**: `metadata`, `pieceVersion`
+
+Example (create/upsert BMP connection):
+
+```json
+{
+  "projectId": "<current-project-id>",
+  "type": "CUSTOM_AUTH",
+  "externalId": "bmp-auto-connection",
+  "displayName": "ADA BMP",
+  "pieceName": "@activepieces/piece-ada-bmp",
+  "value": {
+    "type": "CUSTOM_AUTH",
+    "props": {
+      "apiToken": "<BMP API key>",
+      "environment": "Staging"
+    }
+  }
+}
+```
+
+Ensure the request also sends the project scope (e.g. `projectId` query param or header if your proxy/API expects it) so the backend can authorize the request.
 
 ---
 

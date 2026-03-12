@@ -170,7 +170,7 @@ export const adaBmp = createPiece({
   displayName: 'ADA BMP',
   description: 'Multi-channel messaging platform supporting WhatsApp, Facebook, Line, and Instagram',
   minimumSupportedRelease: '0.36.1',
-  logoUrl: '/ada-logo.png',
+  logoUrl: 'https://imagedelivery.net/ZvxstLLilyjMGnog41fs3g/ff4be95c-e460-492f-b112-128c64056100/public',
   categories: [PieceCategory.COMMUNICATION],
   auth: adaBmpAuth,
   events: {

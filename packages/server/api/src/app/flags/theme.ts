@@ -66,7 +66,7 @@ export function generateTheme({
 export const defaultTheme = generateTheme({
     primaryColor: '#6e41e2',
     websiteName: 'ADA Integration',
-    fullLogoUrl: '/ada-logo.png',
-    favIconUrl: 'https://cdn.activepieces.com/brand/favicon.ico',
-    logoIconUrl: '/ada-logo.png',
+    fullLogoUrl: 'https://imagedelivery.net/ZvxstLLilyjMGnog41fs3g/ff4be95c-e460-492f-b112-128c64056100/public',
+    favIconUrl: 'https://imagedelivery.net/ZvxstLLilyjMGnog41fs3g/ff4be95c-e460-492f-b112-128c64056100/public',
+    logoIconUrl: 'https://imagedelivery.net/ZvxstLLilyjMGnog41fs3g/ff4be95c-e460-492f-b112-128c64056100/public',
 })

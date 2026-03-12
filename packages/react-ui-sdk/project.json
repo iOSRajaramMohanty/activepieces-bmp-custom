@@ -54,11 +54,6 @@
             "output": "."
           },
           {
-            "glob": "ada-logo.png",
-            "input": "packages/react-ui/src/assets/img/custom",
-            "output": "assets"
-          },
-          {
             "glob": "**/*.woff2",
             "input": "packages/react-ui/src/assets/fonts",
             "output": "assets/fonts"
