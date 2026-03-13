@@ -1,14 +1,13 @@
-import { ApplicationEventName } from '@activepieces/ee-shared'
-import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
+import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
 import {
     ActivepiecesError,
     ApId,
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,
+    ApplicationEventName,
     EnvironmentType,
     ErrorCode,
-    isBmpPiece,
     ListAppConnectionOwnersRequestQuery,
     ListAppConnectionsRequestQuery,
     Permission,
@@ -20,21 +19,22 @@ import {
     UpdateConnectionValueRequestBody,
     UpsertAppConnectionRequestBody,
 } from '@activepieces/shared'
-import {
-    FastifyPluginCallbackTypebox,
-    Type,
-} from '@fastify/type-provider-typebox'
+import { FastifyPluginCallbackZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import { applicationEvents } from '../helper/application-events'
 import { securityHelper } from '../helper/security-helper'
 import { userService } from '../user/user-service'
 import { appConnectionService } from './app-connection-service/app-connection-service'
 import { AppConnectionEntity } from './app-connection.entity'
 
-export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts, done) => {
+const isBmpPiece = (pieceName: string): boolean =>
+    pieceName === '@activepieces/piece-ada-bmp'
+
+export const appConnectionController: FastifyPluginCallbackZod = (app, _opts, done) => {
     app.post('/', UpsertAppConnectionRequest, async (request, reply) => {
         const ownerId = await securityHelper.getUserIdFromRequest(request)
-        const currentUser = ownerId ? await userService.getOneOrFail({ id: ownerId }) : null
+        const currentUser = ownerId ? await userService(request.log).getOneOrFail({ id: ownerId }) : null
         const appConnection = await appConnectionService(request.log).upsert({
             platformId: request.principal.platform.id,
             projectIds: [request.projectId],
@@ -92,7 +92,7 @@ export const appConnectionController: FastifyPluginCallbackTypebox = (app, _opts
 
         let platformRole: PlatformRole = PlatformRole.OWNER
         if (request.principal.type === PrincipalType.USER) {
-            const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+            const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
             platformRole = currentUser.platformRole
         }
 
@@ -226,7 +226,7 @@ const UpdateConnectionValueRequest = {
         security: [SERVICE_KEY_SECURITY_OPENAPI],
         description: 'Update an app connection value',
         body: UpdateConnectionValueRequestBody,
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
     },
@@ -248,7 +248,7 @@ const ReplaceAppConnectionsRequest = {
         description: 'Replace app connections',
         body: ReplaceAppConnectionsRequestBody,
         response: {
-            [StatusCodes.NO_CONTENT]: Type.Never(),
+            [StatusCodes.NO_CONTENT]: z.never(),
         },
     },
 }
@@ -309,11 +309,11 @@ const DeleteAppConnectionRequest = {
         tags: ['app-connections'],
         security: [SERVICE_KEY_SECURITY_OPENAPI],
         description: 'Delete an app connection',
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
         response: {
-            [StatusCodes.NO_CONTENT]: Type.Never(),
+            [StatusCodes.NO_CONTENT]: z.never(),
         },
     },
 }

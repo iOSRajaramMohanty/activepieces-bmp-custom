@@ -54,8 +54,6 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             switch (invitation.type) {
                 case InvitationType.PLATFORM: {
                     assertNotNullOrUndefined(invitation.platformRole, 'platformRole')
-                    
-                    // Handle ADMIN invitations with organization — shared project per org, no projectMemberService
                     if (invitation.platformRole === PlatformRole.ADMIN && invitation.organizationId) {
                         log.info({
                             userId: user.id,
@@ -73,12 +71,11 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                             })
                         }
                         
-                        await userService.update({
+                        await userService(log).update({
                             id: user.id,
                             platformId: invitation.platformId,
                             platformRole: invitation.platformRole,
                         })
-                        
                         const { UserEntity } = await import('../user/user-entity')
                         await repoFactory(UserEntity)().update({ id: user.id }, { organizationId: invitation.organizationId })
                         
@@ -88,7 +85,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                         
                         if (isNil(organization.projectId)) {
                             const projectDisplayName = `${organization.name} Project`
-                            const project = await projectService.create({
+                            const project = await projectService(log).create({
                                 displayName: projectDisplayName,
                                 ownerId: user.id,
                                 platformId: invitation.platformId,
@@ -115,8 +112,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                         break
                     }
                     
-                    // Standard platform role update for non-organization ADMINs
-                    await userService.update({
+                    await userService(log).update({
                         id: user.id,
                         platformId: invitation.platformId,
                         platformRole: invitation.platformRole,
@@ -157,14 +153,14 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                     const { projectId, projectRoleId } = invitation
                     assertNotNullOrUndefined(projectId, 'projectId')
                     assertNotNullOrUndefined(projectRoleId, 'projectRoleId')
-                    const platform = await platformService.getOneWithPlanOrThrow(invitation.platformId)
+                    const platform = await platformService(log).getOneWithPlanOrThrow(invitation.platformId)
                     assertEqual(platform.plan.projectRolesEnabled, true, 'Project roles are not enabled', 'PROJECT_ROLES_NOT_ENABLED')
 
                     const projectRole = await projectRoleService.getOneOrThrowById({
                         id: projectRoleId,
                     })
 
-                    const project = await projectService.exists({
+                    const project = await projectService(log).exists({
                         projectId,
                         isSoftDeleted: false,
                     })
@@ -332,53 +328,31 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 registered: false,
             }
         }
-        
-        // For organization-based ADMIN invitations, skip auto-project creation
-        // The shared project will be created/used in provisionUserInvitation
-        const isOrganizationAdminInvitation = 
+        const isOrganizationAdminInvitation =
             invitation.type === InvitationType.PLATFORM &&
             invitation.platformRole === PlatformRole.ADMIN &&
             !isNil(invitation.organizationId)
-        
         let user: User
         if (isOrganizationAdminInvitation) {
-            log.info({
-                email: invitation.email,
-                organizationId: invitation.organizationId,
-                environment: invitation.environment,
-            }, '[accept] Organization ADMIN invitation - skipping auto-project creation')
-            
-            // Get or create user WITHOUT automatic project creation
-            const existingUser = await userService.getOneByIdentityAndPlatform({
+            const existingUser = await userService(log).getOneByIdentityAndPlatform({
                 identityId: identity.id,
                 platformId: invitation.platformId,
             })
-            
             if (isNil(existingUser)) {
-                user = await userService.create({
+                user = await userService(log).create({
                     identityId: identity.id,
                     platformId: invitation.platformId,
                     platformRole: PlatformRole.ADMIN,
                 })
-                log.info({
-                    userId: user.id,
-                    email: invitation.email,
-                }, '[accept] Created new user for organization ADMIN (no auto-project)')
             } else {
                 user = existingUser
-                log.info({
-                    userId: user.id,
-                    email: invitation.email,
-                }, '[accept] Using existing user for organization ADMIN')
             }
         } else {
-            // Standard flow: create user with project (for non-organization ADMINs)
-            user = await userService.getOrCreateWithProject({
+            user = await userService(log).getOrCreateWithProject({
                 identity,
                 platformId: invitation.platformId,
             })
         }
-        
         await this.provisionUserInvitation({
             email: invitation.email,
             user,

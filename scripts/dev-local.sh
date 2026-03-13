@@ -213,12 +213,12 @@ stop_services() {
         rm "$PROJECT_ROOT/.dev-pid"
     fi
     
-    # Explicitly kill Engine worker (nx serve engine) - it may not bind to a port
-    pkill -f "nx serve engine" 2>/dev/null || true
+    # Engine kill commented out - not used in local dev
+    # pkill -f "nx serve engine" 2>/dev/null || true
     
     # Kill processes on ports (cleanup)
     kill_port 3000  # Backend
-    kill_port 3001  # Engine (if it binds)
+    # kill_port 3001  # Engine - not used
     kill_port 4300  # Frontend
     
     print_success "Services stopped"
@@ -239,12 +239,13 @@ show_status() {
         print_error "Backend API: ❌ Not running"
     fi
     
-    # Check engine (Engine is a worker, not an HTTP server)
-    if pgrep -f "nx serve engine" > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Engine:      ✅ Running (worker, not HTTP server)${NC}"
-    else
-        print_error "Engine: ❌ Not running"
-    fi
+    # Engine check commented out - not required for local development
+    # The API handles flow execution internally in dev mode
+    # if pgrep -f "nx serve engine" > /dev/null 2>&1; then
+    #     echo -e "${GREEN}✅ Engine:      ✅ Running (worker, not HTTP server)${NC}"
+    # else
+    #     print_error "Engine: ❌ Not running"
+    # fi
     
     # Check frontend (port 4300)
     if check_port 4300; then

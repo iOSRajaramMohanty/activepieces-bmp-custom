@@ -1,6 +1,6 @@
 import { createAction, Property } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
-import { adaBmpAuth } from '../../index';
+import { adaBmpAuth } from '../common/auth';
 import { 
   adaBmpChannelForBulk, 
   adaBmpAccount, 

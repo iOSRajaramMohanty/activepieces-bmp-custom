@@ -4,7 +4,7 @@ import {
   Property,
 } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
-import { adaBmpAuth } from '../../index';
+import { adaBmpAuth } from '../common/auth';
 import { API_ENDPOINTS, debugLog } from '../common/config';
 
 const CACHE_KEY = 'ada_bmp_webhook_id';

@@ -1,8 +1,7 @@
-import { ApplicationEventName } from '@activepieces/ee-shared'
-import { AppSystemProp, networkUtils, securityAccess } from '@activepieces/server-shared'
+import { ApplicationEventName, assertNotNullOrUndefined } from '@activepieces/shared'
+import { AppSystemProp, networkUtils, securityAccess } from '@activepieces/server-common'
 import {
     ActivepiecesError,
-    assertNotNullOrUndefined,
     ErrorCode,
     InvitationStatus,
     InvitationType,
@@ -13,8 +12,9 @@ import {
     SwitchPlatformRequest,
     UserIdentityProvider,
 } from '@activepieces/shared'
+import { Type } from '@sinclair/typebox'
 import { RateLimitOptions } from '@fastify/rate-limit'
-import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
 import dayjs from 'dayjs'
 import { applicationEvents } from '../helper/application-events'
@@ -75,7 +75,7 @@ async function handleSDKClientIdAndOrganization({
 }): Promise<void> {
     if (!user.clientId) {
         // Store clientId
-        await userService.update({
+        await userService(log).update({
             id: user.id,
             platformId,
             clientId,
@@ -84,12 +84,8 @@ async function handleSDKClientIdAndOrganization({
             userId: user.id,
             clientId,
         }, '[handleSDKClientIdAndOrganization] Stored clientId for user')
-        
-        // Reload user to get updated clientId
-        const updatedUser = await userService.getOneOrFail({ id: user.id })
-        
-        // Check if any other user with the same clientId already has an organization
-        const usersWithSameClientId = await userService.getByClientIdAndPlatform({
+        const updatedUser = await userService(log).getOneOrFail({ id: user.id })
+        const usersWithSameClientId = await userService(log).getByClientIdAndPlatform({
             clientId,
             platformId,
         })
@@ -149,7 +145,7 @@ async function handleSDKClientIdAndOrganization({
         
         // Assign user to organization if not already assigned and organization exists
         if (organization && organization.id && !updatedUser.organizationId) {
-            await userService.update({
+            await userService(log).update({
                 id: updatedUser.id,
                 platformId,
                 organizationId: organization.id,
@@ -175,7 +171,7 @@ async function handleSDKClientIdAndOrganization({
             providedClientId: clientId,
         }, '[handleSDKClientIdAndOrganization] ClientId mismatch, updating user clientId')
         
-        await userService.update({
+        await userService(log).update({
             id: user.id,
             platformId,
             clientId,
@@ -199,7 +195,7 @@ async function handleSDKClientIdAndOrganization({
  * 
  * See the auto-provision endpoint documentation below for SDK usage details.
  */
-export const authenticationController: FastifyPluginAsyncTypebox = async (
+export const authenticationController: FastifyPluginAsyncZod = async (
     app,
 ) => {
     /**
@@ -328,7 +324,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
     })
 
     app.post('/switch-platform', SwitchPlatformRequestOptions, async (request) => {
-        const user = await userService.getOneOrFail({ id: request.principal.id })
+        const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
         return authenticationService(request.log).switchPlatform({
             identityId: user.identityId,
             platformId: request.body.platformId,
@@ -380,11 +376,21 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
      * 4. Return authentication response with isNewUser flag
      */
     app.post('/auto-provision', AutoProvisionRequestOptions, async (request) => {
-        const { email, password, firstName, lastName } = request.body
-        const providedPlatformId = request.body.platformId
-        const clientId = request.body.clientId
-        const clientName = request.body.clientName
-        const roleName = request.body.roleName // From localStorage: ada.roleName
+        const body = request.body as {
+            email: string
+            password: string
+            firstName: string
+            lastName: string
+            platformId?: string
+            clientId?: string
+            clientName?: string
+            roleName?: string
+        }
+        const { email, password, firstName, lastName } = body
+        const providedPlatformId = body.platformId
+        const clientId = body.clientId
+        const clientName = body.clientName
+        const roleName = body.roleName // From localStorage: ada.roleName
         
         // SDK mode: Use provided platformId, otherwise resolve from request
         const platformId = providedPlatformId || await platformUtils.getPlatformIdForRequest(request)
@@ -413,7 +419,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
         
         // Ensure platform exists (avoids 500 later when sign-in/sign-up uses it)
         const { platformService } = await import('../platform/platform.service')
-        const platform = await platformService.getOne(platformId)
+        const platform = await platformService(request.log).getOne(platformId)
         if (!platform) {
             throw new ActivepiecesError({
                 code: ErrorCode.VALIDATION,
@@ -449,7 +455,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             
             // SDK mode: Handle clientId and organization after successful sign-in
             if (isSDKMode && clientId) {
-                const user = await userService.getOneOrFail({ id: signInResponse.id })
+                const user = await userService(request.log).getOneOrFail({ id: signInResponse.id })
                 await handleSDKClientIdAndOrganization({
                     user,
                     clientId,
@@ -509,7 +515,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             }, '[auto-provision] Password verified')
             
             // Check if user already exists on this platform
-            const existingUser = await userService.getOneByIdentityAndPlatform({
+            const existingUser = await userService(request.log).getOneByIdentityAndPlatform({
                 identityId: existingIdentity.id,
                 platformId,
             })
@@ -532,7 +538,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                 userId = existingUser.id
                 
                 // Check for existing project
-                const existingProject = await projectService.getOneByOwnerAndPlatform({
+                const existingProject = await projectService(request.log).getOneByOwnerAndPlatform({
                     ownerId: userId,
                     platformId,
                 })
@@ -551,7 +557,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                         userId 
                     }, '[auto-provision] User exists but no project, creating one')
                     
-                    const newProject = await projectService.create({
+                    const newProject = await projectService(request.log).create({
                         displayName: `${existingIdentity.firstName}'s Project`,
                         ownerId: userId,
                         platformId,
@@ -567,7 +573,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                     identityId: existingIdentity.id 
                 }, '[auto-provision] Creating user on this platform')
                 
-                const newUser = await userService.create({
+                const newUser = await userService(request.log).create({
                     identityId: existingIdentity.id,
                     platformId,
                     platformRole, // Use custom role from roleName or default ADMIN
@@ -585,13 +591,13 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
                         log: request.log,
                     })
                     // Reload user to get updated organizationId
-                    const updatedUser = await userService.getOneOrFail({ id: userId })
+                    const updatedUser = await userService(request.log).getOneOrFail({ id: userId })
                     userId = updatedUser.id
                     userOrganizationId = updatedUser.organizationId ?? null
                 }
                 
                 // Create a project for this user (with organization if assigned)
-                const newProject = await projectService.create({
+                const newProject = await projectService(request.log).create({
                     displayName: `${existingIdentity.firstName}'s Project`,
                     ownerId: userId,
                     platformId,
@@ -610,7 +616,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             }, '[auto-provision] User ready with project')
             
             // Get the authentication response
-            const authResponse = await authenticationUtils.getProjectAndToken({
+            const authResponse = await authenticationUtils(request.log).getProjectAndToken({
                 userId,
                 platformId,
                 projectId,
@@ -706,7 +712,7 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
         
         // SDK mode: Handle clientId and organization after signup
         if (isSDKMode && clientId) {
-            const user = await userService.getOneOrFail({ id: signUpResponse.id })
+            const user = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
             await handleSDKClientIdAndOrganization({
                 user,
                 clientId,
@@ -716,11 +722,11 @@ export const authenticationController: FastifyPluginAsyncTypebox = async (
             })
             
             // Update the project's organizationId to match the user's organization
-            const updatedUser = await userService.getOneOrFail({ id: signUpResponse.id })
+            const updatedUser = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
             if (updatedUser.organizationId && signUpResponse.projectId) {
                 const { projectService } = await import('../project/project-service')
                 const { ProjectType } = await import('@activepieces/shared')
-                await projectService.update(signUpResponse.projectId, {
+                await projectService(request.log).update(signUpResponse.projectId, {
                     type: ProjectType.PERSONAL,
                     organizationId: updatedUser.organizationId,
                 })

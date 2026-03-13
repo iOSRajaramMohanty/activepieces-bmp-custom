@@ -1,6 +1,6 @@
 import { Property } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
-import { adaBmpAuth } from '../../index';
+import { adaBmpAuth } from './auth';
 import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from './config';
 
 /**

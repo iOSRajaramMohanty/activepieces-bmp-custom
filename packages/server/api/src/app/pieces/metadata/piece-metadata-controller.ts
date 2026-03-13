@@ -1,5 +1,5 @@
 import { PieceMetadataModel, PieceMetadataModelSummary } from '@activepieces/pieces-framework'
-import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
+import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
 import {
     ActivepiecesError,
     ALL_PRINCIPAL_TYPES,
@@ -7,7 +7,6 @@ import {
     GetPieceRequestParams,
     GetPieceRequestQuery,
     GetPieceRequestWithScopeParams,
-    isBmpPiece,
     isNil,
     ListPiecesRequestQuery,
     LocalesEnum,
@@ -19,11 +18,9 @@ import {
     SampleDataFileType,
     WorkerJobType,
 } from '@activepieces/shared'
-import {
-    FastifyPluginAsyncTypebox,
-} from '@fastify/type-provider-typebox'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { ArrayContains } from 'typeorm'
-import { EngineHelperPropResult, OperationResponse } from 'server-worker'
+import { EngineHelperPropResult, OperationResponse } from 'worker'
 import { appConnectionsRepo } from '../../app-connection/app-connection-service/app-connection-service'
 import { flowService } from '../../flows/flow/flow.service'
 import { sampleDataService } from '../../flows/step-run/sample-data.service'
@@ -33,11 +30,14 @@ import { getPiecePackageWithoutArchive, pieceMetadataService } from './piece-met
 import { organizationEnvironmentService } from '../../organization/organization-environment.service'
 import { projectService } from '../../project/project-service'
 
-export const pieceModule: FastifyPluginAsyncTypebox = async (app) => {
+const isBmpPiece = (pieceName: string): boolean =>
+    pieceName === '@activepieces/piece-ada-bmp'
+
+export const pieceModule: FastifyPluginAsyncZod = async (app) => {
     await app.register(basePiecesController, { prefix: '/v1/pieces' })
 }
 
-const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
+const basePiecesController: FastifyPluginAsyncZod = async (app) => {
 
     app.get(
         '/categories',
@@ -126,7 +126,7 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
         return pieces
     })
 
-    app.post('/sync', SyncPiecesRequest, async (req) => pieceSyncService(req.log).sync())
+    app.post('/sync', SyncPiecesRequest, async (req) => pieceSyncService(req.log).sync({ publishCacheRefresh: true }))
 
     app.post(
         '/options',
@@ -144,7 +144,7 @@ const basePiecesController: FastifyPluginAsyncTypebox = async (app) => {
             // Fetch organization environment metadata to pass to the piece
             let organizationEnvironmentMetadata: Record<string, unknown> | undefined = undefined
             try {
-                const project = await projectService.getOneOrThrow(projectId)
+                const project = await projectService(req.log).getOneOrThrow(projectId)
                 if (project.organizationId) {
                     const orgEnvs = await organizationEnvironmentService.listByOrganization(project.organizationId)
                     let orgEnv: { metadata?: unknown; environment: string } | undefined

@@ -2,7 +2,7 @@ import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
 import { Type } from '@sinclair/typebox'
 import { StatusCodes } from 'http-status-codes'
 import { ActivepiecesError, AuthenticationResponse, ErrorCode, FilteredPieceBehavior, PlatformRole, PrincipalType, apId, UserIdentityProvider, ProjectType } from '@activepieces/shared'
-import { securityAccess } from '@activepieces/server-shared'
+import { securityAccess } from '@activepieces/server-common'
 import { databaseConnection } from '../database/database-connection'
 import { userService } from '../user/user-service'
 import { platformRepo, platformService } from '../platform/platform.service'
@@ -33,7 +33,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 params: { message: 'Authentication required. Please sign in as a super admin.' },
             })
         }
-        const user = await userService.getOneOrFail({ id: request.principal.id })
+        const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
         if (user.platformRole !== PlatformRole.SUPER_ADMIN) {
             throw new ActivepiecesError({
                 code: ErrorCode.AUTHORIZATION,
@@ -60,7 +60,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         request.log.info('[SuperAdmin] Fetching all platforms')
         
         // Get current super admin's platform ID to exclude it
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
         const currentPlatformId = currentUser.platformId
         
         const platforms = await databaseConnection().query(`
@@ -342,7 +342,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         request.log.info('[SuperAdmin] Fetching system stats')
         
         // Get current super admin's platform ID to exclude it from counts
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
         const currentPlatformId = currentUser.platformId
         
         const stats = await databaseConnection().query(`
@@ -457,7 +457,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 verified: true,
             })
 
-            const user = await userService.create({
+            const user = await userService(request.log).create({
                 identityId: identity.id,
                 platformId: null,
                 platformRole: PlatformRole.SUPER_ADMIN,
@@ -550,7 +550,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         request.log.info({ userId, platformRole }, '[SuperAdmin] Updating super admin role')
 
         try {
-            const userToUpdate = await userService.getOneOrFail({ id: userId })
+            const userToUpdate = await userService(request.log).getOneOrFail({ id: userId })
 
             if (userToUpdate.platformRole !== PlatformRole.SUPER_ADMIN) {
                 throw new ActivepiecesError({
@@ -604,7 +604,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         request.log.info({ userId }, '[SuperAdmin] Promoting user to super admin')
 
         try {
-            const userToPromote = await userService.getOneOrFail({ id: userId })
+            const userToPromote = await userService(request.log).getOneOrFail({ id: userId })
 
             if (userToPromote.platformRole === PlatformRole.SUPER_ADMIN) {
                 throw new ActivepiecesError({
@@ -690,20 +690,20 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             })
             
             // Create user with ADMIN role (owner of the platform)
-            const owner = await userService.create({
+            const owner = await userService(request.log).create({
                 identityId: identity.id,
                 platformId: null, // Will be set when platform is created
                 platformRole: PlatformRole.OWNER, // Platform owner gets OWNER role
             })
             
             // Create the platform
-            const platform = await platformService.create({
+            const platform = await platformService(request.log).create({
                 ownerId: owner.id,
                 name,
             })
             
             // Verify the user was associated (platformService.create() should have done this)
-            let userAfterPlatformCreation = await userService.getOneOrFail({ id: owner.id })
+            let userAfterPlatformCreation = await userService(request.log).getOneOrFail({ id: owner.id })
             if (!userAfterPlatformCreation.platformId || userAfterPlatformCreation.platformId !== platform.id) {
                 request.log.warn({
                     userId: owner.id,
@@ -712,13 +712,13 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 }, '[SuperAdmin] User not associated with platform after creation, fixing...')
                 
                 // Explicitly associate the owner with the platform
-                await userService.addOwnerToPlatform({
+                await userService(request.log).addOwnerToPlatform({
                     id: owner.id,
                     platformId: platform.id,
                 })
                 
                 // Reload user
-                userAfterPlatformCreation = await userService.getOneOrFail({ id: owner.id })
+                userAfterPlatformCreation = await userService(request.log).getOneOrFail({ id: owner.id })
             }
             
             // NOTE: Owners should NOT have personal projects
@@ -769,7 +769,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
 
         try {
             // Get platform details before deletion
-            const platform = await platformService.getOneOrThrow(platformId)
+            const platform = await platformService(request.log).getOneOrThrow(platformId)
             
             // Delete all projects associated with this platform
             await databaseConnection().query(
@@ -833,29 +833,26 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
     /**
      * Switch to tenant (owner) account
      * Super Admin can switch into any owner account to view their data
+     * Note: Using schema: false to skip validation which has Zod v4 compatibility issues
      */
-    app.post('/tenants/:platformId/switch', {
+    app.route({
+        method: 'POST',
+        url: '/tenants/:platformId/switch',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        schema: false as any,
         config: {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
-        schema: {
-            params: Type.Object({
-                platformId: Type.String(),
-            }),
-            response: {
-                [StatusCodes.OK]: AuthenticationResponse,
-            },
-        },
-    }, async (request, reply) => {
-        const { platformId } = request.params
+        handler: async (request, reply) => {
+            const { platformId } = request.params as { platformId: string }
         const superAdminId = request.principal.id
         
         request.log.info({ platformId, superAdminId }, '[SuperAdmin] Switching to tenant account')
         
         try {
             // Get tenant platform
-            const platform = await platformService.getOneOrThrow(platformId)
-            const owner = await userService.getOneOrFail({ id: platform.ownerId })
+            const platform = await platformService(request.log).getOneOrThrow(platformId)
+            const owner = await userService(request.log).getOneOrFail({ id: platform.ownerId })
             
             // Verify owner belongs to this platform
             if (owner.platformId !== platformId) {
@@ -867,7 +864,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
                 })
             }
             
-            const superAdminIdentity = await userIdentityService(request.log).getOneOrFail({ id: (await userService.getOneOrFail({ id: superAdminId })).identityId })
+            const superAdminIdentity = await userIdentityService(request.log).getOneOrFail({ id: (await userService(request.log).getOneOrFail({ id: superAdminId })).identityId })
             const ownerIdentity = await userIdentityService(request.log).getOneOrFail({ id: owner.identityId })
             
             request.log.info({
@@ -900,7 +897,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             
             // Return owner's authentication token
             // Owner has no personal projects, so projectId will be null
-            const authResponse = await authenticationUtils.getProjectAndToken({
+            const authResponse = await authenticationUtils(request.log).getProjectAndToken({
                 userId: owner.id,
                 platformId: platform.id,
                 projectId: null,
@@ -911,37 +908,37 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             request.log.error({ error, platformId }, '[SuperAdmin] Failed to switch to tenant account')
             throw error
         }
+        },
     })
 
     /**
      * Get account switching activity logs
+     * Note: Using schema: false to skip validation which has Zod v4 compatibility issues
      */
-    app.get('/account-switching-activities', {
+    app.route({
+        method: 'GET',
+        url: '/account-switching-activities',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        schema: false as any,
         config: {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
-        schema: {
-            querystring: Type.Object({
-                limit: Type.Optional(Type.Number({ default: 100 })),
-            }),
-            response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
-            },
-        },
-    }, async (request) => {
-        request.log.info('[SuperAdmin] Fetching account switching activities')
-        const limit = request.query.limit || 100
-        try {
-            const activities = await accountSwitchingActivityService(request.log).getAllActivities(limit)
-            return activities
-        } catch (error: any) {
-            // If table doesn't exist yet (migration not run), return empty array
-            if (error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
-                request.log.warn({ error }, '[SuperAdmin] Account switching activity table does not exist yet (migration may not have run)')
-                return []
+        handler: async (request) => {
+            request.log.info('[SuperAdmin] Fetching account switching activities')
+            const query = request.query as { limit?: string }
+            const limit = query.limit ? parseInt(query.limit, 10) : 100
+            try {
+                const activities = await accountSwitchingActivityService(request.log).getAllActivities(limit)
+                return activities
+            } catch (error: any) {
+                // If table doesn't exist yet (migration not run), return empty array
+                if (error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
+                    request.log.warn({ error }, '[SuperAdmin] Account switching activity table does not exist yet (migration may not have run)')
+                    return []
+                }
+                throw error
             }
-            throw error
-        }
+        },
     })
 
     /**
@@ -963,7 +960,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
     }, async (request, reply) => {
         const superAdminId = request.principal.id
-        const superAdmin = await userService.getOneOrFail({ id: superAdminId })
+        const superAdmin = await userService(request.log).getOneOrFail({ id: superAdminId })
         
         if (superAdmin.platformRole !== PlatformRole.SUPER_ADMIN) {
             throw new ActivepiecesError({
@@ -1037,7 +1034,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         
         try {
             // Get the user to verify they are a super admin
-            const userToDelete = await userService.getOneOrFail({ id: userId })
+            const userToDelete = await userService(request.log).getOneOrFail({ id: userId })
             
             if (userToDelete.platformRole !== PlatformRole.SUPER_ADMIN) {
                 throw new ActivepiecesError({

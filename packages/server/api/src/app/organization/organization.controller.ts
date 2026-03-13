@@ -1,40 +1,28 @@
 import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
 import { Type } from '@sinclair/typebox'
+import { z } from 'zod'
 import { organizationService } from './organization.service'
 import { organizationEnvironmentService } from './organization-environment.service'
 import {
     CreateOrganizationRequest,
-    ListOrganizationsRequest,
     CheckAdminAvailabilityRequest,
     CheckAdminAvailabilityResponse,
     Organization,
-    SeekPage,
     OrganizationEnvironment,
     EnvironmentType,
     ActivepiecesError,
     ErrorCode,
     PrincipalType,
     PlatformRole,
+    SeekPage,
 } from '@activepieces/shared'
 import { StatusCodes } from 'http-status-codes'
-import { securityAccess } from '@activepieces/server-shared'
+import { securityAccess } from '@activepieces/server-common'
 
 export const organizationController: FastifyPluginAsyncTypebox = async (app) => {
     // Create organization
-    app.post('/', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Create an organization',
-            body: CreateOrganizationRequest,
-            response: {
-                [StatusCodes.CREATED]: Organization,
-            },
-        },
-    }, async (request, reply) => {
-        const { name, platformId } = request.body
+    app.post('/', CreateOrganizationRequestParams, async (request, reply) => {
+        const { name, platformId } = request.body as { name: string; platformId: string }
 
         const organization = await organizationService.create({
             name,
@@ -45,28 +33,12 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // List organizations
-    app.get('/', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'List organizations',
-            querystring: Type.Object({
-                platformId: Type.String(),
-                limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
-                cursor: Type.Optional(Type.String()),
-            }),
-            response: {
-                [StatusCodes.OK]: SeekPage(Organization),
-            },
-        },
-    }, async (request) => {
-        const { platformId, limit, cursor } = request.query
+    app.get('/', ListOrganizationsRequestParams, async (request) => {
+        const { platformId, limit, cursor } = request.query as { platformId: string; limit?: number; cursor?: string }
         
         // Get current user's organization info
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
         return await organizationService.list({
             platformId,
@@ -79,22 +51,8 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // List organization environments - MUST be registered before /:id route
-    app.get('/:id/environments', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'List environments for an organization',
-            params: Type.Object({
-                id: Type.String(),
-            }),
-            response: {
-                [StatusCodes.OK]: Type.Array(OrganizationEnvironment),
-            },
-        },
-    }, async (request) => {
-        const { id } = request.params
+    app.get('/:id/environments', GetOrganizationEnvironmentsRequestParams, async (request) => {
+        const { id } = request.params as { id: string }
         
         console.log('[organization.controller] GET /:id/environments', {
             organizationId: id,
@@ -123,7 +81,7 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
         }
         
         try {
-            const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+            const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
             console.log('[organization.controller] User found:', { userId: currentUser.id })
 
             // Check if user has access to this organization
@@ -174,26 +132,12 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Get organization by ID - MUST be registered after /:id/environments
-    app.get('/:id', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Get organization by ID',
-            params: Type.Object({
-                id: Type.String(),
-            }),
-            response: {
-                [StatusCodes.OK]: Organization,
-            },
-        },
-    }, async (request) => {
-        const { id } = request.params
+    app.get('/:id', GetOrganizationByIdRequestParams, async (request) => {
+        const { id } = request.params as { id: string }
 
         // Get current user's organization info
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
         const organization = await organizationService.getById(
             id,
@@ -214,24 +158,10 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Initialize Dev, Staging, Prod environments for an organization (Admin/Owner only)
-    app.post('/:organizationId/environments/initialize', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Create Dev, Staging, Prod environments for an organization',
-            params: Type.Object({
-                organizationId: Type.String(),
-            }),
-            response: {
-                [StatusCodes.OK]: Type.Array(OrganizationEnvironment),
-            },
-        },
-    }, async (request, reply) => {
-        const { organizationId } = request.params
+    app.post('/:organizationId/environments/initialize', InitializeEnvironmentsRequestParams, async (request, reply) => {
+        const { organizationId } = request.params as { organizationId: string }
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
         const organization = await organizationService.getById(
             organizationId,
@@ -258,7 +188,7 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
         const platformId = request.principal.platform.id
         const envs: EnvironmentType[] = [EnvironmentType.DEVELOPMENT, EnvironmentType.STAGING, EnvironmentType.PRODUCTION]
-        const created: OrganizationEnvironment[] = []
+        const created: typeof allEnvironments = []
 
         for (const env of envs) {
             const existing = await organizationEnvironmentService.getByOrgAndEnv(organizationId, env)
@@ -272,36 +202,18 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             }
         }
 
-        const all = await organizationEnvironmentService.listByOrganization(organizationId)
-        return reply.status(StatusCodes.OK).send(all)
+        const allEnvironments = await organizationEnvironmentService.listByOrganization(organizationId)
+        return reply.status(StatusCodes.OK).send(allEnvironments)
     })
 
     // Update organization environment metadata
-    app.patch('/:organizationId/environments/:environmentId/metadata', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Update metadata for an organization environment',
-            params: Type.Object({
-                organizationId: Type.String(),
-                environmentId: Type.String(),
-            }),
-            body: Type.Object({
-                metadata: Type.Optional(Type.Unknown()),
-            }),
-            response: {
-                [StatusCodes.OK]: OrganizationEnvironment,
-            },
-        },
-    }, async (request) => {
-        const { organizationId, environmentId } = request.params
-        const { metadata } = request.body
+    app.patch('/:organizationId/environments/:environmentId/metadata', UpdateEnvironmentMetadataRequestParams, async (request) => {
+        const { organizationId, environmentId } = request.params as { organizationId: string; environmentId: string }
+        const { metadata } = request.body as { metadata?: unknown }
 
         // Get current user's organization info for access control
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
         // Check if user has access to this organization
         const organization = await organizationService.getById(
@@ -336,20 +248,8 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Check admin availability for org-env
-    app.post('/check-admin', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Check if admin slot is available for organization-environment',
-            body: CheckAdminAvailabilityRequest,
-            response: {
-                [StatusCodes.OK]: CheckAdminAvailabilityResponse,
-            },
-        },
-    }, async (request) => {
-        const { organizationId, environment } = request.body
+    app.post('/check-admin', CheckAdminRequestParams, async (request) => {
+        const { organizationId, environment } = request.body as { organizationId: string; environment: EnvironmentType }
 
         return await organizationEnvironmentService.checkAdminAvailability({
             organizationId,
@@ -358,20 +258,8 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Get or create organization
-    app.post('/get-or-create', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Get existing organization or create new one',
-            body: CreateOrganizationRequest,
-            response: {
-                [StatusCodes.OK]: Organization,
-            },
-        },
-    }, async (request) => {
-        const { name, platformId } = request.body
+    app.post('/get-or-create', GetOrCreateOrganizationRequestParams, async (request) => {
+        const { name, platformId } = request.body as { name: string; platformId: string }
 
         return await organizationService.getOrCreate({
             name,
@@ -380,31 +268,13 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Update organization
-    app.patch('/:id', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Update organization',
-            params: Type.Object({
-                id: Type.String(),
-            }),
-            body: Type.Object({
-                name: Type.Optional(Type.String()),
-                metadata: Type.Optional(Type.Unknown()),
-            }),
-            response: {
-                [StatusCodes.OK]: Organization,
-            },
-        },
-    }, async (request) => {
-        const { id } = request.params
-        const updates = request.body
+    app.patch('/:id', UpdateOrganizationRequestParams, async (request) => {
+        const { id } = request.params as { id: string }
+        const updates = request.body as Partial<{ name?: string; platformId?: string; metadata?: unknown }>
 
         // Get current user's organization info
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: request.principal.id })
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
         return await organizationService.update(
             id,
@@ -416,22 +286,8 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
     })
 
     // Delete organization
-    app.delete('/:id', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Delete organization',
-            params: Type.Object({
-                id: Type.String(),
-            }),
-            response: {
-                [StatusCodes.NO_CONTENT]: Type.Null(),
-            },
-        },
-    }, async (request, reply) => {
-        const { id } = request.params
+    app.delete('/:id', DeleteOrganizationRequestParams, async (request, reply) => {
+        const { id } = request.params as { id: string }
 
         await organizationService.delete(id)
 
@@ -440,25 +296,10 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
     // Get allowed environments for current user based on their adminUserId
     // Used by pieces to dynamically filter environment options
-    app.get('/current-user/allowed-environments', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Get allowed environments for current user (based on adminUserId)',
-            response: {
-                [StatusCodes.OK]: Type.Object({
-                    environments: Type.Array(Type.String()),
-                    organizationId: Type.String(),
-                    userId: Type.String(),
-                }),
-            },
-        },
-    }, async (request) => {
+    app.get('/current-user/allowed-environments', GetAllowedEnvironmentsRequestParams, async (request) => {
         const currentUserId = request.principal.id
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: currentUserId })
+        const currentUser = await userService(request.log).getOneOrFail({ id: currentUserId })
 
         // Derive allowed environments from platform role (BMP connection popup filtering)
         let environments: string[]
@@ -486,34 +327,14 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
     // Assign current user to an organization (auto-setup endpoint)
     // This allows the frontend to automatically assign users to organizations
-    app.post('/assign-user', {
-        config: {
-            security: securityAccess.publicPlatform([PrincipalType.USER]),
-        },
-        schema: {
-            tags: ['organizations'],
-            summary: 'Assign current user to an organization',
-            body: Type.Object({
-                organizationId: Type.String(),
-                platformRole: Type.Optional(Type.Enum(PlatformRole)),
-            }),
-            response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    userId: Type.String(),
-                    organizationId: Type.String(),
-                    platformRole: Type.String(),
-                }),
-            },
-        },
-    }, async (request) => {
-        const { organizationId, platformRole } = request.body
+    app.post('/assign-user', AssignUserRequestParams, async (request) => {
+        const { organizationId, platformRole } = request.body as { organizationId: string; platformRole: PlatformRole }
         const currentUserId = request.principal.id
         const platformId = request.principal.platform.id
 
         // Verify the organization exists
         const { userService } = await import('../user/user-service')
-        const currentUser = await userService.getOneOrFail({ id: currentUserId })
+        const currentUser = await userService(request.log).getOneOrFail({ id: currentUserId })
 
         const organization = await organizationService.getById(
             organizationId,
@@ -540,7 +361,7 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
         }
 
         // Update the user's organizationId and platformRole
-        await userService.update({
+        await userService(request.log).update({
             id: currentUserId,
             platformId,
             organizationId,
@@ -560,4 +381,195 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
             platformRole: roleToAssign,
         }
     })
+}
+
+const CreateOrganizationRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Create an organization',
+        body: CreateOrganizationRequest,
+        response: {
+            [StatusCodes.CREATED]: Organization,
+        },
+    },
+}
+
+const ListOrganizationsRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'List organizations',
+        querystring: z.object({
+            platformId: z.string(),
+            limit: z.coerce.number().min(1).max(100).optional(),
+            cursor: z.string().optional(),
+        }),
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const GetOrganizationEnvironmentsRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'List environments for an organization',
+        params: z.object({
+            id: z.string(),
+        }),
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const GetOrganizationByIdRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Get organization by ID',
+        params: z.object({
+            id: z.string(),
+        }),
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const InitializeEnvironmentsRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Create Dev, Staging, Prod environments for an organization',
+        params: z.object({
+            organizationId: z.string(),
+        }),
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const UpdateEnvironmentMetadataRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Update metadata for an organization environment',
+        params: z.object({
+            organizationId: z.string(),
+            environmentId: z.string(),
+        }),
+        body: z.object({
+            metadata: z.unknown().optional(),
+        }),
+        response: {
+            [StatusCodes.OK]: OrganizationEnvironment,
+        },
+    },
+}
+
+const CheckAdminRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Check if admin slot is available for organization-environment',
+        body: CheckAdminAvailabilityRequest,
+        response: {
+            [StatusCodes.OK]: CheckAdminAvailabilityResponse,
+        },
+    },
+}
+
+const GetOrCreateOrganizationRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Get existing organization or create new one',
+        body: CreateOrganizationRequest,
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const UpdateOrganizationRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Update organization',
+        params: z.object({
+            id: z.string(),
+        }),
+        body: z.object({
+            name: z.string().optional(),
+            metadata: z.unknown().optional(),
+        }),
+        // Response schema omitted due to TypeBox/Zod compatibility
+    },
+}
+
+const DeleteOrganizationRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Delete organization',
+        params: z.object({
+            id: z.string(),
+        }),
+        response: {
+            [StatusCodes.NO_CONTENT]: z.null(),
+        },
+    },
+}
+
+const GetAllowedEnvironmentsRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Get allowed environments for current user (based on adminUserId)',
+        response: {
+            [StatusCodes.OK]: z.object({
+                environments: z.array(z.string()),
+                organizationId: z.string(),
+                userId: z.string(),
+            }),
+        },
+    },
+}
+
+const AssignUserRequestParams = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['organizations'],
+        summary: 'Assign current user to an organization',
+        body: z.object({
+            organizationId: z.string(),
+            platformRole: z.nativeEnum(PlatformRole).optional(),
+        }),
+        response: {
+            [StatusCodes.OK]: z.object({
+                success: z.boolean(),
+                userId: z.string(),
+                organizationId: z.string(),
+                platformRole: z.string(),
+            }),
+        },
+    },
 }

@@ -1,4 +1,5 @@
 FROM ubuntu:22.04 AS base
+# FROM node:24.14.0-bullseye-slim AS base
 
 # Set environment variables early for better layer caching
 ENV LANG=en_US.UTF-8 \
@@ -32,6 +33,7 @@ RUN apt-get update && \
         locales \
         unzip \
         libcap-dev && \
+    sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen en_US.UTF-8 && \
     npm install -g yarn && \
     yarn config set python /usr/bin/python3 && \
@@ -44,7 +46,7 @@ RUN export ARCH=$(uname -m) && \
     elif [ "$ARCH" = "aarch64" ]; then \
       curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-aarch64.zip -o bun.zip; \
     fi
-    
+
 RUN unzip bun.zip \
     && mv bun-*/bun /usr/local/bin/bun \
     && chmod +x /usr/local/bin/bun \
@@ -56,13 +58,13 @@ RUN bun --version
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g --no-fund --no-audit \
     node-gyp \
-    npm@9.9.3 \
+    npm@11.11.0 \
     pm2@6.0.10 \
     typescript@4.9.4
 
 # Install isolated-vm globally (needed for sandboxes)
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@5.0.1 && rm -rf /tmp/bun-install
+    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@6.0.2 && rm -rf /tmp/bun-install
 
 ### STAGE 1: Build ###
 FROM base AS build
@@ -70,7 +72,8 @@ FROM base AS build
 WORKDIR /usr/src/app
 
 # Copy only dependency files first for better layer caching
-COPY .npmrc package.json bun.lock ./
+COPY .npmrc package.json bun.lock bunfig.toml ./
+COPY packages/ ./packages/
 # Include local workspace packages referenced as file: deps so bun can resolve them
 COPY packages/pieces/community/framework ./packages/pieces/community/framework
 COPY packages/shared ./packages/shared
@@ -79,16 +82,22 @@ COPY packages/shared ./packages/shared
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     rm -f bun.lock && bun install
 
-# Copy source code after dependency installation
+# Copy remaining source code (turbo config, etc.)
 COPY . .
 
-# Build both projects (already has NX_NO_CLOUD from base stage)
-RUN npx nx run-many --target=build --projects=react-ui,server-api --configuration production --parallel=2 --skip-nx-cache
+# Build frontend, engine, and server API
+RUN npx turbo run build --filter=web --filter=@activepieces/engine --filter=api
 
-# Install production dependencies only for the backend API
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    cd dist/packages/server/api && \
-    bun install --production --frozen-lockfile
+# Remove piece directories not needed at runtime (keeps only the 4 pieces api imports)
+# Then regenerate bun.lock so it matches the trimmed workspace
+RUN rm -rf packages/pieces/core packages/pieces/custom && \
+    find packages/pieces/community -mindepth 1 -maxdepth 1 -type d \
+      ! -name slack \
+      ! -name square \
+      ! -name facebook-leads \
+      ! -name intercom \
+      -exec rm -rf {} + && \
+    rm -f bun.lock && bun install
 
 ### STAGE 2: Run ###
 FROM base AS run
@@ -130,8 +139,15 @@ COPY --from=build /usr/src/app/dist/packages/pieces/community/ ./dist/packages/p
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ ./dist/packages/pieces/custom/
 COPY --from=build /usr/src/app/packages ./packages
 
+# Copy built engine
+COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
+
+# Regenerate lockfile and install production dependencies (pieces were trimmed from workspace)
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    bun install --production
+
 # Copy frontend files to Nginx document root
-COPY --from=build /usr/src/app/dist/packages/react-ui /usr/share/nginx/html/
+COPY --from=build /usr/src/app/dist/packages/web /usr/share/nginx/html/
 
 LABEL service=activepieces
 

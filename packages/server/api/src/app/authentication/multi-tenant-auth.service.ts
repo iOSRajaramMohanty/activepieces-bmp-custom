@@ -1,6 +1,14 @@
-import { OtpType } from '@activepieces/ee-shared'
-import { AppSystemProp, cryptoUtils } from '@activepieces/server-shared'
-import { ApEdition, ApFlagId, AuthenticationResponse, PlatformRole, ProjectType, UserIdentity, UserIdentityProvider } from '@activepieces/shared'
+import { AppSystemProp, cryptoUtils } from '@activepieces/server-common'
+import {
+    ApEdition,
+    ApFlagId,
+    AuthenticationResponse,
+    PlatformRole,
+    ProjectType,
+    UserIdentity,
+    UserIdentityProvider,
+    OtpType,
+} from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { otpService } from '../ee/authentication/otp/otp-service'
 import { flagService } from '../flags/flag.service'
@@ -57,7 +65,7 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
         log.info(`[multiTenantAuthService] Created user identity: ${userIdentity.id}`)
 
         // Step 2: Create user account (without platform initially)
-        const user = await userService.create({
+        const user = await userService(log).create({
             identityId: userIdentity.id,
             platformRole: PlatformRole.ADMIN,
             platformId: null,
@@ -67,7 +75,7 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
 
         // Step 3: Create dedicated platform for this user
         const platformName = params.organizationName || `${userIdentity.firstName}'s Organization`
-        const platform = await platformService.create({
+        const platform = await platformService(log).create({
             ownerId: user.id,
             name: platformName,
         })
@@ -75,7 +83,7 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
         log.info(`[multiTenantAuthService] Created platform: ${platform.id} (${platform.name})`)
 
         // Step 4: Associate user with their platform
-        await userService.addOwnerToPlatform({
+        await userService(log).addOwnerToPlatform({
             platformId: platform.id,
             id: user.id,
         })
@@ -84,7 +92,7 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
 
         // Step 5: Create default project within the platform
         const projectName = params.projectName || `${userIdentity.firstName}'s Project`
-        const defaultProject = await projectService.create({
+        const defaultProject = await projectService(log).create({
             displayName: projectName,
             ownerId: user.id,
             platformId: platform.id,
@@ -112,26 +120,25 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
         }
 
         // Step 7: Set flag if this is the first user
-        await flagService.save({
+        await flagService(log).save({
             id: ApFlagId.USER_CREATED,
             value: true,
         })
 
         // Step 8: Send telemetry
-        await authenticationUtils.sendTelemetry({
+        await authenticationUtils(log).sendTelemetry({
             identity: userIdentity,
             user,
             project: defaultProject,
-            log,
         })
 
         // Step 9: Save newsletter subscriber if applicable
-        await authenticationUtils.saveNewsLetterSubscriber(user, platform.id, userIdentity, log)
+        await authenticationUtils(log).saveNewsLetterSubscriber(user, platform.id, userIdentity)
 
         log.info(`[multiTenantAuthService] Multi-tenant signup complete for user ${user.id}`)
 
         // Step 10: Return authentication token
-        return authenticationUtils.getProjectAndToken({
+        return authenticationUtils(log).getProjectAndToken({
             userId: user.id,
             platformId: platform.id,
             projectId: defaultProject.id,

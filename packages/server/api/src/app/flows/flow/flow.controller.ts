@@ -1,8 +1,5 @@
-import { ApplicationEventName, GetFlowTemplateRequestQuery, GitPushOperationType } from '@activepieces/ee-shared'
-import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
-import {
-    ActivepiecesError,
-    ApId,
+import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
+import { ActivepiecesError, ApId, ApplicationEventName,
     CountFlowsRequest,
     CreateFlowRequest,
     ErrorCode,
@@ -12,6 +9,8 @@ import {
     flowStructureUtil,
     FlowTrigger,
     GetFlowQueryParamsRequest,
+    GetFlowTemplateRequestQuery,
+    GitPushOperationType,
     isNil,
     ListFlowsRequest,
     Permission,
@@ -24,12 +23,10 @@ import {
     SERVICE_KEY_SECURITY_OPENAPI,
     SharedTemplate,
 } from '@activepieces/shared'
-import {
-    FastifyPluginAsyncTypebox,
-    Type,
-} from '@fastify/type-provider-typebox'
 import dayjs from 'dayjs'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import { authenticationUtils } from '../../authentication/authentication-utils'
 import { entitiesMustBeOwnedByCurrentProject } from '../../authentication/authorization'
 import { assertUserHasPermissionToFlow } from '../../ee/authentication/project-role/rbac-middleware'
@@ -45,12 +42,12 @@ import { flowService } from './flow.service'
 
 const DEFAULT_PAGE_SIZE = 10
 
-export const flowController: FastifyPluginAsyncTypebox = async (app) => {
+export const flowController: FastifyPluginAsyncZod = async (app) => {
     app.addHook('preSerialization', entitiesMustBeOwnedByCurrentProject)
     app.post('/', CreateFlowRequestOptions, async (request, reply) => {
         if (request.principal.type === PrincipalType.USER) {
-            const user = await userService.getOneOrFail({ id: request.principal.id })
-            const project = await projectService.getOneOrThrow(request.projectId)
+            const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
+            const project = await projectService(request.log).getOneOrThrow(request.projectId)
             
             // Check if user is SUPER_ADMIN (they cannot create flows)
             if (user.platformRole === PlatformRole.SUPER_ADMIN) {
@@ -86,7 +83,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                 }
                 
                 // Verify the project owner is an ADMIN in the same platform
-                const projectOwner = await userService.getOneOrFail({ id: project.ownerId })
+                const projectOwner = await userService(request.log).getOneOrFail({ id: project.ownerId })
                 if (projectOwner.platformRole !== PlatformRole.ADMIN || projectOwner.platformId !== user.platformId) {
                     throw new ActivepiecesError({
                         code: ErrorCode.AUTHORIZATION,
@@ -114,7 +111,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
         }
         
         const creatorUser = request.principal.type === PrincipalType.USER
-            ? await userService.getOneOrFail({ id: request.principal.id })
+            ? await userService(request.log).getOneOrFail({ id: request.principal.id })
             : null
         const newFlow = await flowService(request.log).create({
             projectId: request.projectId,
@@ -148,7 +145,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             description: 'Apply an operation to a flow',
             security: [SERVICE_KEY_SECURITY_OPENAPI],
             body: FlowOperationRequest,
-            params: Type.Object({
+            params: z.object({
                 id: ApId,
             }),
         },
@@ -157,7 +154,8 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
                 const migratedFlowTemplate = await migrateFlowVersionTemplate({
                     displayName: request.body.request.displayName,
                     trigger: request.body.request.trigger,
-                    schemaVersion: request.body.request.schemaVersion,
+                    //because the target for the first migraiton is undefined not null
+                    schemaVersion: request.body.request.schemaVersion ?? undefined,
                     notes: request.body.request.notes ?? [],
                     valid: false,
                 })
@@ -171,40 +169,26 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
             }
         },
     }, async (request) => {
-        const userId = await authenticationUtils.extractUserIdFromRequest(request)
-        
-        // Check platform role restrictions for publishing flows
+        const userId = await authenticationUtils(request.log).extractUserIdFromRequest(request)
         if (request.principal.type === PrincipalType.USER) {
-            const user = await userService.getOneOrFail({ id: request.principal.id })
-            const project = await projectService.getOneOrThrow(request.projectId)
-            
-            // Check if user is the project owner - project owners can always edit/publish flows in their personal projects
-            // This allows admins to edit/publish flows created by OPERATOR/MEMBER users in their personal projects
+            const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
+            const project = await projectService(request.log).getOneOrThrow(request.projectId)
             const isProjectOwner = project.ownerId === user.id && project.type === ProjectType.PERSONAL
-            
-            // Operators and Members cannot publish flows (LOCK_AND_PUBLISH or CHANGE_STATUS to ENABLED)
-            // Exception: Project owners can always publish flows in their personal projects
             if (!isProjectOwner && (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER)) {
                 if (request.body.type === FlowOperationType.LOCK_AND_PUBLISH) {
                     throw new ActivepiecesError({
                         code: ErrorCode.AUTHORIZATION,
-                        params: {
-                            message: 'Operators and Members cannot publish flows. Only admins can publish flows.',
-                        },
+                        params: { message: 'Operators and Members cannot publish flows. Only admins can publish flows.' },
                     })
                 }
-                if (request.body.type === FlowOperationType.CHANGE_STATUS && 
-                    request.body.request?.status === FlowStatus.ENABLED) {
+                if (request.body.type === FlowOperationType.CHANGE_STATUS && request.body.request?.status === FlowStatus.ENABLED) {
                     throw new ActivepiecesError({
                         code: ErrorCode.AUTHORIZATION,
-                        params: {
-                            message: 'Operators and Members cannot enable flows. Only admins can enable flows.',
-                        },
+                        params: { message: 'Operators and Members cannot enable flows. Only admins can enable flows.' },
                     })
                 }
             }
         }
-        
         await assertUserHasPermissionToFlow(request.principal, request.projectId, request.body.type, request.log)
 
         const flow = await flowService(request.log).getOnePopulatedOrThrow({
@@ -253,7 +237,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
         })
 
         if (request.principal.type === PrincipalType.USER) {
-            const user = await userService.getOneOrFail({ id: request.principal.id })
+            const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
             if (user.platformRole === PlatformRole.MEMBER) {
                 const filteredData = flowsPage.data.filter((flow) => {
                     const creatorRole = (flow.metadata as Record<string, string> | undefined)?.creatorPlatformRole
@@ -274,7 +258,7 @@ export const flowController: FastifyPluginAsyncTypebox = async (app) => {
     })
 
     app.get('/:id/template', GetFlowTemplateRequestOptions, async (request) => {
-        const userMetadata = request.principal.type === PrincipalType.USER ? await userService.getMetaInformation({ id: request.principal.id }) : null
+        const userMetadata = request.principal.type === PrincipalType.USER ? await userService(request.log).getMetaInformation({ id: request.principal.id }) : null
         return flowService(request.log).getTemplate({
             flowId: request.params.id,
             userMetadata,
@@ -444,7 +428,7 @@ const GetFlowTemplateRequestOptions = {
         tags: ['flows'],
         security: [SERVICE_KEY_SECURITY_OPENAPI],
         description: 'Export flow as template',
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
         querystring: GetFlowTemplateRequestQuery,
@@ -467,7 +451,7 @@ const GetFlowRequestOptions = {
         tags: ['flows'],
         security: [SERVICE_KEY_SECURITY_OPENAPI],
         description: 'Get a flow by id',
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
         querystring: GetFlowQueryParamsRequest,
@@ -490,11 +474,11 @@ const DeleteFlowRequestOptions = {
         tags: ['flows'],
         security: [SERVICE_KEY_SECURITY_OPENAPI],
         description: 'Delete a flow',
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
         response: {
-            [StatusCodes.NO_CONTENT]: Type.Never(),
+            [StatusCodes.NO_CONTENT]: z.never(),
         },
     },
 }

@@ -1,8 +1,13 @@
-import { BaseModelSchema } from '../common'
 import { Static, Type } from '@sinclair/typebox'
 
+const BaseModelSchemaTypebox = {
+    id: Type.String(),
+    created: Type.String(),
+    updated: Type.String(),
+}
+
 export const Organization = Type.Object({
-    ...BaseModelSchema,
+    ...BaseModelSchemaTypebox,
     name: Type.String(),
     platformId: Type.String(),
     projectId: Type.Optional(Type.String()),
@@ -18,7 +23,7 @@ export enum EnvironmentType {
 }
 
 export const OrganizationEnvironment = Type.Object({
-    ...BaseModelSchema,
+    ...BaseModelSchemaTypebox,
     organizationId: Type.String(),
     environment: Type.Enum(EnvironmentType),
     adminUserId: Type.Optional(Type.String()),

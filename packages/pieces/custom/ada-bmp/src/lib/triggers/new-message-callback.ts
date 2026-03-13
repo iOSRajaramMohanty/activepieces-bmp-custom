@@ -1,6 +1,6 @@
 import { createTrigger, TriggerStrategy } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
-import { adaBmpAuth } from '../../index';
+import { adaBmpAuth } from '../common/auth';
 import { channelInfo, adaBmpChannel, adaBmpAccount, CHANNEL_TO_PLATFORM } from '../common/props';
 import { API_ENDPOINTS, extractApiToken, debugLog } from '../common/config';
 

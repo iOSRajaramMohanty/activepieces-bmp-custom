@@ -1,29 +1,23 @@
-import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
-import { PrincipalType, Project, UpdateProjectRequestInCommunity } from '@activepieces/shared'
-import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox'
+import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
+import { ApId, PrincipalType, Project, SeekPage, SERVICE_KEY_SECURITY_OPENAPI, UpdateProjectRequestInCommunity } from '@activepieces/shared'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import { paginationHelper } from '../helper/pagination/pagination-utils'
 import { userService } from '../user/user-service'
 import { projectService } from './project-service'
 
-export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
+export const projectController: FastifyPluginAsyncZod = async (fastify) => {
     fastify.post('/:id', UpdateProjectRequest, async (request) => {
-        const project = await projectService.getOneOrThrow(request.params.id)
-        return projectService.update(request.params.id, {
+        const project = await projectService(request.log).getOneOrThrow(request.params.id)
+        return projectService(request.log).update(request.params.id, {
             type: project.type,
             ...request.body,
         })
     })
 
-    fastify.get('/:id', {
-        config: {
-            security: securityAccess.project([PrincipalType.USER], undefined, {
-                type: ProjectResourceType.PARAM,
-                paramKey: 'id',
-            }),
-        },
-    }, async (request) => {
-        return projectService.getOneOrThrow(request.projectId)
+    fastify.get('/:id', GetProjectRequest, async (request) => {
+        return projectService(request.log).getOneOrThrow(request.projectId)
     })
 
     fastify.get('/', {
@@ -31,18 +25,15 @@ export const projectController: FastifyPluginAsyncTypebox = async (fastify) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
     }, async (request) => {
-        // Get all projects the user can access (filtered by role: OWNER sees all, ADMIN sees only their own, OPERATOR/MEMBER see only TEAM projects)
-        const user = await userService.getOneOrFail({ id: request.principal.id })
-        const projects = await projectService.getAllForUser({
+        const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
+        const projects = await projectService(request.log).getAllForUser({
             platformId: request.principal.platform.id,
             userId: request.principal.id,
             platformRole: user.platformRole,
             userOrganizationId: user.organizationId ?? undefined,
+            isPrivileged: userService(request.log).isUserPrivileged(user),
         })
-        
-        // Add analytics (member counts) to each project for CE mode
-        const projectsWithAnalytics = await projectService.enrichProjectsWithAnalytics(projects)
-        
+        const projectsWithAnalytics = await projectService(request.log).enrichProjectsWithAnalytics(projects)
         return paginationHelper.createPage(projectsWithAnalytics, null)
     })
 }
@@ -53,8 +44,8 @@ const UpdateProjectRequest = {
     },
     schema: {
         tags: ['projects'],
-        params: Type.Object({
-            id: Type.String(),
+        params: z.object({
+            id: z.string(),
         }),
         response: {
             [StatusCodes.OK]: Project,
@@ -62,3 +53,35 @@ const UpdateProjectRequest = {
         body: UpdateProjectRequestInCommunity,
     },
 }
+
+
+const GetProjectRequest = {
+    config: {
+        security: securityAccess.project([PrincipalType.USER], undefined, {
+            type: ProjectResourceType.PARAM,
+            paramKey: 'id',
+        }),
+    },
+    schema: {
+        tags: ['projects'],
+        params: z.object({
+            id: ApId,
+        }),
+        response: {
+            [StatusCodes.OK]: Project,
+        },
+    },
+}   
+
+const ListProjectsRequest = {
+    config: {
+        security: securityAccess.publicPlatform([PrincipalType.USER]),
+    },
+    schema: {
+        tags: ['projects'],
+        response: {
+            [StatusCodes.OK]: SeekPage(Project),
+        },
+        security: [SERVICE_KEY_SECURITY_OPENAPI],
+    },
+}   

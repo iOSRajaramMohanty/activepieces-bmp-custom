@@ -8,7 +8,10 @@ import { AppConnectionEntity } from '../app-connection/app-connection.entity'
 import { Like, In } from 'typeorm'
 import { FlowEntity } from '../flows/flow/flow.entity'
 import { ProjectEntity } from '../project/project-entity'
+import pino from 'pino'
 import { userService } from '../user/user-service'
+
+const serviceLogger = pino({ level: 'info' })
 
 export const organizationService = {
     async create(params: CreateOrganizationParams): Promise<Organization> {
@@ -175,7 +178,7 @@ export const organizationService = {
                     continue
                 }
                 try {
-                    await userService.delete({ id: user.id, platformId: user.platformId })
+                    await userService(serviceLogger).delete({ id: user.id, platformId: user.platformId })
                 } catch (error: any) {
                     if (error?.message?.includes('fk_platform') || error?.code === '23503') {
                         await databaseConnection()

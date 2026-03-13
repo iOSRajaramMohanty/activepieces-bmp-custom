@@ -1,13 +1,12 @@
 import { adaBmp } from '@activepieces/piece-ada-bmp'
 import { facebookLeads } from '@activepieces/piece-facebook-leads'
 import { intercom } from '@activepieces/piece-intercom'
-import { slack } from '@activepieces/piece-slack'
 import { square } from '@activepieces/piece-square'
 import { Piece, PieceAuthProperty } from '@activepieces/pieces-framework'
 import {
     rejectedPromiseHandler,
     securityAccess,
-} from '@activepieces/server-shared'
+} from '@activepieces/server-common'
 import {
     ActivepiecesError,
     apId,
@@ -19,8 +18,8 @@ import {
     RunEnvironment,
     WorkerJobType,
 } from '@activepieces/shared'
-import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
 import { FastifyRequest } from 'fastify'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
 import { domainHelper } from '../../ee/custom-domains/domain-helper'
 import { flowService } from '../../flows/flow/flow.service'
@@ -33,24 +32,22 @@ import { appEventRoutingService } from './app-event-routing.service'
 
 const appWebhooks: Record<string, Piece<PieceAuthProperty | undefined>> = {
     'ada-bmp': adaBmp,
-    slack,
     square,
     'facebook-leads': facebookLeads,
     intercom,
 }
 const pieceNames: Record<string, string> = {
     'ada-bmp': '@activepieces/piece-ada-bmp',
-    slack: '@activepieces/piece-slack',
     square: '@activepieces/piece-square',
     'facebook-leads': '@activepieces/piece-facebook-leads',
     intercom: '@activepieces/piece-intercom',
 }
 
-export const appEventRoutingModule: FastifyPluginAsyncTypebox = async (app) => {
+export const appEventRoutingModule: FastifyPluginAsyncZod = async (app) => {
     await app.register(appEventRoutingController, { prefix: '/v1/app-events' })
 }
 
-export const appEventRoutingController: FastifyPluginAsyncTypebox = async (
+export const appEventRoutingController: FastifyPluginAsyncZod = async (
     fastify,
 ) => {
     fastify.all(
@@ -81,11 +78,11 @@ export const appEventRoutingController: FastifyPluginAsyncTypebox = async (
             const piece = appWebhooks[pieceUrl]
             if (isNil(piece)) {
                 throw new ActivepiecesError({
-                    code: ErrorCode.PIECE_NOT_FOUND,
+                    code: ErrorCode.ENTITY_NOT_FOUND,
                     params: {
-                        pieceName: pieceUrl,
-                        pieceVersion: 'latest',
-                        message: 'Pieces is not found in app event routing',
+                        entityType: 'piece',
+                        entityId: pieceUrl,
+                        message: 'Piece is not found in app event routing',
                     },
                 })
             }
@@ -132,7 +129,7 @@ export const appEventRoutingController: FastifyPluginAsyncTypebox = async (
                     return
                 }
                 const flowVersionIdToRun = await webhookHandler.getFlowVersionIdToRun(WebhookFlowVersionToRun.LOCKED_FALL_BACK_TO_LATEST, flow)
-                const platformId = await projectService.getPlatformId(listener.projectId)
+                const platformId = await projectService(request.log).getPlatformId(listener.projectId)
                 return jobQueue(request.log).add({
                     id: requestId,
                     type: JobType.ONE_TIME,

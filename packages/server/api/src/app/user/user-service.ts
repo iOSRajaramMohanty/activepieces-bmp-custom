@@ -20,6 +20,7 @@ import {
     UserWithMetaInformation,
 } from '@activepieces/shared'
 import dayjs from 'dayjs'
+import { FastifyBaseLogger } from 'fastify'
 import { In } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { databaseConnection } from '../database/database-connection'
@@ -37,13 +38,14 @@ import { UserEntity, UserSchema } from './user-entity'
 
 export const userRepo = repoFactory(UserEntity)
 
-export const userService = {
+export const userService = (log: FastifyBaseLogger) => ({
     async create(params: CreateParams): Promise<User> {
+        const isActive = params.isActive ?? true
         const user: NewUser = {
             id: apId(),
             identityId: params.identityId,
             platformRole: params.platformRole,
-            status: UserStatus.ACTIVE,
+            status: isActive ? UserStatus.ACTIVE : UserStatus.INACTIVE,
             externalId: params.externalId,
             platformId: params.platformId,
         }
@@ -61,11 +63,8 @@ export const userService = {
                 platformRole: platformRole ?? PlatformRole.MEMBER,
             })
 
-            // Only create personal project for ADMIN users
-            // Operators, Members, Owners, and Super Admins should not have personal projects
-            // They will use admin's personal projects instead
             if (newUser.platformRole === PlatformRole.ADMIN) {
-                await projectService.create({
+                await projectService(log).create({
                     displayName: identity.firstName + '\'s Project',
                     ownerId: newUser.id,
                     platformId,
@@ -93,7 +92,7 @@ export const userService = {
             })
         }
 
-        const platform = await platformService.getOneOrThrow(user.platformId)
+        const platform = await platformService(log).getOneOrThrow(user.platformId)
         if (platform.ownerId === user.id && status === UserStatus.INACTIVE) {
             throw new ActivepiecesError({
                 code: ErrorCode.VALIDATION,
@@ -145,7 +144,7 @@ export const userService = {
             // 2. OPERATORS/MEMBERS who are members of their personal project
             
             // First, get the admin's personal project
-            const adminProject = await projectService.getOneByOwnerAndPlatform({
+            const adminProject = await projectService(log).getOneByOwnerAndPlatform({
                 ownerId: currentUserId,
                 platformId,
             })
@@ -221,7 +220,6 @@ export const userService = {
         }
     },
     async delete({ id, platformId }: DeleteParams): Promise<void> {
-        // Check if the user being deleted is an ADMIN
         const userToDelete = await userRepo().findOne({
             where: { id, platformId },
         })
@@ -270,8 +268,8 @@ export const userService = {
             const otherUsersWithSameIdentity = await userRepo().count({
                 where: { identityId },
             })
-            if (otherUsersWithSameIdentity === 0) {
-                await userIdentityService(system.globalLogger()).delete({ id: identityId })
+                if (otherUsersWithSameIdentity === 0) {
+                await userIdentityService(log).delete({ id: identityId })
             }
         }
     },
@@ -306,56 +304,39 @@ export const userService = {
     },
     async getMetaInformation({ id }: IdParams): Promise<UserWithMetaInformation> {
         const user = await userRepo().findOneByOrFail({ id })
-        const identity = await userIdentityService(system.globalLogger()).getBasicInformation(user.identityId)
-        
-        // Fetch organization name and environment if organizationId exists
+        const identity = await userIdentityService(log).getBasicInformation(user.identityId)
         let organizationName: string | null = null
         let environment: string | null = null
-        
         if (user.organizationId) {
-            // For getMetaInformation, we need to fetch organization without access control restrictions
-            // since this is used internally to enrich user data. Use a direct database query.
             try {
                 const { OrganizationEntity } = await import('../organization/organization.entity')
                 const orgRepo = repoFactory(OrganizationEntity)
                 const organization = await orgRepo().findOneBy({ id: user.organizationId })
                 organizationName = organization?.name || null
             } catch (error) {
-                // If organization fetch fails, log but don't throw - organizationName will remain null
                 const errorMessage = error instanceof Error ? error.message : String(error)
-                system.globalLogger().warn(`Failed to fetch organization ${user.organizationId} for user ${user.id}: ${errorMessage}`)
+                log.warn(`Failed to fetch organization ${user.organizationId} for user ${user.id}: ${errorMessage}`)
             }
-            
-            // Fetch environment from organization_environment table
             const { OrganizationEnvironmentEntity } = await import('../organization/organization-environment.entity')
             const orgEnvRepo = repoFactory(OrganizationEnvironmentEntity)
-            
             if (user.platformRole === PlatformRole.ADMIN) {
-                // For admins, find their environment directly
                 const orgEnv = await orgEnvRepo().findOne({
                     where: { adminUserId: user.id },
                 })
                 environment = orgEnv?.environment || null
             } else if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
-                // For operators/members, find their admin's environment via project membership
                 const { ProjectMemberEntity } = await import('../ee/projects/project-members/project-member.entity')
                 const { ProjectEntity } = await import('../project/project-entity')
                 const projectMemberRepo = repoFactory(ProjectMemberEntity)
-                const projectRepo = repoFactory(ProjectEntity)
-                
-                // Find the project this operator/member belongs to
+                const projectRepoForEnv = repoFactory(ProjectEntity)
                 const membership = await projectMemberRepo().findOne({
                     where: { userId: user.id },
                 })
-                
                 if (membership) {
-                    // Find the project and its owner (admin)
-                    const project = await projectRepo().findOne({
+                    const project = await projectRepoForEnv().findOne({
                         where: { id: membership.projectId },
                     })
-                    
                     if (project) {
-                        // Find the admin's environment
                         const orgEnv = await orgEnvRepo().findOne({
                             where: { adminUserId: project.ownerId },
                         })
@@ -364,7 +345,6 @@ export const userService = {
                 }
             }
         }
-        
         return {
             id: user.id,
             email: identity.email,
@@ -402,7 +382,7 @@ export const userService = {
         // Only OWNER and SUPER_ADMIN are privileged and can see all projects in their platform without filters
         return user.platformRole === PlatformRole.OWNER || user.platformRole === PlatformRole.SUPER_ADMIN
     },
-}
+})
 
 
 async function getUsersForProject(platformId: PlatformId, projectId: string): Promise<UserId[]> {
@@ -472,6 +452,7 @@ type CreateParams = {
     platformId: string | null
     externalId?: string
     platformRole: PlatformRole
+    isActive?: boolean
 }
 type GetUsersByIdentityIdParams = {
     identityId: string

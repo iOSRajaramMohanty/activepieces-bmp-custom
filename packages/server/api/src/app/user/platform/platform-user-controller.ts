@@ -1,4 +1,4 @@
-import { securityAccess } from '@activepieces/server-shared'
+import { securityAccess } from '@activepieces/server-common'
 import {
     ApId,
     assertNotNullOrUndefined,
@@ -9,23 +9,21 @@ import {
     UpdateUserRequestBody,
     UserWithMetaInformation,
 } from '@activepieces/shared'
-import {
-    FastifyPluginAsyncTypebox,
-    Type,
-} from '@fastify/type-provider-typebox'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import { userService } from '../user-service'
 
-export const platformUserController: FastifyPluginAsyncTypebox = async (app) => {
+export const platformUserController: FastifyPluginAsyncZod = async (app) => {
 
     app.get('/', ListUsersRequest, async (req) => {
         const platformId = req.principal.platform.id
         assertNotNullOrUndefined(platformId, 'platformId')
         
         // Get the current user to determine their role
-        const currentUser = await userService.getOneOrFail({ id: req.principal.id })
+        const currentUser = await userService(req.log).getOneOrFail({ id: req.principal.id })
 
-        return userService.list({
+        return userService(req.log).list({
             platformId,
             externalId: req.query.externalId,
             cursorRequest: req.query.cursor ?? null,
@@ -39,7 +37,7 @@ export const platformUserController: FastifyPluginAsyncTypebox = async (app) => 
         const platformId = req.principal.platform.id
         assertNotNullOrUndefined(platformId, 'platformId')
 
-        return userService.update({
+        return userService(req.log).update({
             id: req.params.id,
             platformId,
             platformRole: req.body.platformRole,
@@ -52,7 +50,7 @@ export const platformUserController: FastifyPluginAsyncTypebox = async (app) => 
         const platformId = req.principal.platform.id
         assertNotNullOrUndefined(platformId, 'platformId')
 
-        await userService.delete({
+        await userService(req.log).delete({
             id: req.params.id,
             platformId,
         })
@@ -81,7 +79,7 @@ const ListUsersRequest = {
 
 const UpdateUserRequest = {
     schema: {
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
         body: UpdateUserRequestBody,
@@ -99,9 +97,15 @@ const UpdateUserRequest = {
 
 const DeleteUserRequest = {
     schema: {
-        params: Type.Object({
+        params: z.object({
             id: ApId,
         }),
+        tags: ['users'],
+        description: 'Delete user',
+        response: {
+            [StatusCodes.NO_CONTENT]: z.never(),
+        },
+        security: [SERVICE_KEY_SECURITY_OPENAPI],
     },
     config: {
         security: securityAccess.platformAdminOnly([PrincipalType.USER, PrincipalType.SERVICE]),

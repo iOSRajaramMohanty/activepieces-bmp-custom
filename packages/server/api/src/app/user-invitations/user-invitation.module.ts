@@ -1,4 +1,4 @@
-import { ProjectResourceType, securityAccess } from '@activepieces/server-shared'
+import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
 import {
     ActivepiecesError,
     assertNotNullOrUndefined,
@@ -18,10 +18,11 @@ import {
     UserInvitation,
     UserInvitationWithLink,
 } from '@activepieces/shared'
-import { FastifyPluginAsyncTypebox, Type } from '@fastify/type-provider-typebox'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { platformMustBeOwnedByCurrentUser, platformMustHaveFeatureEnabled, projectMustBeTeamType } from '../ee/authentication/ee-authorization'
 import { assertRoleHasPermission } from '../ee/authentication/project-role/rbac-middleware'
@@ -32,11 +33,11 @@ import { organizationService } from '../organization/organization.service'
 import { organizationEnvironmentService } from '../organization/organization-environment.service'
 import { userInvitationsService } from './user-invitation.service'
 
-export const invitationModule: FastifyPluginAsyncTypebox = async (app) => {
+export const invitationModule: FastifyPluginAsyncZod = async (app) => {
     await app.register(invitationController, { prefix: '/v1/user-invitations' })
 }
 
-const invitationController: FastifyPluginAsyncTypebox = async (app) => {
+const invitationController: FastifyPluginAsyncZod = async (app) => {
 
     app.post('/', UpsertUserInvitationRequestParams, async (request, reply) => {
         const { email, type } = request.body
@@ -52,7 +53,7 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             case InvitationType.PLATFORM:
                 // Check if user is ADMIN or OWNER (non-EE check before EE hook)
                 if (request.principal.type === PrincipalType.USER) {
-                    const user = await userService.getOneOrFail({ id: request.principal.id })
+                    const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
                     const canInvite = (user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OWNER) && user.platformId === request.principal.platform.id
                     if (!canInvite) {
                         throw new ActivepiecesError({
@@ -66,7 +67,8 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                     // Handle organization for ADMIN invitations from OWNER
                     // ADMIN invite: organization only, no environment; multiple Admins per org allowed
                     if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
-                        if (!request.body.organizationName) {
+                        const body = request.body as any;
+                        if (!body.organizationName) {
                             throw new ActivepiecesError({
                                 code: ErrorCode.VALIDATION,
                                 params: {
@@ -76,7 +78,7 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
                         }
                         
                         const organization = await organizationService.getOrCreate({
-                            name: request.body.organizationName,
+                            name: body.organizationName,
                             platformId: request.principal.platform.id,
                         })
                         organizationId = organization.id
@@ -154,7 +156,7 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
         // For PLATFORM invitations, ADMINs should see invitations for their org's shared project
         let filterProjectId = request.query.type === InvitationType.PROJECT ? projectId : null
         if (request.query.type === InvitationType.PLATFORM && request.principal.type === PrincipalType.USER) {
-            const user = await userService.getOneOrFail({ id: request.principal.id })
+            const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
             if (user.platformRole === PlatformRole.ADMIN && user.organizationId) {
                 const org = await organizationService.getById(user.organizationId)
                 if (org?.projectId) {
@@ -206,7 +208,7 @@ const invitationController: FastifyPluginAsyncTypebox = async (app) => {
             case InvitationType.PLATFORM:
                 // Check if user is ADMIN or OWNER (non-EE check before EE hook)
                 if (request.principal.type === PrincipalType.USER) {
-                    const user = await userService.getOneOrFail({ id: request.principal.id })
+                    const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
                     const canDelete = (user.platformRole === PlatformRole.ADMIN || user.platformRole === PlatformRole.OWNER) && user.platformId === request.principal.platform.id
                     if (!canDelete) {
                         throw new ActivepiecesError({
@@ -275,7 +277,7 @@ async function shouldAutoAcceptInvitation(principal: Principal, request: SendUse
         return false
     }
     
-    const user = await userService.getOneByIdentityIdOnly({ identityId: identity.id })
+    const user = await userService(log).getOneByIdentityIdOnly({ identityId: identity.id })
     return !isNil(user)
 }
 
@@ -283,7 +285,7 @@ async function assertPrincipalHasPermissionToProject<R extends Principal & { pla
     fastify: FastifyInstance,
     request: FastifyRequest, reply: FastifyReply, principal: R,
     projectId: string, permission: Permission): Promise<void> {
-    const project = await projectService.getOneOrThrow(projectId)
+    const project = await projectService(request.log).getOneOrThrow(projectId)
     if (isNil(project) || project.platformId !== principal.platform.id) {
         throw new ActivepiecesError({
             code: ErrorCode.AUTHORIZATION,
@@ -319,8 +321,8 @@ const AcceptUserInvitationRequestParams = {
         security: securityAccess.public(),
     },
     schema: {
-        body: Type.Object({
-            invitationToken: Type.String(),
+        body: z.object({
+            invitationToken: z.string(),
         }),
     },
 }
@@ -332,11 +334,11 @@ const DeleteInvitationRequestParams = {
     schema: {
         tags: ['user-invitations'],
         security: [SERVICE_KEY_SECURITY_OPENAPI],
-        params: Type.Object({
-            id: Type.String(),
+        params: z.object({
+            id: z.string(),
         }),
         response: {
-            [StatusCodes.NO_CONTENT]: Type.Never(),
+            [StatusCodes.NO_CONTENT]: z.never(),
         },
     },
 }
