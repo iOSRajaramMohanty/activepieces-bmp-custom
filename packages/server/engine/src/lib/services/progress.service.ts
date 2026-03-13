@@ -1,6 +1,8 @@
+import { promisify } from 'node:util'
+import { zstdCompress as zstdCompressCallback } from 'node:zlib'
 import { setTimeout } from 'timers/promises'
 import { OutputContext } from '@activepieces/pieces-framework'
-import { DEFAULT_MCP_DATA, EngineGenericError, EngineSocketEvent, FlowActionType, FlowRunStatus, GenericStepOutput, isFlowRunStateTerminal, isNil, logSerializer, RunEnvironment, StepOutput, StepOutputStatus, StepRunResponse, UpdateRunProgressRequest, UploadRunLogsRequest } from '@activepieces/shared'
+import { CONTENT_ENCODING_ZSTD, DEFAULT_MCP_DATA, EngineGenericError, EngineSocketEvent, FlowActionType, FlowRunStatus, GenericStepOutput, isFlowRunStateTerminal, isNil, logSerializer, RunEnvironment, StepOutput, StepOutputStatus, StepRunResponse, UpdateRunProgressRequest, UploadRunLogsRequest } from '@activepieces/shared'
 import { Mutex } from 'async-mutex'
 import dayjs from 'dayjs'
 import fetchRetry from 'fetch-retry'
@@ -10,6 +12,7 @@ import { utils } from '../utils'
 import { workerSocket } from '../worker-socket'
 
 
+const zstdCompress = promisify(zstdCompressCallback)
 const lock = new Mutex()
 const updateLock = new Mutex()
 const fetchWithRetry = fetchRetry(global.fetch)
@@ -109,22 +112,20 @@ export const progressService = {
             return
         }
         await lock.runExclusive(async () => {
-            const params = updateParams
-            const { flowExecutorContext, engineConstants } = params!
-            
+            const { flowExecutorContext, engineConstants } = updateParams
             console.log('[ENGINE DEBUG] backup called', {
                 stepNameToTest: engineConstants.stepNameToTest,
                 hasSteps: Object.keys(flowExecutorContext.steps).length > 0,
                 stepNames: Object.keys(flowExecutorContext.steps),
             })
-            
-            const executionState = await logSerializer.serialize({
+            const serialized = await logSerializer.serialize({
                 executionState: {
                     steps: flowExecutorContext.steps,
                     tags: Array.from(flowExecutorContext.tags),
                 },
             })
-           
+            const executionState = await zstdCompress(serialized)
+
             const logsUploadUrl = engineConstants.logsUploadUrl
             if (isNil(logsUploadUrl)) {
                 throw new EngineGenericError('LogsUploadUrlNotSetError', 'Logs upload URL is not set')
@@ -221,6 +222,7 @@ const uploadExecutionState = async (uploadUrl: string, executionState: Buffer, f
         body: new Uint8Array(executionState),
         headers: {
             'Content-Type': 'application/octet-stream',
+            'Content-Encoding': CONTENT_ENCODING_ZSTD,
         },
         redirect: 'manual',
         retries: 3,
