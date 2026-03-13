@@ -1,7 +1,7 @@
 /**
  * Flow Builder React Component
  * 
- * Wrapper for the Flow Builder React component from react-ui.
+ * Wrapper for the Flow Builder React component from web.
  * This component wraps FlowBuilderPage with proper providers and configuration.
  */
 
@@ -10,11 +10,11 @@ import { FlowBuilderProps } from '../types';
 import { configureAPI } from '../utils/api-config';
 import { SDKProviders } from '../providers/sdk-providers';
 
-// Import CE-safe component from react-ui
+// Import CE-safe component from web
 // Note: This import is verified to ensure no EE dependencies
 // Using relative imports - TypeScript path mappings don't resolve at build time with tsc
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { FlowBuilderPage } from '../../react-ui/src/app/routes/flows/id/index.tsx';
+import { FlowBuilderPage } from '../../web/src/app/routes/flows/id/index.tsx';
 
 /**
  * Flow Builder Component Wrapper

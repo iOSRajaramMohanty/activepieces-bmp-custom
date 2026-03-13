@@ -1,7 +1,7 @@
 /**
  * Runs React Component
  * 
- * Wrapper for the Flow Runs React component from react-ui.
+ * Wrapper for the Flow Runs React component from web.
  */
 
 import React, { useEffect } from 'react';
@@ -9,12 +9,12 @@ import { RunsProps } from '../types';
 import { configureAPI } from '../utils/api-config';
 import { SDKProviders } from '../providers/sdk-providers';
 
-// Import CE-safe component from react-ui
+// Import CE-safe component from web
 // Using relative imports - TypeScript path mappings don't resolve at build time with tsc
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { RunsPage } from '../../react-ui/src/app/routes/runs/index.tsx';
+import { RunsPage } from '../../web/src/app/routes/runs/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { FlowRunPage } from '../../react-ui/src/app/routes/runs/id/index.tsx';
+import { FlowRunPage } from '../../web/src/app/routes/runs/id/index.tsx';
 
 /**
  * Runs Component Wrapper

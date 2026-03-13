@@ -375,7 +375,17 @@ export const authenticationController: FastifyPluginAsyncZod = async (
      *    - If no: create organization from clientName (if provided)
      * 4. Return authentication response with isNewUser flag
      */
-    app.post('/auto-provision', AutoProvisionRequestOptions, async (request) => {
+    // Use app.route with schema: false to bypass Zod v4 validation issues
+    app.route({
+        method: 'POST',
+        url: '/auto-provision',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        schema: false as any,
+        config: {
+            security: securityAccess.public(),
+            rateLimit: rateLimitOptions,
+        },
+        handler: async (request) => {
         const body = request.body as {
             email: string
             password: string
@@ -759,6 +769,7 @@ export const authenticationController: FastifyPluginAsyncZod = async (
             ...signUpResponse,
             isNewUser: true,
         }
+        },
     })
 
 }

@@ -2,7 +2,7 @@
  * SDK Providers
  * 
  * Provides all necessary React providers for SDK components.
- * This wraps CE-safe providers from react-ui.
+ * This wraps CE-safe providers from web.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,7 +12,7 @@ import { ReactUISDKConfig } from '../types';
 import { initializeRuntimeEEChecks } from '../utils/runtime-ee-check';
 
 // Initialize i18n for translations - must be imported before any components that use translations
-import '../../react-ui/src/i18n';
+import '../../web/src/i18n';
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -41,19 +41,18 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Import CE-safe providers from react-ui
+// Import CE-safe providers from web
 // Using relative imports - TypeScript path mappings don't resolve at build time with tsc
-// TODO: Consider switching to bundler (esbuild/vite) for better import resolution
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { ThemeProvider } from '../../react-ui/src/components/theme-provider.tsx';
+import { ThemeProvider } from '../../web/src/components/providers/theme-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { TooltipProvider } from '../../react-ui/src/components/ui/tooltip.tsx';
+import { TooltipProvider } from '../../web/src/components/ui/tooltip.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { EmbeddingProvider } from '../../react-ui/src/components/embed-provider.tsx';
+import { EmbeddingProvider } from '../../web/src/components/providers/embed-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { SocketProvider } from '../../react-ui/src/components/socket-provider.tsx';
+import { SocketProvider } from '../../web/src/components/providers/socket-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { Toaster } from '../../react-ui/src/components/ui/sonner.tsx';
+import { Toaster } from '../../web/src/components/ui/sonner.tsx';
 
 // Initialize runtime EE checks
 if (typeof window !== 'undefined') {
@@ -112,7 +111,7 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
 
   // Configure API base URL and authentication
   React.useEffect(() => {
-    // Set API URL in window for react-ui components to use
+    // Set API URL in window for web components to use
     if (typeof window !== 'undefined') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (window as any).__AP_SDK_CONFIG__ = {
@@ -121,7 +120,7 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
         projectId: config.projectId,
       };
 
-      // Set authentication token in localStorage for react-ui
+      // Set authentication token in localStorage for web components
       // Activepieces uses localStorage by default (see ap-browser-storage.ts)
       if (config.token) {
         try {

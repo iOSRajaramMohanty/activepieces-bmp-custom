@@ -1,8 +1,8 @@
 /**
  * Dashboard React Component
  * 
- * Wrapper for the full Dashboard React component from react-ui.
- * Includes navigation tabs (Flows, Tables, Runs, Connections, etc.)
+ * Wrapper for the full Dashboard React component from web.
+ * Includes navigation tabs (Automations/Flows, Tables, Runs, Connections, etc.)
  */
 
 import React, { useEffect } from 'react';
@@ -10,28 +10,27 @@ import { DashboardProps } from '../types';
 import { configureAPI } from '../utils/api-config';
 import { SDKProviders } from '../providers/sdk-providers';
 
-// Import CE-safe components from react-ui
+// Import CE-safe components from web
 // Using relative imports - TypeScript path mappings don't resolve at build time with tsc
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { FlowsPage } from '../../react-ui/src/app/routes/flows/index.tsx';
+import { AutomationsPage } from '../../web/src/app/routes/automations/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { AppConnectionsPage } from '../../react-ui/src/app/routes/connections/index.tsx';
+import { AppConnectionsPage } from '../../web/src/app/routes/connections/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { RunsPage } from '../../react-ui/src/app/routes/runs/index.tsx';
+import { RunsPage } from '../../web/src/app/routes/runs/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { TodosPage } from '../../react-ui/src/app/routes/todos/index.tsx';
+import { ApTableEditorPage } from '../../web/src/app/routes/tables/id/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { ApTablesPage } from '../../react-ui/src/app/routes/tables/index.tsx';
+import { ApTableStateProvider } from '../../web/src/features/tables/components/ap-table-state-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { ApTableEditorPage } from '../../react-ui/src/app/routes/tables/id/index.tsx';
+import { FlowBuilderPage } from '../../web/src/app/routes/flows/id/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { ApTableStateProvider } from '../../react-ui/src/features/tables/components/ap-table-state-provider.tsx';
+import { BuilderLayout } from '../../web/src/app/components/builder-layout/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { FlowBuilderPage } from '../../react-ui/src/app/routes/flows/id/index.tsx';
-// @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { BuilderLayout } from '../../react-ui/src/app/components/builder-layout/index.tsx';
-// @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { ProjectDashboardLayout } from '../../react-ui/src/app/components/project-layout/index.tsx';
+import { ProjectDashboardLayout } from '../../web/src/app/components/project-layout/index.tsx';
+
+// Alias for backwards compatibility - AutomationsPage is the new FlowsPage
+const FlowsPage = AutomationsPage;
 
 /**
  * Dashboard Component Wrapper
@@ -54,8 +53,17 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
 
   // Set up routes for memory router - full dashboard with navigation
   // Include both prefixed and non-prefixed routes for flexibility
+  // Note: In web package, AutomationsPage handles both flows and tables
   const routes = [
     // Project-prefixed routes (used by navigation tabs)
+    {
+      path: `${projectPrefix}/automations`,
+      element: (
+        <ProjectDashboardLayout>
+          <AutomationsPage />
+        </ProjectDashboardLayout>
+      ),
+    },
     {
       path: `${projectPrefix}/flows`,
       element: (
@@ -97,14 +105,6 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
       ),
     },
     {
-      path: `${projectPrefix}/tables`,
-      element: (
-        <ProjectDashboardLayout>
-          <ApTablesPage />
-        </ProjectDashboardLayout>
-      ),
-    },
-    {
       path: `${projectPrefix}/tables/:tableId`,
       element: (
         <ApTableStateProvider>
@@ -120,15 +120,15 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
         </ApTableStateProvider>
       ),
     },
+    // Non-prefixed routes (fallback)
     {
-      path: `${projectPrefix}/todos`,
+      path: '/automations',
       element: (
         <ProjectDashboardLayout>
-          <TodosPage />
+          <AutomationsPage />
         </ProjectDashboardLayout>
       ),
     },
-    // Non-prefixed routes (fallback)
     {
       path: '/flows',
       element: (
@@ -153,28 +153,12 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
         </ProjectDashboardLayout>
       ),
     },
-    {
-      path: '/todos',
-      element: (
-        <ProjectDashboardLayout>
-          <TodosPage />
-        </ProjectDashboardLayout>
-      ),
-    },
-    {
-      path: '/tables',
-      element: (
-        <ProjectDashboardLayout>
-          <ApTablesPage />
-        </ProjectDashboardLayout>
-      ),
-    },
-    // Default route - redirect to flows
+    // Default route - redirect to automations (flows/tables)
     {
       path: '/',
       element: (
         <ProjectDashboardLayout>
-          <FlowsPage />
+          <AutomationsPage />
         </ProjectDashboardLayout>
       ),
     },
@@ -183,14 +167,14 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
       path: '*',
       element: (
         <ProjectDashboardLayout>
-          <FlowsPage />
+          <AutomationsPage />
         </ProjectDashboardLayout>
       ),
     },
   ];
 
-  // Start at the project-prefixed flows route if projectId is available
-  const initialRoute = projectId ? `${projectPrefix}/flows` : '/flows';
+  // Start at the project-prefixed automations route if projectId is available
+  const initialRoute = projectId ? `${projectPrefix}/automations` : '/automations';
 
   return (
     <SDKProviders

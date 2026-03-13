@@ -55,12 +55,12 @@
           },
           {
             "glob": "**/*.woff2",
-            "input": "packages/react-ui/src/assets/fonts",
+            "input": "packages/web/src/assets/fonts",
             "output": "assets/fonts"
           },
           {
             "glob": "**/*",
-            "input": "packages/react-ui/public/locales",
+            "input": "packages/web/public/locales",
             "output": "locales"
           }
         ],

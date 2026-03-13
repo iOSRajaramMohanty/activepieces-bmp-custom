@@ -121,10 +121,12 @@ module.exports = composePlugins(withNx(), (config) => {
                 '__webpack_require__('
               );
               
-              // Now wrap in IIFE to avoid global scope conflicts (e.g., 'chrome' variable)
+              // Wrap in IIFE to avoid global scope conflicts (e.g., 'chrome' variable, 'FlowBuilder')
               // The IIFE scope will naturally shadow any global variables that the bundle declares
-              // We don't need to explicitly handle chrome - the IIFE scope handles it automatically
-              modifiedSource = `(function() {\n${modifiedSource}\n})();\n`;
+              // IMPORTANT: We need to ensure React's scheduler runs synchronously by NOT using setTimeout
+              // in the module exposure code below
+              modifiedSource = `(function() {\n"use strict";\n${modifiedSource}\n})();\n`;
+              // The minified bundle handles variable scoping correctly without IIFE
               
               // Append fallback code to expose exports after webpack runtime executes
               // This is a backup in case the export conversion didn't work
@@ -193,19 +195,38 @@ module.exports = composePlugins(withNx(), (config) => {
   config.optimization = config.optimization || {};
   config.optimization.moduleIds = 'deterministic';
   
-  // Add alias for react-ui imports - resolve relative paths
+  // Add alias for web imports - resolve relative paths
   config.resolve = config.resolve || {};
-  const reactUISrcPath = path.resolve(__dirname, '../react-ui/src');
+  const webSrcPath = path.resolve(__dirname, '../web/src');
   const workspaceRoot = path.resolve(__dirname, '../../');
   
-  // Add path aliases for react-ui internal imports (@/...) and workspace packages
+  // Add path aliases for web internal imports (@/...) and workspace packages
+  // IMPORTANT: Alias React, ReactDOM, React Query, and React Router to ensure only ONE instance is bundled
+  // Multiple instances cause hooks errors ("useState is null", "No QueryClient set", "useLocation outside Router")
+  const reactPath = path.resolve(workspaceRoot, 'node_modules/react');
+  const reactDomPath = path.resolve(workspaceRoot, 'node_modules/react-dom');
+  const reactQueryPath = path.resolve(workspaceRoot, 'node_modules/@tanstack/react-query');
+  // Use the same react-router-dom instance that packages/web uses
+  const reactRouterDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router-dom@6.11.2+bf16f8eded5e12ee/node_modules/react-router-dom');
+  const reactRouterPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router@6.11.2+b1ab299f0a400331/node_modules/react-router');
+  
   config.resolve.alias = {
     ...config.resolve.alias,
-    '@': reactUISrcPath, // Map @/ to react-ui/src/
+    // Force single React instance - critical for hooks to work
+    'react': reactPath,
+    'react-dom': reactDomPath,
+    'react/jsx-runtime': path.resolve(reactPath, 'jsx-runtime'),
+    'react/jsx-dev-runtime': path.resolve(reactPath, 'jsx-dev-runtime'),
+    // Force single React Query instance - critical for QueryClient context
+    '@tanstack/react-query': reactQueryPath,
+    // Force single React Router instance - critical for useLocation/useNavigate hooks
+    'react-router-dom': reactRouterDomPath,
+    'react-router': reactRouterPath,
+    '@': webSrcPath, // Map @/ to web/src/
     '@activepieces/shared': path.resolve(workspaceRoot, 'packages/shared/src'),
     '@activepieces/ee-shared': path.resolve(workspaceRoot, 'packages/ee/shared/src'),
-    '@activepieces/pieces-framework': path.resolve(workspaceRoot, 'packages/pieces/community/framework/src'),
-    '@activepieces/pieces-common': path.resolve(workspaceRoot, 'packages/pieces/community/common/src'),
+    '@activepieces/pieces-framework': path.resolve(workspaceRoot, 'packages/pieces/framework/src'),
+    '@activepieces/pieces-common': path.resolve(workspaceRoot, 'packages/pieces/common/src'),
     '@activepieces/piece-ai': path.resolve(workspaceRoot, 'packages/pieces/community/ai/src'),
     // Stub out EE embed SDK for CE build
     'ee-embed-sdk': path.resolve(__dirname, 'src/stubs/ee-embed-sdk-stub.ts'),
@@ -233,16 +254,16 @@ module.exports = composePlugins(withNx(), (config) => {
     config.plugins = [];
   }
   
-  // Replace relative imports like ../../react-ui/src/... with absolute paths
+  // Replace relative imports like ../../web/src/... with absolute paths
   config.plugins.push(
     new NormalModuleReplacementPlugin(
-      /^\.\.\/\.\.\/react-ui\/src\//,
+      /^\.\.\/\.\.\/web\/src\//,
       (resource) => {
-        // Get the relative path after react-ui/src/
-        const match = resource.request.match(/\.\.\/\.\.\/react-ui\/src\/(.+)/);
+        // Get the relative path after web/src/
+        const match = resource.request.match(/\.\.\/\.\.\/web\/src\/(.+)/);
         if (match) {
           const relativePath = match[1];
-          resource.request = path.resolve(reactUISrcPath, relativePath);
+          resource.request = path.resolve(webSrcPath, relativePath);
         }
       }
     )
@@ -316,7 +337,7 @@ module.exports = composePlugins(withNx(), (config) => {
   config.module = config.module || {};
   config.module.rules = config.module.rules || [];
   
-  // Add/update CSS rule to include postcss-loader for Tailwind (react-ui styles.css)
+  // Add/update CSS rule to include postcss-loader for Tailwind (web styles.css)
   const cssRuleIndex = config.module.rules.findIndex(rule => 
     rule.test && rule.test.toString().includes('css')
   );
@@ -324,7 +345,7 @@ module.exports = composePlugins(withNx(), (config) => {
     loader: 'postcss-loader',
     options: {
       postcssOptions: {
-        config: path.resolve(__dirname, '../react-ui/postcss.config.js'),
+        config: path.resolve(__dirname, '../web/postcss.config.js'),
       },
     },
   }];
