@@ -326,8 +326,8 @@ export function DataTable<
         (customFilters && customFilters.length > 0) ||
         (toolbarButtons && toolbarButtons.length > 0)) && (
         <DataTableToolbar>
-          <div className="w-full flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="w-full flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-wrap">
               {filters &&
                 filters.map((filter) => (
                   <DataTableFilter
@@ -428,6 +428,8 @@ export function DataTable<
                           {
                             'hover:bg-background cursor-default':
                               isNil(onRowClick),
+                            'bg-background': rowIndex % 2 === 0,
+                            'bg-muted/30': rowIndex % 2 === 1,
                           },
                           getRowClassName?.(row.original, rowIndex),
                         )}
@@ -520,6 +522,8 @@ export function DataTable<
                       'cursor-pointer',
                       {
                         'hover:bg-background cursor-default': isNil(onRowClick),
+                        'bg-background': rowIndex % 2 === 0,
+                        'bg-muted/30': rowIndex % 2 === 1,
                       },
                       getRowClassName?.(row.original, rowIndex),
                     )}

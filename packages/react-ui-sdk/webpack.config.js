@@ -210,6 +210,11 @@ module.exports = composePlugins(withNx(), (config) => {
   const reactRouterDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router-dom@6.11.2+bf16f8eded5e12ee/node_modules/react-router-dom');
   const reactRouterPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router@6.11.2+b1ab299f0a400331/node_modules/react-router');
   
+  // Force single instance of floating-ui for Radix Popper positioning
+  const floatingUiCorePath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+core@1.7.5/node_modules/@floating-ui/core');
+  const floatingUiDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+dom@1.7.6/node_modules/@floating-ui/dom');
+  const floatingUiReactDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+react-dom@2.1.8+bf16f8eded5e12ee/node_modules/@floating-ui/react-dom');
+  
   config.resolve.alias = {
     ...config.resolve.alias,
     // Force single React instance - critical for hooks to work
@@ -222,6 +227,10 @@ module.exports = composePlugins(withNx(), (config) => {
     // Force single React Router instance - critical for useLocation/useNavigate hooks
     'react-router-dom': reactRouterDomPath,
     'react-router': reactRouterPath,
+    // Force single floating-ui instance - critical for Radix Popper positioning
+    '@floating-ui/core': floatingUiCorePath,
+    '@floating-ui/dom': floatingUiDomPath,
+    '@floating-ui/react-dom': floatingUiReactDomPath,
     '@': webSrcPath, // Map @/ to web/src/
     '@activepieces/shared': path.resolve(workspaceRoot, 'packages/shared/src'),
     '@activepieces/ee-shared': path.resolve(workspaceRoot, 'packages/ee/shared/src'),

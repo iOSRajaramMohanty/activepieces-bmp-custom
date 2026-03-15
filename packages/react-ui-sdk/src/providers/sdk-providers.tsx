@@ -151,7 +151,30 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
           <Suspense fallback={<LoadingFallback />}>
             <ThemeProvider storageKey="ap-react-ui-sdk-theme">
               <TooltipProvider>
-                {content}
+                <div
+                  className="ap-sdk-root"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      width: '100%',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {content}
+                  </div>
+                </div>
                 <Toaster position="bottom-right" />
               </TooltipProvider>
             </ThemeProvider>

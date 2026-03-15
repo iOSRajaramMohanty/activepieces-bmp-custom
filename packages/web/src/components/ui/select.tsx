@@ -55,6 +55,8 @@ function SelectTrigger({
   );
 }
 
+const SELECT_CONTENT_SIDE_OFFSET = 4;
+
 function SelectContent({
   className,
   children,
@@ -62,9 +64,42 @@ function SelectContent({
   align = 'center',
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
+
+  // Fix positioning issue in SDK embed (e.g. Environment dropdown in connection modal)
+  // Only applies when running in SDK context - position dropdown snug below trigger like reference
+  React.useEffect(() => {
+    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    if (!isSDKEmbed || !contentRef) return;
+
+    const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+    if (!wrapper) return;
+
+    const applyPosition = () => {
+      const trigger = document.querySelector(
+        '[data-slot="select-trigger"][aria-expanded="true"]',
+      ) as HTMLElement;
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        wrapper.style.transform = 'none';
+        wrapper.style.top = `${rect.bottom + SELECT_CONTENT_SIDE_OFFSET}px`;
+        wrapper.style.left = `${rect.left}px`;
+      }
+    };
+
+    // Run after Radix has applied its inline styles (next frame)
+    const id = requestAnimationFrame(() => {
+      applyPosition();
+      // Run again after layout in case Radix updates transform later
+      requestAnimationFrame(applyPosition);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [contentRef]);
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
+        ref={setContentRef}
         data-slot="select-content"
         className={cn(
           'relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',

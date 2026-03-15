@@ -8,7 +8,6 @@ import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { t } from 'i18next';
 import { Activity, Clock, Info, Type, User } from 'lucide-react';
 
-import { useEmbedding } from '@/components/providers/embed-provider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -72,7 +71,6 @@ export const AutomationsTable = ({
   onLoadMoreInFolder,
   isItemSelected,
 }: AutomationsTableProps) => {
-  const { embedState } = useEmbedding();
   const groups = groupTreeItemsByFolder(items);
 
   return (
@@ -102,12 +100,10 @@ export const AutomationsTable = ({
             <Clock className="h-3.5 w-3.5" />
             {t('Last modified')}
           </div>
-          {!embedState.isEmbedded && (
-            <div className="w-[250px] shrink-0 px-2 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" />
-              {t('Owner')}
-            </div>
-          )}
+          <div className="w-[250px] shrink-0 px-2 flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5" />
+            {t('Owner')}
+          </div>
           <div className="w-[120px] shrink-0 px-2 flex items-center gap-1.5">
             <Activity className="h-3.5 w-3.5" />
             {t('Status')}

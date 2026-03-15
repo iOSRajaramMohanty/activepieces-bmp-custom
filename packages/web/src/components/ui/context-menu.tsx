@@ -97,9 +97,38 @@ function ContextMenuContent({
   className,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
+
+  // Fix positioning issue in SDK embed - context menu appears at wrong position
+  // Only applies when running in SDK context (detected by __AP_SDK_MODULE__ on window)
+  React.useEffect(() => {
+    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    if (!isSDKEmbed || !contentRef) return;
+
+    const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+    if (!wrapper) return;
+
+    const applyPosition = () => {
+      // Context menu position is based on mouse click event coordinates
+      // The wrapper should already have correct positioning from Radix, but transform may be wrong
+      const transform = wrapper.style.transform || '';
+      if (transform.includes('%') || transform === 'none' || !transform) {
+        // Reset transform to ensure menu appears at the correct position
+        wrapper.style.transform = 'none';
+      }
+    };
+
+    const id = requestAnimationFrame(() => {
+      applyPosition();
+      requestAnimationFrame(applyPosition);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [contentRef]);
+
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
+        ref={setContentRef}
         data-slot="context-menu-content"
         className={cn(
           'z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',

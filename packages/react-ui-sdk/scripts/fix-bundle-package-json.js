@@ -8,13 +8,19 @@ const path = require('path');
 
 const bundleDir = path.resolve(__dirname, '../../../dist/packages/react-ui-sdk-bundled');
 const pkgPath = path.join(bundleDir, 'package.json');
+const sourcePkgPath = path.resolve(__dirname, '../package.json');
 
-if (!fs.existsSync(pkgPath)) {
-  console.error('Bundle package.json not found at', pkgPath);
+let pkg;
+if (fs.existsSync(pkgPath)) {
+  pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+} else if (fs.existsSync(sourcePkgPath)) {
+  pkg = JSON.parse(fs.readFileSync(sourcePkgPath, 'utf8'));
+  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
+  console.log('Created package.json in bundle from source');
+} else {
+  console.error('No package.json found at', pkgPath, 'or', sourcePkgPath);
   process.exit(1);
 }
-
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 pkg.main = './index.js';
 pkg.types = undefined; // Bundle has no .d.ts
 pkg.exports = {

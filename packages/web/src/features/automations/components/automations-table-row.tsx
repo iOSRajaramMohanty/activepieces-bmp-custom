@@ -186,11 +186,9 @@ export const AutomationsTableRow = ({
           />
         )}
       </div>
-      {!embedState.isEmbedded && (
-        <div className="w-[250px] shrink-0 px-2 flex items-center overflow-hidden">
-          <RowItemOwner item={item} />
-        </div>
-      )}
+      <div className="w-[250px] shrink-0 px-2 flex items-center overflow-hidden">
+        <RowItemOwner item={item} />
+      </div>
       <div
         className="w-[120px] shrink-0 px-2 flex items-center"
         onClick={(e) => e.stopPropagation()}

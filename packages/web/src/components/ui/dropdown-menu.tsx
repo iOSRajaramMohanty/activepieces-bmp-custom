@@ -46,11 +46,45 @@ function DropdownMenuContent({
    */
   noAnimationOnOut?: boolean;
 }) {
+  // Get reference to content for manual positioning if needed
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
+  
+  // Fix positioning issue in SDK embed by recalculating after mount
+  // Only applies when running in SDK context (detected by __AP_SDK_MODULE__ on window)
+  React.useEffect(() => {
+    // Only run this fix in SDK embed context
+    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    if (!isSDKEmbed) return;
+    
+    if (contentRef) {
+      const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+      if (wrapper) {
+        // Check if transform has percentage (indicates broken positioning)
+        const transform = wrapper.style.transform;
+        if (transform && transform.includes('%')) {
+          // Find the trigger element
+          const trigger = document.querySelector('[data-slot="dropdown-menu-trigger"][data-state="open"]') as HTMLElement;
+          if (trigger) {
+            const triggerRect = trigger.getBoundingClientRect();
+            const contentWidth = contentRef.offsetWidth || 160;
+            // Override with correct pixel positioning - align to right edge of trigger
+            wrapper.style.transform = 'none';
+            wrapper.style.top = `${triggerRect.bottom + sideOffset}px`;
+            // Align right edge of dropdown with right edge of trigger
+            wrapper.style.left = `${triggerRect.right - contentWidth}px`;
+          }
+        }
+      }
+    }
+  }, [contentRef, sideOffset]);
+  
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        ref={setContentRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
+        collisionPadding={10}
         className={cn(
           'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           { 'data-[state=closed]:animate-out': !noAnimationOnOut },

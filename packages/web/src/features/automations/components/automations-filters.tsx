@@ -192,19 +192,17 @@ export const AutomationsFilters = ({
             searchable
           />
 
-          {!embedState.isEmbedded && (
-            <MultiSelectFilter
-              label={t('Owner')}
-              icon={<User className="h-4 w-4" />}
-              options={ownerOptions}
-              selectedValues={ownerFilter}
-              onChange={(values) => {
-                onOwnerFilterChange(values);
-                onFilterChange?.();
-              }}
-              searchable
-            />
-          )}
+          <MultiSelectFilter
+            label={t('Owner')}
+            icon={<User className="h-4 w-4" />}
+            options={ownerOptions}
+            selectedValues={ownerFilter}
+            onChange={(values) => {
+              onOwnerFilterChange(values);
+              onFilterChange?.();
+            }}
+            searchable
+          />
 
           {folderOptions.length > 0 && (
             <MultiSelectFilter

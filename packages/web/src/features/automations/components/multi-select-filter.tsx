@@ -11,7 +11,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 type MultiSelectFilterProps = {
   label: string;
@@ -107,7 +106,7 @@ export const MultiSelectFilter = ({
             </div>
           </div>
         )}
-        <ScrollArea className="max-h-[300px]">
+        <div className="max-h-[300px] overflow-auto">
           <div className="p-2 space-y-1">
             {filteredOptions.length === 0 ? (
               <div className="px-2 py-4 text-sm text-center text-muted-foreground">
@@ -132,7 +131,7 @@ export const MultiSelectFilter = ({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
         {selectedValues.length > 0 && (
           <div className="border-t p-2">
             <Button
