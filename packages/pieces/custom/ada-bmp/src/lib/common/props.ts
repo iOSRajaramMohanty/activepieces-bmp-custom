@@ -1,4 +1,4 @@
-import { Property } from '@activepieces/pieces-framework';
+import { Property, type InputProperty } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from './auth';
 import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from './config';
@@ -13,7 +13,7 @@ export const CHANNEL_TO_PLATFORM: Record<string, string> = {
   'Line': 'LINE',
 };
 
-export const channelInfo = Property.MarkDown({
+export const channelInfo: InputProperty = Property.MarkDown({
   value: `
 **Channel Selection**
 

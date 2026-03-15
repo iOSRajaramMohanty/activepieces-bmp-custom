@@ -2,6 +2,7 @@ import {
   createTrigger,
   TriggerStrategy,
   Property,
+  type Trigger,
 } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../common/auth';
@@ -24,7 +25,7 @@ const PROJECT_METADATA_BISUAT_TOKEN_KEY = 'bisuatToken'; // Key for storing BISU
  * - API actions use BMP connection token from context.auth
  * - Complete separation between webhook authentication and API authentication
  */
-export const receiveWebhook = createTrigger({
+export const receiveWebhook: Trigger = createTrigger({
   auth: adaBmpAuth, // Note: This auth is NOT used for webhook verification, only for onEnable/onDisable operations
   name: 'receive_webhook',
   displayName: 'Receive Webhook',

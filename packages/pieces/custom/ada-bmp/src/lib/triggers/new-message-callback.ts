@@ -1,4 +1,4 @@
-import { createTrigger, TriggerStrategy } from '@activepieces/pieces-framework';
+import { createTrigger, TriggerStrategy, type Trigger } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../common/auth';
 import { channelInfo, adaBmpChannel, adaBmpAccount, CHANNEL_TO_PLATFORM } from '../common/props';
@@ -9,7 +9,7 @@ import { API_ENDPOINTS, extractApiToken, debugLog } from '../common/config';
  * BMP backend must send platform, accountNo, and eventType in every request.
  * Only flows whose selected channel/account match the payload will run.
  */
-export const newMessageCallbackTrigger = createTrigger({
+export const newMessageCallbackTrigger: Trigger = createTrigger({
   auth: adaBmpAuth,
   name: 'new_message_callback',
   displayName: 'New message receive',

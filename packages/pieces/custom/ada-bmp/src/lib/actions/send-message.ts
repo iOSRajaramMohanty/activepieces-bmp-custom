@@ -1,4 +1,4 @@
-import { createAction, Property } from '@activepieces/pieces-framework';
+import { createAction, Property, type Action } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../common/auth';
 import { 
@@ -11,7 +11,7 @@ import {
 } from '../common/props';
 import { API_ENDPOINTS, debugLog, fetchMetadata, AdaBmpMetadata, extractApiToken } from '../common/config';
 
-export const sendMessageAction = createAction({
+export const sendMessageAction: Action = createAction({
   auth: adaBmpAuth,
   name: 'send_message',
   displayName: 'Send Message',
