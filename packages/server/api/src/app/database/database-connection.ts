@@ -1,4 +1,3 @@
-import { AppSystemProp, DatabaseType } from '@activepieces/server-common'
 import { isNil } from '@activepieces/shared'
 import {
     DataSource,
@@ -34,6 +33,7 @@ import { FlowRunEntity } from '../flows/flow-run/flow-run-entity'
 import { FlowVersionEntity } from '../flows/flow-version/flow-version-entity'
 import { FolderEntity } from '../flows/folder/folder.entity'
 import { system } from '../helper/system/system'
+import { AppSystemProp } from '../helper/system/system-props'
 import { McpServerEntity } from '../mcp/mcp-entity'
 import { PieceMetadataEntity } from '../pieces/metadata/piece-metadata-entity'
 import { PieceTagEntity } from '../pieces/tags/pieces/piece-tag.entity'
@@ -55,6 +55,7 @@ import { UserEntity } from '../user/user-entity'
 import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
 import { OrganizationEntity } from '../organization/organization.entity'
 import { OrganizationEnvironmentEntity } from '../organization/organization-environment.entity'
+import { DatabaseType } from './database-type'
 import { createPGliteDataSource } from './pglite-connection'
 import { createPostgresDataSource } from './postgres-connection'
 

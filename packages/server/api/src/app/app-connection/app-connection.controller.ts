@@ -1,7 +1,4 @@
-import { ProjectResourceType, securityAccess } from '@activepieces/server-common'
-import {
-    ActivepiecesError,
-    ApId,
+import { ApId,
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,
@@ -22,6 +19,8 @@ import {
 import { FastifyPluginCallbackZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
 import { z } from 'zod'
+import { ProjectResourceType } from '../core/security/authorization/common'
+import { securityAccess } from '../core/security/authorization/fastify-security'
 import { applicationEvents } from '../helper/application-events'
 import { securityHelper } from '../helper/security-helper'
 import { userService } from '../user/user-service'

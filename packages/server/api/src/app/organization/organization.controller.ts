@@ -17,7 +17,7 @@ import {
     SeekPage,
 } from '@activepieces/shared'
 import { StatusCodes } from 'http-status-codes'
-import { securityAccess } from '@activepieces/server-common'
+import { securityAccess } from '../core/security/authorization/fastify-security'
 
 export const organizationController: FastifyPluginAsyncTypebox = async (app) => {
     // Create organization

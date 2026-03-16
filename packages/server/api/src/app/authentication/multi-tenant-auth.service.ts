@@ -1,4 +1,5 @@
-import { AppSystemProp, cryptoUtils } from '@activepieces/server-common'
+import { cryptoUtils } from '@activepieces/server-utils'
+import { AppSystemProp } from '../helper/system/system-props'
 import {
     ApEdition,
     ApFlagId,

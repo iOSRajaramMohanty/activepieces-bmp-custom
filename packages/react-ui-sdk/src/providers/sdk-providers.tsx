@@ -41,6 +41,71 @@ const LoadingFallback = () => (
   </div>
 );
 
+// Auth error component - shown when token is invalid/expired
+const AuthErrorFallback = ({ message }: { message: string }) => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '100%',
+    minHeight: '200px',
+    padding: '20px',
+    fontFamily: 'system-ui, sans-serif'
+  }}>
+    <div style={{ 
+      textAlign: 'center',
+      maxWidth: '400px',
+      padding: '24px',
+      backgroundColor: '#fef2f2',
+      borderRadius: '8px',
+      border: '1px solid #fecaca'
+    }}>
+      <div style={{ 
+        width: '48px', 
+        height: '48px', 
+        borderRadius: '50%',
+        backgroundColor: '#fee2e2',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        margin: '0 auto 16px',
+        color: '#dc2626',
+        fontSize: '24px'
+      }}>
+        !
+      </div>
+      <h3 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: '16px', fontWeight: 600 }}>
+        Authentication Error
+      </h3>
+      <p style={{ margin: '0 0 16px', color: '#b91c1c', fontSize: '14px' }}>
+        {message}
+      </p>
+      <p style={{ margin: 0, color: '#7f1d1d', fontSize: '12px' }}>
+        Please reload the page with a valid token.
+      </p>
+    </div>
+  </div>
+);
+
+// Global auth error state for SDK
+let sdkAuthError: string | null = null;
+const authErrorListeners = new Set<() => void>();
+
+function setSDKAuthError(error: string | null) {
+  sdkAuthError = error;
+  authErrorListeners.forEach(listener => listener());
+}
+
+function useSDKAuthError() {
+  const [error, setError] = React.useState(sdkAuthError);
+  React.useEffect(() => {
+    const listener = () => setError(sdkAuthError);
+    authErrorListeners.add(listener);
+    return () => { authErrorListeners.delete(listener); };
+  }, []);
+  return error;
+}
+
 // Import CE-safe providers from web
 // Using relative imports - TypeScript path mappings don't resolve at build time with tsc
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
@@ -59,13 +124,46 @@ if (typeof window !== 'undefined') {
   initializeRuntimeEEChecks();
 }
 
-// Create a QueryClient instance for SDK
+// Check if error is a 401 auth error
+function isAuthError(error: unknown): boolean {
+  if (error && typeof error === 'object') {
+    // Axios error
+    if ('response' in error) {
+      const response = (error as { response?: { status?: number } }).response;
+      if (response?.status === 401) return true;
+    }
+    // Check for error code from Activepieces backend
+    if ('code' in error) {
+      const code = (error as { code?: string }).code;
+      if (code === 'INVALID_BEARER_TOKEN' || code === 'SESSION_EXPIRED') return true;
+    }
+  }
+  return false;
+}
+
+// Create a QueryClient instance for SDK with auth error handling
 const createSDKQueryClient = () => {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        retry: false,
+        retry: (failureCount, error) => {
+          // Never retry auth errors
+          if (isAuthError(error)) {
+            setSDKAuthError('Your authentication token is invalid or has expired.');
+            return false;
+          }
+          // Don't retry other errors either (SDK should show error state)
+          return false;
+        },
         refetchOnWindowFocus: false,
+      },
+      mutations: {
+        retry: false,
+        onError: (error) => {
+          if (isAuthError(error)) {
+            setSDKAuthError('Your authentication token is invalid or has expired.');
+          }
+        },
       },
     },
   });
@@ -95,6 +193,28 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
   routes = [],
   initialRoute,
 }) => {
+  // Set API config and token synchronously so they are available before any child
+  // (e.g. flags API) runs. useEffect runs after first paint, so the first /v1/flags
+  // request would otherwise go without Authorization and get 401.
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__AP_SDK_CONFIG__ = {
+      apiUrl: config.apiUrl,
+      token: config.token,
+      projectId: config.projectId,
+    };
+    if (config.token) {
+      try {
+        window.localStorage.setItem('token', config.token);
+        if (config.projectId) {
+          window.localStorage.setItem('projectId', config.projectId);
+        }
+      } catch (e) {
+        console.warn('Failed to set authentication in storage:', e);
+      }
+    }
+  }
+
   const queryClient = React.useMemo(() => createSDKQueryClient(), []);
   
   // Create memory router for SDK (no browser history needed)
@@ -109,35 +229,6 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
     return null;
   }, [routes, initialRoute]);
 
-  // Configure API base URL and authentication
-  React.useEffect(() => {
-    // Set API URL in window for web components to use
-    if (typeof window !== 'undefined') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__AP_SDK_CONFIG__ = {
-        apiUrl: config.apiUrl,
-        token: config.token,
-        projectId: config.projectId,
-      };
-
-      // Set authentication token in localStorage for web components
-      // Activepieces uses localStorage by default (see ap-browser-storage.ts)
-      if (config.token) {
-        try {
-          // Use localStorage as that's what ApStorage defaults to
-          window.localStorage.setItem('token', config.token);
-          if (config.projectId) {
-            window.localStorage.setItem('projectId', config.projectId);
-          }
-          // Dispatch storage event to notify React components
-          window.dispatchEvent(new Event('storage'));
-        } catch (e) {
-          console.warn('Failed to set authentication in storage:', e);
-        }
-      }
-    }
-  }, [config]);
-
   const content = routes.length > 0 && router ? (
     <RouterProvider router={router} />
   ) : (
@@ -151,30 +242,32 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
           <Suspense fallback={<LoadingFallback />}>
             <ThemeProvider storageKey="ap-react-ui-sdk-theme">
               <TooltipProvider>
-                <div
-                  className="ap-sdk-root"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    minHeight: 0,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                  }}
-                >
+                <SDKAuthErrorBoundary>
                   <div
+                    className="ap-sdk-root"
                     style={{
-                      flex: 1,
+                      width: '100%',
+                      height: '100%',
                       minHeight: 0,
                       display: 'flex',
                       flexDirection: 'column',
-                      width: '100%',
                       overflow: 'hidden',
                     }}
                   >
-                    {content}
+                    <div
+                      style={{
+                        flex: 1,
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {content}
+                    </div>
                   </div>
-                </div>
+                </SDKAuthErrorBoundary>
                 <Toaster position="bottom-right" />
               </TooltipProvider>
             </ThemeProvider>
@@ -183,4 +276,15 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
       </EmbeddingProvider>
     </QueryClientProvider>
   );
+};
+
+// Auth error boundary component - shows error UI when auth fails
+const SDKAuthErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const authError = useSDKAuthError();
+  
+  if (authError) {
+    return <AuthErrorFallback message={authError} />;
+  }
+  
+  return <>{children}</>;
 };

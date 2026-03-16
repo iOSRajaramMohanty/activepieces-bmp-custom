@@ -1302,8 +1302,7 @@
       "@activepieces/piece-ada-bmp": [
         "packages/pieces/custom/ada-bmp/src/index.ts"
       ],
-      "@activepieces/sandbox": ["packages/server/sandbox/src/index.ts"],
-      "@activepieces/server-common": ["packages/server/common/src/index.ts"],
+      "@activepieces/server-utils": ["packages/server/utils/src/index.ts"],
       "@activepieces/shared": ["packages/shared/src/index.ts"],
       "@activepieces/react-ui-sdk": ["packages/react-ui-sdk/src/index.ts"],
       "@activepieces/react-ui/*": ["packages/react-ui/src/*"],
@@ -1328,7 +1327,6 @@
         "packages/pieces/community/cashfree-payments/src/index.ts"
       ],
       "ee-embed-sdk": ["packages/ee/embed-sdk/src/index.ts"],
-      "worker": ["packages/server/worker/src/index.ts"],
       "ui-feature-forms": ["packages/ui/features-forms/src/index.ts"],
       "@activepieces/piece-kissflow": [
         "packages/pieces/community/kissflow/src/index.ts"

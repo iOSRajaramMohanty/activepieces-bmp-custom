@@ -1,4 +1,4 @@
-import { apDayjs, securityAccess } from '@activepieces/server-common'
+import { apDayjs } from '@activepieces/server-utils'
 import {
     ActivepiecesError,
     ApEdition,
@@ -20,8 +20,7 @@ import { z } from 'zod'
 import { authenticationUtils } from '../authentication/authentication-utils'
 import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
-import { userIdentityRepository } from '../authentication/user-identity/user-identity-service'
-import { transaction } from '../core/db/transaction'
+import { securityAccess } from '../core/security/authorization/fastify-security'
 import { platformToEditMustBeOwnedByCurrentUser } from '../ee/authentication/ee-authorization'
 import { platformPlanService } from '../ee/platform/platform-plan/platform-plan.service'
 import { stripeHelper } from '../ee/platform/platform-plan/stripe-helper'

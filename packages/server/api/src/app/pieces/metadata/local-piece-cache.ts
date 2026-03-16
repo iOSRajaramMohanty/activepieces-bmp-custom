@@ -1,6 +1,9 @@
 import path from 'path'
 import { pieceTranslation } from '@activepieces/pieces-framework'
-import { AppSystemProp, filePiecesUtils, memoryLock, rejectedPromiseHandler } from '@activepieces/server-common'
+import { memoryLock } from '@activepieces/server-utils'
+import { AppSystemProp } from '../../helper/system/system-props'
+import { filePiecesUtils } from './utils/file-pieces-utils'
+import { rejectedPromiseHandler } from '../../helper/promise-handler'
 import { ApEnvironment, apId, isEmpty, isNil, LocalesEnum, PackageType, PieceType } from '@activepieces/shared'
 // Lazy import KeyvSqlite - only load when cache is created (prevents loading sqlite3 when using PostgreSQL)
 // import KeyvSqlite from '@keyv/sqlite'

@@ -8,6 +8,7 @@ import { t } from 'i18next';
 import { ControllerRenderProps, UseFormReturn } from 'react-hook-form';
 
 import { ColorPicker } from '@/components/custom/color-picker';
+import { DictionaryInput } from '@/components/custom/dictionary-input';
 import { JsonEditor } from '@/components/custom/json-editor';
 import { ApMarkdown } from '@/components/custom/markdown';
 import { MultiSelectPieceProperty } from '@/components/custom/multi-select-piece-property';
@@ -20,7 +21,6 @@ import { ArrayPieceProperty } from './array-property';
 import { AutoFormFieldWrapper } from './auto-form-field-wrapper';
 import { BuilderJsonEditorWrapper } from './builder-json-wrapper';
 import CustomProperty from './custom-property';
-import { DictionaryProperty } from './dictionary-property';
 import { DynamicDropdownPieceProperty } from './dynamic-dropdown-piece-property';
 import { DynamicProperties } from './dynamic-piece-property';
 import { TextInputWithMentions } from './text-input-with-mentions';
@@ -75,12 +75,23 @@ export const selectGenericFormComponentForProperty = ({
           allowDynamicValues={allowDynamicValues}
           dynamicInputModeToggled={dynamicInputModeToggled}
         >
-          <DictionaryProperty
+          <DictionaryInput
             disabled={disabled}
             values={field.value}
             onChange={field.onChange}
-            useMentionTextInput={useMentionTextInput}
-          ></DictionaryProperty>
+            keyInputClassName={useMentionTextInput ? 'h-[38px]' : undefined}
+            renderValueInput={
+              useMentionTextInput
+                ? ({ value, onChange, disabled }) => (
+                    <TextInputWithMentions
+                      initialValue={value}
+                      disabled={disabled}
+                      onChange={onChange}
+                    />
+                  )
+                : undefined
+            }
+          />
         </AutoFormFieldWrapper>
       );
     case PropertyType.CHECKBOX:

@@ -1,6 +1,6 @@
-import { ApplicationEventName, assertNotNullOrUndefined } from '@activepieces/shared'
-import { AppSystemProp, networkUtils, securityAccess } from '@activepieces/server-common'
 import {
+    ApplicationEventName,
+    assertNotNullOrUndefined,
     ActivepiecesError,
     ErrorCode,
     InvitationStatus,
@@ -16,9 +16,12 @@ import { Type } from '@sinclair/typebox'
 import { RateLimitOptions } from '@fastify/rate-limit'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
-import dayjs from 'dayjs'
+import { apDayjsDuration } from '@activepieces/server-utils'
+import { securityAccess } from '../core/security/authorization/fastify-security'
 import { applicationEvents } from '../helper/application-events'
+import { networkUtils } from '../helper/network-utils'
 import { system } from '../helper/system/system'
+import { AppSystemProp } from '../helper/system/system-props'
 import { platformUtils } from '../platform/platform.utils'
 import { userService } from '../user/user-service'
 import { userInvitationsService } from '../user-invitations/user-invitation.service'
@@ -693,7 +696,7 @@ export const authenticationController: FastifyPluginAsyncZod = async (
                 projectRoleId: null,
                 organizationId: null,
                 environment: null,
-                invitationExpirySeconds: dayjs.duration(1, 'day').asSeconds(),
+                invitationExpirySeconds: apDayjsDuration(1, 'day').asSeconds(),
                 status: InvitationStatus.ACCEPTED, // Auto-accept the invitation
             })
             
