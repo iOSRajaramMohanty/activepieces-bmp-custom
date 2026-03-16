@@ -1,0 +1,44 @@
+{
+  "name": "@activepieces/ext-bmp",
+  "version": "1.0.0",
+  "description": "BMP Extension for Activepieces - Multi-tenant organization and environment management",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts"
+    },
+    "./web": {
+      "import": "./dist/web/index.js",
+      "types": "./dist/web/index.d.ts"
+    },
+    "./shared": {
+      "import": "./dist/shared/index.js",
+      "types": "./dist/shared/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "activepieces",
+    "bmp",
+    "extension",
+    "multi-tenant",
+    "organization"
+  ],
+  "dependencies": {
+    "@activepieces/shared": "workspace:*",
+    "@sinclair/typebox": "^0.34.33"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

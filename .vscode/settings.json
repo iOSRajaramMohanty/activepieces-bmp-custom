@@ -13,4 +13,5 @@
     "typescript.tsdk": "node_modules/typescript/lib",
     "javascript.preferences.importModuleSpecifier": "relative",
     "nxConsole.generateAiAgentRules": true,
+    "angular.enable-strict-mode-prompt": false,
 }

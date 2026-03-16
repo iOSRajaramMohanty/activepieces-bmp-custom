@@ -3,6 +3,7 @@ import path, { dirname, join } from 'node:path'
 import { fileSystemUtils, memoryLock } from '@activepieces/server-utils'
 import {
     ExecutionMode,
+    getPieceNameFromAlias,
     groupBy,
     isEmpty,
     isNil,
@@ -196,9 +197,11 @@ async function createPiecePackageJson({ rootWorkspace, piecePackage }: {
 }
 
 async function partitionPiecesToInstall(rootWorkspace: string, pieces: PiecePackage[]): Promise<PieceInstallationResult> {
+    const devPieces = workerSettings.getSettings().DEV_PIECES
     const piecesWithCheck = await Promise.all(
         pieces.map(async (piece) => {
-            const installed = await pieceCheckIfAlreadyInstalled(rootWorkspace, piece)
+            const isDevPiece = devPieces.includes(getPieceNameFromAlias(piece.pieceName))
+            const installed = isDevPiece || await pieceCheckIfAlreadyInstalled(rootWorkspace, piece)
             return { piece, installed }
         }),
     )

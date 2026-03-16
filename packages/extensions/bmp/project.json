@@ -1,0 +1,51 @@
+{
+  "name": "ext-bmp",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/extensions/bmp/src",
+  "projectType": "library",
+  "tags": [
+    "scope:extension",
+    "type:library",
+    "scope:bmp"
+  ],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "outputPath": "dist/packages/extensions/bmp",
+        "main": "packages/extensions/bmp/src/index.ts",
+        "tsConfig": "packages/extensions/bmp/tsconfig.json",
+        "assets": [],
+        "generatePackageJson": true,
+        "buildableProjectDepsInPackageJsonType": "dependencies"
+      },
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
+      "options": {
+        "lintFilePatterns": [
+          "packages/extensions/bmp/**/*.ts",
+          "packages/extensions/bmp/**/*.tsx"
+        ]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "passWithNoTests": true
+      }
+    }
+  }
+}

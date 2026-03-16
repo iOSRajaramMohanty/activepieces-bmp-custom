@@ -38,6 +38,7 @@ export const executeValidationJob: JobHandler<ExecuteValidateAuthJobData> = {
                     internalApiUrl: ctx.internalApiUrl,
                     publicApiUrl: ctx.publicApiUrl,
                     timeoutInSeconds,
+                    environmentMetadata: data.environmentMetadata,
                 },
                 { timeoutInSeconds },
             )

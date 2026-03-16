@@ -1,0 +1,94 @@
+# Git attributes for Activepieces BMP Fork
+# This file configures merge strategies to minimize conflicts with upstream
+
+# =============================================================================
+# EXTENSION FILES - Use 'ours' strategy to keep local versions during merges
+# =============================================================================
+# These are BMP-specific files that should never be overwritten by upstream merges
+
+# BMP Extension package (all custom BMP code)
+packages/extensions/bmp/** merge=ours
+
+# React UI SDK (custom SDK for embedding in external apps)
+packages/extensions/react-ui-sdk/** merge=ours
+
+# Custom pieces (BMP-specific integrations)
+packages/pieces/custom/** merge=ours
+
+# =============================================================================
+# BMP-SPECIFIC FILES IN CORE (until fully migrated to extensions)
+# =============================================================================
+# These files contain BMP-specific modifications that should be preserved
+
+# Organization module (BMP multi-tenancy)
+packages/server/api/src/app/organization/** merge=ours
+
+# Super Admin module
+packages/server/api/src/app/super-admin/** merge=ours
+
+# Account switching
+packages/server/api/src/app/account-switching/** merge=ours
+
+# BMP database migrations
+packages/server/api/src/app/database/migration/postgres/1768457416000-AddAccountSwitchingActivity.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1769126400000-AddOrganizationTables.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1769127000000-AddOrganizationToUserInvitation.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1769127500000-AddMetadataToOrganizationEnvironment.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1769127600000-AddProjectIdToOrganization.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1769127700000-AddMissingOrganizationEnvironments.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/1771241733000-AddClientIdToUser.ts merge=ours
+
+# BMP shared types
+packages/shared/src/lib/organization/** merge=ours
+
+# BMP web routes and components
+packages/web/src/app/routes/platform/organizations/** merge=ours
+packages/web/src/app/routes/platform/super-admin/** merge=ours
+packages/web/src/app/routes/platform/owner-dashboard/** merge=ours
+packages/web/src/app/components/super-admin-layout.tsx merge=ours
+packages/web/src/app/components/switch-back-button.tsx merge=ours
+packages/web/src/app/components/sidebar/super-admin/** merge=ours
+packages/web/src/app/connections/ada-bmp-environment-select.tsx merge=ours
+packages/web/src/app/guards/platform-default-route.tsx merge=ours
+packages/web/src/hooks/super-admin-hooks.ts merge=ours
+packages/web/src/lib/super-admin-api.ts merge=ours
+packages/web/src/features/platform-admin/api/organization-api.ts merge=ours
+packages/web/src/features/platform-admin/api/organization-hooks.ts merge=ours
+
+# BMP authentication session modifications
+packages/web/src/lib/authentication-session.ts merge=ours
+
+# BMP routes configuration
+packages/web/src/app/routes/platform-routes.tsx merge=ours
+
+# BMP user invitation modifications
+packages/web/src/features/members/components/invite-user/invite-user-dialog.tsx merge=ours
+
+# BMP sidebar user modifications
+packages/web/src/app/components/sidebar/sidebar-user.tsx merge=ours
+
+# =============================================================================
+# DOCUMENTATION FILES
+# =============================================================================
+# Project-specific documentation
+docs/project/** merge=ours
+
+# =============================================================================
+# CONFIGURATION FILES
+# =============================================================================
+# Local environment files
+.env.dev merge=ours
+.env.local merge=ours
+.env.production merge=ours
+
+# =============================================================================
+# NOTE ON MERGE STRATEGY
+# =============================================================================
+# The 'merge=ours' strategy will automatically keep the local version of these
+# files during a merge, ignoring changes from upstream.
+#
+# IMPORTANT: You must enable the 'ours' merge driver in your git config:
+#   git config merge.ours.driver true
+#
+# After enabling, conflicts in these files will be auto-resolved by keeping
+# the local (your) version.
