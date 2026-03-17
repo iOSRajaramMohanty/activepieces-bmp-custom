@@ -1,0 +1,1018 @@
+/**
+ * SDK Style Isolation
+ * 
+ * This stylesheet provides CSS containment and reset rules to isolate the SDK
+ * from host application styles (Bootstrap, Foundation, Bulma, etc.).
+ * 
+ * The isolation works by:
+ * 1. Using CSS containment to create a layout/style boundary
+ * 2. Resetting common element styles that CSS frameworks override
+ * 3. Ensuring proper stacking context with isolation property
+ * 
+ * This file is imported BEFORE the main styles.css to ensure resets are in place
+ * before Tailwind utilities are applied.
+ * 
+ * @license MIT
+ */
+
+/* ==========================================================================
+   Root Container Isolation
+   ========================================================================== */
+
+.ap-sdk-root {
+  /* Create a new stacking context - REDUCED containment to avoid layout issues */
+  contain: paint;
+  isolation: isolate;
+  
+  /* Reset box model */
+  box-sizing: border-box;
+  
+  /* Reset typography to SDK defaults */
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--foreground, #0a0a0a);
+  
+  /* Ensure text rendering consistency */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  
+  /* Prevent text size adjustment on orientation change */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ==========================================================================
+   Universal Box Sizing Reset
+   ========================================================================== */
+
+.ap-sdk-root *,
+.ap-sdk-root *::before,
+.ap-sdk-root *::after {
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Bootstrap Table Reset
+   Bootstrap applies: border-collapse, margin-bottom, width:100%, etc.
+   
+   NOTE: We do NOT reset width here - let Tailwind's w-full class work
+   ========================================================================== */
+
+.ap-sdk-root table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  border-color: inherit;
+  text-indent: 0;
+  margin-bottom: 0;
+  /* width: auto - REMOVED to allow w-full class to work */
+  caption-side: top;
+}
+
+/* Tables with data-slot="table" or w-full class should be full width */
+.ap-sdk-root table[data-slot="table"],
+.ap-sdk-root table.w-full {
+  width: 100% !important;
+}
+
+/* Table container should also be full width */
+.ap-sdk-root [data-slot="table-container"] {
+  width: 100% !important;
+}
+
+.ap-sdk-root thead,
+.ap-sdk-root tbody,
+.ap-sdk-root tfoot {
+  border-color: inherit;
+  border-style: solid;
+}
+
+/* Table rows - reset to allow Tailwind border classes to work */
+.ap-sdk-root tr {
+  border-color: inherit;
+  border-style: solid;
+  border-width: 0;
+}
+
+/* Table BODY rows only - ensure border-bottom is visible */
+/* Only target rows inside tbody, not thead */
+/* Use subtle light gray color matching the original design */
+.ap-sdk-root tbody tr,
+.ap-sdk-root tbody [data-slot="table-row"] {
+  border-bottom-width: 1px !important;
+  border-bottom-style: solid !important;
+  border-bottom-color: #f0f0f0 !important;
+}
+
+/* Table header - border below the entire thead, not individual rows */
+/* Slightly darker than row borders but still subtle */
+.ap-sdk-root thead,
+.ap-sdk-root [data-slot="table-header"] {
+  border-bottom-width: 1px !important;
+  border-bottom-style: solid !important;
+  border-bottom-color: #e5e7eb !important;
+}
+
+/* Header rows should NOT have individual borders */
+.ap-sdk-root thead tr,
+.ap-sdk-root [data-slot="table-header"] tr {
+  border-bottom: none !important;
+}
+
+.ap-sdk-root th {
+  text-align: inherit;
+  text-align: -webkit-match-parent;
+  font-weight: inherit;
+  padding: 0;
+}
+
+.ap-sdk-root td {
+  padding: 0;
+  vertical-align: inherit;
+}
+
+/* ==========================================================================
+   Bootstrap Button Reset
+   Bootstrap applies: font-family, font-size, line-height, color, bg, border, etc.
+   
+   IMPORTANT: We exclude Radix UI components from these resets because:
+   - Radix Checkbox renders as a <button> with data-slot="checkbox"
+   - Radix triggers use data-slot="trigger"
+   - These components rely on Tailwind classes for their visual states
+   ========================================================================== */
+
+.ap-sdk-root button:not([data-slot]) {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-transform: none;
+  background-color: transparent;
+  background-image: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ap-sdk-root button:not([data-slot]):not(:disabled) {
+  cursor: pointer;
+}
+
+.ap-sdk-root button:not([data-slot]):focus {
+  outline: none;
+}
+
+/* ==========================================================================
+   Bootstrap Form Element Reset
+   Bootstrap applies aggressive resets to inputs, selects, textareas
+   ========================================================================== */
+
+.ap-sdk-root input,
+.ap-sdk-root select,
+.ap-sdk-root textarea,
+.ap-sdk-root optgroup {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+.ap-sdk-root input,
+.ap-sdk-root textarea {
+  padding: 0;
+}
+
+.ap-sdk-root select {
+  text-transform: none;
+}
+
+.ap-sdk-root textarea {
+  resize: vertical;
+}
+
+.ap-sdk-root input::placeholder,
+.ap-sdk-root textarea::placeholder {
+  color: inherit;
+  opacity: 0.5;
+}
+
+/* Remove spinner from number inputs */
+.ap-sdk-root input[type="number"]::-webkit-inner-spin-button,
+.ap-sdk-root input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ap-sdk-root input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Remove search input styling */
+.ap-sdk-root input[type="search"]::-webkit-search-decoration,
+.ap-sdk-root input[type="search"]::-webkit-search-cancel-button,
+.ap-sdk-root input[type="search"]::-webkit-search-results-button,
+.ap-sdk-root input[type="search"]::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+}
+
+/* ==========================================================================
+   Bootstrap Link Reset
+   Bootstrap applies color and text-decoration to links
+   ========================================================================== */
+
+.ap-sdk-root a {
+  color: inherit;
+  text-decoration: inherit;
+  background-color: transparent;
+}
+
+.ap-sdk-root a:hover {
+  color: inherit;
+}
+
+/* ==========================================================================
+   Bootstrap List Reset
+   Bootstrap applies margin/padding to lists
+   ========================================================================== */
+
+.ap-sdk-root ul,
+.ap-sdk-root ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ap-sdk-root li {
+  margin: 0;
+  padding: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Heading Reset
+   Bootstrap applies margin and font styles to headings
+   ========================================================================== */
+
+.ap-sdk-root h1,
+.ap-sdk-root h2,
+.ap-sdk-root h3,
+.ap-sdk-root h4,
+.ap-sdk-root h5,
+.ap-sdk-root h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Paragraph Reset
+   ========================================================================== */
+
+.ap-sdk-root p {
+  margin: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Image Reset
+   ========================================================================== */
+
+.ap-sdk-root img,
+.ap-sdk-root svg {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+  height: auto;
+}
+
+/* ==========================================================================
+   React Flow Canvas Edge Styling
+   
+   CRITICAL: Preserve flow canvas edge (connection line) styling.
+   The @xyflow/react library uses CSS variables for edge stroke colors.
+   These must not be overridden by Bootstrap or other resets.
+   
+   The default xyflow styles include:
+   - stroke-dasharray: 5 for animated edges (creates dotted/dashed lines)
+   - Various stroke colors via CSS variables
+   ========================================================================== */
+
+/* Ensure the react-flow container has the CSS variable defined */
+.ap-sdk-root .react-flow {
+  --xy-edge-stroke: rgba(163, 163, 163, 0.5) !important;
+  --xy-edge-stroke-selected: #555 !important;
+}
+
+/* Ensure react-flow SVG paths (edges/connection lines) have proper stroke */
+.ap-sdk-root .react-flow__edge path,
+.ap-sdk-root .react-flow__edge-path,
+.ap-sdk-root .react-flow__connection path {
+  stroke: var(--xy-edge-stroke, rgba(163, 163, 163, 0.5)) !important;
+  fill: none !important;
+}
+
+/* Preserve the animated/dotted line style from xyflow */
+.ap-sdk-root .react-flow__edge.animated path,
+.ap-sdk-root .react-flow__edge path {
+  stroke-dasharray: 5 !important;
+  animation: dashdraw 0.5s linear infinite !important;
+}
+
+/* Keyframes for the animated dash effect */
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* SVG elements inside react-flow should not be constrained by general SVG rules */
+.ap-sdk-root .react-flow svg {
+  max-width: none !important;
+  /* height: auto !important; */
+  overflow: visible !important;
+}
+
+/* React Flow edge SVG markers (arrowheads) */
+.ap-sdk-root .react-flow__edge-textwrapper,
+.ap-sdk-root .react-flow__edge text {
+  fill: var(--xy-edge-stroke, rgba(163, 163, 163, 0.5)) !important;
+}
+
+/* ==========================================================================
+   Flow Canvas Add Button (Plus Icon)
+   
+   The add button appears on the connection line between steps.
+   Ensure the Plus icon has proper visibility and color.
+   
+   CRITICAL: The Plus icon uses Tailwind's text-foreground class which
+   translates to color: hsl(var(--foreground)). We need to ensure this
+   is properly applied and not overridden.
+   ========================================================================== */
+
+/* Add button container - ensure proper background and border */
+.ap-sdk-root .react-flow [data-testid="add-action-button"] {
+  background-color: var(--background, #ffffff) !important;
+  border-color: var(--border, hsl(0 0% 89.8%)) !important;
+}
+
+/* Plus icon inside add button - force dark color with high specificity */
+/* Using explicit dark color (#111827) to ensure visibility */
+.ap-sdk-root .react-flow [data-testid="add-action-button"] svg {
+  color: #111827 !important;
+  stroke: #111827 !important;
+  opacity: 1 !important;
+}
+
+.ap-sdk-root .react-flow foreignObject svg.lucide-plus,
+.ap-sdk-root .react-flow foreignObject svg[class*="lucide-plus"],
+.ap-sdk-root .react-flow foreignObject .lucide.lucide-plus {
+  color: #111827 !important;
+  stroke: #111827 !important;
+  opacity: 1 !important;
+}
+
+/* Target the text-foreground class specifically in flow canvas */
+.ap-sdk-root .react-flow foreignObject .text-foreground,
+.ap-sdk-root .react-flow foreignObject [class*="text-foreground"] {
+  color: #111827 !important;
+}
+
+/* Ensure SVG inside the add button container inherits proper color */
+.ap-sdk-root .react-flow foreignObject > div svg,
+.ap-sdk-root .react-flow foreignObject div[data-testid="add-action-button"] svg {
+  color: #111827 !important;
+  stroke: #111827 !important;
+}
+
+/* ==========================================================================
+   Piece Selector Popover Width Fix
+   
+   The Piece Selector uses Tailwind responsive classes: w-[340px] md:w-[600px]
+   In embedded SDK contexts, the container may be narrower than 768px,
+   causing the mobile width to be applied. Force the desktop width.
+   
+   The popover has classes like: w-[340px] md:w-[600px]
+   We need to override the 340px and force 600px.
+   ========================================================================== */
+
+/* Force Piece Selector popover to use desktop width (600px) in SDK */
+/* Target by the specific Tailwind class w-[340px] */
+.ap-sdk-root [data-slot="popover-content"][class*="w-[340px]"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"][class*="w-[340px]"] {
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 600px !important;
+}
+
+/* Also target the popover content that contains the piece selector tabs */
+.ap-sdk-root [data-slot="popover-content"]:has([class*="piece-selector"]),
+.ap-sdk-root [data-slot="popover-content"]:has(input[placeholder*="Search"]) {
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 600px !important;
+}
+
+/* Direct override for any popover with the md:w-[600px] class */
+[data-radix-popper-content-wrapper] .w-\[340px\].md\:w-\[600px\] {
+  width: 600px !important;
+  min-width: 600px !important;
+}
+
+/* ==========================================================================
+   Bootstrap HR Reset
+   ========================================================================== */
+
+.ap-sdk-root hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid;
+  color: inherit;
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Bootstrap Blockquote Reset
+   ========================================================================== */
+
+.ap-sdk-root blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Pre/Code Reset
+   ========================================================================== */
+
+.ap-sdk-root pre,
+.ap-sdk-root code,
+.ap-sdk-root kbd,
+.ap-sdk-root samp {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: inherit;
+}
+
+.ap-sdk-root pre {
+  margin: 0;
+  overflow: auto;
+}
+
+/* ==========================================================================
+   Bootstrap Figure Reset
+   ========================================================================== */
+
+.ap-sdk-root figure {
+  margin: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Fieldset/Legend Reset
+   ========================================================================== */
+
+.ap-sdk-root fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.ap-sdk-root legend {
+  padding: 0;
+  display: table;
+  max-width: 100%;
+  white-space: normal;
+}
+
+/* ==========================================================================
+   Bootstrap Label Reset
+   ========================================================================== */
+
+.ap-sdk-root label {
+  display: inline-block;
+  margin: 0;
+}
+
+/* ==========================================================================
+   Bootstrap Progress Reset
+   ========================================================================== */
+
+.ap-sdk-root progress {
+  vertical-align: baseline;
+}
+
+/* ==========================================================================
+   Bootstrap Summary Reset
+   ========================================================================== */
+
+.ap-sdk-root summary {
+  display: list-item;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   Bootstrap Small Reset
+   ========================================================================== */
+
+.ap-sdk-root small {
+  font-size: inherit;
+}
+
+/* ==========================================================================
+   Radix UI Portal Isolation
+   Dialogs, popovers, dropdowns render in portals outside .ap-sdk-root
+   These need separate isolation rules
+   ========================================================================== */
+
+[data-radix-portal] {
+  /* Typography reset */
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  /* Ensure text color is dark (not inherited gray from Bootstrap) */
+  color: var(--foreground, hsl(0 0% 3.9%));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-radix-portal] *,
+[data-radix-portal] *::before,
+[data-radix-portal] *::after {
+  box-sizing: border-box;
+}
+
+/* Exclude Radix components with data-slot from button resets (e.g., checkbox, switch) */
+/* NOTE: Don't reset 'color' here - let Tailwind utility classes control text color */
+[data-radix-portal] button:not([data-slot]) {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+[data-radix-portal] table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-bottom: 0;
+}
+
+[data-radix-portal] input,
+[data-radix-portal] select,
+[data-radix-portal] textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  /* Don't reset color - let Tailwind classes control it */
+  margin: 0;
+}
+
+[data-radix-portal] a {
+  /* Don't reset color - let Tailwind classes control it */
+  text-decoration: inherit;
+}
+
+[data-radix-portal] ul,
+[data-radix-portal] ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+[data-radix-portal] h1,
+[data-radix-portal] h2,
+[data-radix-portal] h3,
+[data-radix-portal] h4,
+[data-radix-portal] h5,
+[data-radix-portal] h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  margin: 0;
+}
+
+[data-radix-portal] p {
+  margin: 0;
+}
+
+/* ==========================================================================
+   Z-Index Stacking for Radix Components
+   Ensure proper layering for popovers, dropdowns, dialogs, and selects
+   
+   CRITICAL STACKING ORDER:
+   - Regular content: default z-index
+   - Dropdown menus/popovers outside dialogs: z-index 50 (from Radix default)
+   - Dialog overlay: z-index 9998 (covers dropdowns outside dialog)
+   - Dialog content: z-index 9999 (above overlay)
+   - Select/Combobox dropdowns (can be inside dialogs): z-index 10000 (above dialog)
+   
+   NOTE: Select dropdowns inside dialogs need higher z-index than the dialog itself.
+   ========================================================================== */
+
+/* Dialog overlay - covers dropdowns outside the dialog */
+[data-slot="dialog-overlay"],
+[data-radix-dialog-overlay] {
+  z-index: 9998 !important;
+  pointer-events: auto !important;
+}
+
+/* Dialog content - above overlay */
+[data-slot="dialog-content"],
+[data-radix-dialog-content] {
+  z-index: 9999 !important;
+}
+
+/* Dialog portal */
+[data-slot="dialog-portal"] {
+  z-index: 9998 !important;
+}
+
+/* Alert dialog specific */
+[role="alertdialog"] {
+  z-index: 9999 !important;
+}
+
+/* ==========================================================================
+   CRITICAL FIX: Select/Combobox dropdowns inside dialogs
+   
+   When a Select or Combobox is inside a dialog, its dropdown renders in a
+   separate portal at body level. It needs higher z-index than the dialog
+   to appear above it.
+   
+   We target:
+   - [role="listbox"] - Select dropdown options
+   - [data-slot="select-content"] - Select content wrapper
+   - [data-radix-select-content] - Radix Select content
+   - [data-radix-combobox-content] - Combobox content
+   ========================================================================== */
+
+/* Select/Combobox content - MUST be above dialog (z-index 9999) */
+[role="listbox"],
+[data-slot="select-content"],
+[data-radix-select-content],
+[data-radix-select-viewport],
+[data-radix-combobox-content] {
+  z-index: 10000 !important;
+}
+
+/* The popper wrapper containing Select content needs high z-index too */
+[data-radix-popper-content-wrapper]:has([role="listbox"]),
+[data-radix-popper-content-wrapper]:has([data-slot="select-content"]) {
+  z-index: 10000 !important;
+}
+
+/* Ensure Select content has proper styling */
+[role="listbox"],
+[data-slot="select-content"] {
+  background-color: var(--popover, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Select items styling */
+[role="listbox"] [role="option"],
+[data-slot="select-item"] {
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  cursor: pointer !important;
+}
+
+[role="listbox"] [role="option"]:hover,
+[role="listbox"] [role="option"][data-highlighted],
+[data-slot="select-item"]:hover,
+[data-slot="select-item"][data-highlighted] {
+  background-color: var(--accent, hsl(0 0% 96.1%)) !important;
+}
+
+/* ==========================================================================
+   CRITICAL FIX: Hide dropdown menus when a dialog is open
+   
+   When a dialog opens from within a dropdown menu (e.g., Delete confirmation),
+   the dropdown stays visible because Radix portals are siblings at body level.
+   
+   This uses :has() to detect when a dialog overlay is present and hides
+   dropdown menu content (but NOT select content, popover content, etc.).
+   
+   We specifically target:
+   - [data-slot="dropdown-menu-content"] - dropdown menus
+   - [data-slot="context-menu-content"] - context menus
+   
+   We do NOT hide:
+   - [role="listbox"] - Select dropdowns (should stay visible in dialogs)
+   - [data-slot="popover-content"] - date pickers, etc.
+   - [data-slot="tooltip-content"] - tooltips
+   ========================================================================== */
+
+/* When a dialog overlay is visible, hide dropdown and context menus (but NOT selects) */
+body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-content-wrapper]:has([data-slot="dropdown-menu-content"]),
+body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-content-wrapper]:has([data-slot="context-menu-content"]) {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ==========================================================================
+   CRITICAL FIX: Dropdown menu height constraints
+   
+   Radix UI calculates available height based on viewport and container
+   constraints. In embedded SDK scenarios where the container has
+   overflow:hidden, this can cause dropdowns to be truncated.
+   
+   We ensure dropdowns have a reasonable min-height and can scroll if needed.
+   ========================================================================== */
+
+/* Ensure dropdown menus have adequate height and scroll when needed */
+[data-slot="dropdown-menu-content"] {
+  min-height: auto !important;
+  max-height: min(var(--radix-dropdown-menu-content-available-height, 400px), 400px) !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure context menus also have proper height */
+[data-slot="context-menu-content"] {
+  min-height: auto !important;
+  max-height: min(var(--radix-context-menu-content-available-height, 400px), 400px) !important;
+  overflow-y: auto !important;
+}
+
+/* ==========================================================================
+   Radix UI Component Styling
+   Ensure Radix components have proper styling regardless of host CSS
+   ========================================================================== */
+
+/* Popover content - ensure proper background, border, and shadow */
+[data-radix-portal] [data-slot="popover-content"] {
+  background-color: var(--popover, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Calendar component styling */
+[data-radix-portal] [data-slot="calendar"],
+[data-slot="popover-content"] [data-slot="calendar"] {
+  background-color: var(--background, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+}
+
+/* Calendar day buttons - ensure proper styling */
+[data-radix-portal] [data-slot="calendar"] button,
+[data-slot="popover-content"] [data-slot="calendar"] button {
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+}
+
+/* Calendar weekday headers - muted text */
+[data-radix-portal] [data-slot="calendar"] .rdp-weekday,
+[data-slot="popover-content"] [data-slot="calendar"] .rdp-weekday {
+  color: var(--muted-foreground, hsl(0 0% 45.1%)) !important;
+}
+
+/* Outside days in calendar - muted text */
+[data-radix-portal] [data-slot="calendar"] .rdp-outside,
+[data-slot="popover-content"] [data-slot="calendar"] .rdp-outside {
+  color: var(--muted-foreground, hsl(0 0% 45.1%)) !important;
+  opacity: 0.5 !important;
+}
+
+/* Dropdown menu content - ensure proper background and text color */
+[data-radix-portal] [data-slot="dropdown-menu-content"],
+[data-radix-portal] [role="menu"] {
+  background-color: var(--popover, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+}
+
+/* Dropdown menu items - default dark text */
+[data-radix-portal] [data-slot="dropdown-menu-item"],
+[data-radix-portal] [role="menuitem"] {
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+}
+
+/* CRITICAL: Destructive variant items (Delete, Remove, etc.) - RED text */
+/* These must have higher specificity to override host app CSS */
+/* Supports both data-variant="destructive" AND Tailwind class .text-destructive */
+[data-radix-portal] [data-slot="dropdown-menu-item"][data-variant="destructive"],
+[data-radix-portal] [role="menuitem"][data-variant="destructive"],
+[data-slot="dropdown-menu-item"][data-variant="destructive"],
+[role="menuitem"][data-variant="destructive"],
+[data-radix-portal] [data-slot="dropdown-menu-item"].text-destructive,
+[data-radix-portal] [role="menuitem"].text-destructive,
+[data-slot="dropdown-menu-item"].text-destructive,
+[role="menuitem"].text-destructive {
+  color: hsl(350 89% 60%) !important;
+}
+
+/* Destructive variant icons - also RED */
+[data-radix-portal] [data-slot="dropdown-menu-item"][data-variant="destructive"] svg,
+[data-radix-portal] [role="menuitem"][data-variant="destructive"] svg,
+[data-slot="dropdown-menu-item"][data-variant="destructive"] svg,
+[role="menuitem"][data-variant="destructive"] svg,
+[data-radix-portal] [data-slot="dropdown-menu-item"].text-destructive svg,
+[data-radix-portal] [role="menuitem"].text-destructive svg,
+[data-slot="dropdown-menu-item"].text-destructive svg,
+[role="menuitem"].text-destructive svg {
+  color: hsl(350 89% 60%) !important;
+}
+
+/* Muted foreground for icons in non-destructive items */
+[data-radix-portal] [data-slot="dropdown-menu-item"]:not([data-variant="destructive"]) svg,
+[data-radix-portal] [role="menuitem"]:not([data-variant="destructive"]) svg {
+  color: var(--muted-foreground, hsl(0 0% 45.1%)) !important;
+}
+
+/* Context menu items - same treatment */
+[data-radix-portal] [data-slot="context-menu-item"][data-variant="destructive"],
+[data-radix-portal] [role="menuitem"][data-variant="destructive"] {
+  color: hsl(350 89% 60%) !important;
+}
+
+/* Date range picker popover - needs full width for 2 calendars side by side */
+/* Override any host app min-width/max-width constraints on calendar popovers */
+[data-radix-portal] [data-slot="popover-content"].w-auto,
+[data-radix-portal] .w-auto[data-slot="popover-content"],
+[data-slot="popover-content"].w-auto,
+.w-auto[data-slot="popover-content"] {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+}
+
+/* Calendar popover needs enough width for 2 months side by side */
+[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]),
+[data-slot="popover-content"]:has([data-slot="calendar"]) {
+  width: auto !important;
+  min-width: fit-content !important;
+  max-width: none !important;
+}
+
+/* Ensure calendars within popovers display properly */
+[data-radix-portal] [data-slot="calendar"],
+[data-slot="popover-content"] [data-slot="calendar"] {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 1rem !important;
+}
+
+/* Calendar month tables - ensure full 7-day width */
+[data-radix-portal] [data-slot="calendar"] table,
+[data-slot="popover-content"] [data-slot="calendar"] table {
+  width: auto !important;
+  min-width: auto !important;
+  table-layout: auto !important;
+}
+
+/* Calendar day cells - ensure proper sizing */
+[data-radix-portal] [data-slot="calendar"] td,
+[data-slot="popover-content"] [data-slot="calendar"] td {
+  padding: 0 !important;
+  text-align: center !important;
+  width: auto !important;
+}
+
+/* ==========================================================================
+   Calendar / Date Range Picker Styling
+   CRITICAL: These rules must override host app CSS that sets all popover
+   elements to a single color (e.g., [data-slot='popover-content'] * { color: #111827 })
+   ========================================================================== */
+
+/* Calendar selected date range - START and END dates with purple/primary background */
+/* Uses data attributes: data-range-start, data-range-end, data-selected-single */
+/* HIGHEST SPECIFICITY to override host [data-slot='popover-content'] * rules */
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-start="true"],
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-end="true"],
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-selected-single="true"],
+[data-slot="popover-content"] [data-slot="calendar"] button[data-range-start="true"],
+[data-slot="popover-content"] [data-slot="calendar"] button[data-range-end="true"],
+[data-slot="popover-content"] [data-slot="calendar"] button[data-selected-single="true"],
+button[data-range-start="true"],
+button[data-range-end="true"],
+button[data-selected-single="true"] {
+  background-color: hsl(262 83% 58%) !important;
+  color: #ffffff !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Calendar range middle days - light purple/accent background */
+/* Uses data attribute: data-range-middle */
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-middle="true"],
+[data-slot="popover-content"] [data-slot="calendar"] button[data-range-middle="true"],
+button[data-range-middle="true"] {
+  background-color: hsl(262 83% 95%) !important;
+  color: hsl(262 83% 30%) !important;
+  border-radius: 0 !important;
+}
+
+/* Calendar day cell with selected state - parent td background for range */
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] td[data-selected="true"],
+[data-slot="popover-content"] [data-slot="calendar"] td[data-selected="true"],
+td[data-selected="true"] {
+  background-color: hsl(262 83% 95%) !important;
+}
+
+/* Calendar day buttons - ensure proper base styling (black text for non-selected) */
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-slot="button"],
+[data-slot="popover-content"] [data-slot="calendar"] button[data-slot="button"] {
+  color: hsl(0 0% 3.9%) !important;
+  font-size: 0.875rem !important;
+  background-color: transparent !important;
+}
+
+/* Calendar today indicator - subtle background (when not selected) */
+[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-today="true"]:not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]),
+[data-slot="popover-content"] [data-slot="calendar"] button[data-today="true"]:not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]) {
+  background-color: hsl(0 0% 96.1%) !important;
+  color: hsl(0 0% 9%) !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Clear button in date picker - primary/purple color */
+/* Target buttons with text-primary class */
+[data-radix-portal] [data-slot="popover-content"] button.text-primary,
+[data-radix-portal] [data-slot="popover-content"] .text-primary,
+[data-slot="popover-content"] button.text-primary,
+[data-slot="popover-content"] .text-primary,
+.text-primary {
+  color: hsl(262 83% 58%) !important;
+}
+
+/* Link variant buttons - primary color (Clear button uses this) */
+[data-radix-portal] [data-slot="popover-content"] button[data-variant="link"],
+[data-slot="popover-content"] button[data-variant="link"],
+button[data-variant="link"] {
+  color: hsl(262 83% 58%) !important;
+}
+
+/* Time picker input fields - proper border and styling */
+[data-radix-portal] [data-slot="popover-content"] input[type="text"],
+[data-radix-portal] [data-slot="popover-content"] input[type="number"],
+[data-radix-portal] [data-slot="popover-content"] input:not([type]),
+[data-slot="popover-content"] input[type="text"],
+[data-slot="popover-content"] input[type="number"],
+[data-slot="popover-content"] input:not([type]) {
+  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  border-radius: 0.375rem !important;
+  background-color: var(--background, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+/* Time picker select (AM/PM) - proper styling */
+[data-radix-portal] [data-slot="popover-content"] select,
+[data-slot="popover-content"] select {
+  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  border-radius: 0.375rem !important;
+  background-color: var(--background, #ffffff) !important;
+  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+/* ==========================================================================
+   Dark Mode Support
+   Ensure dark mode variables are respected
+   ========================================================================== */
+
+.dark .ap-sdk-root,
+.ap-sdk-root.dark {
+  color: var(--foreground, #fafafa);
+}
+
+.dark [data-radix-portal],
+[data-radix-portal].dark {
+  color: var(--foreground, #fafafa);
+}
+
+/* ==========================================================================
+   Sonner Toast Positioning Fix
+   Toasts render in a portal at document body level, so we use fixed positioning
+   to ensure they appear correctly in the SDK context.
+   ========================================================================== */
+
+/* Sonner toast container - fixed position within viewport */
+[data-sonner-toaster] {
+  position: fixed !important;
+  z-index: 10001 !important;
+  pointer-events: none !important;
+}
+
+/* Individual toasts should be clickable */
+[data-sonner-toast] {
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+}
+
+/* Bottom-right positioning (default) */
+[data-sonner-toaster][data-x-position="right"][data-y-position="bottom"] {
+  bottom: 16px !important;
+  right: 16px !important;
+  top: auto !important;
+  left: auto !important;
+}
