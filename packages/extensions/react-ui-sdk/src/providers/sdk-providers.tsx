@@ -7,12 +7,24 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { Suspense } from 'react';
-import { RouterProvider, createMemoryRouter, RouteObject } from 'react-router-dom';
+import { RouterProvider, createMemoryRouter, RouteObject, useLocation, Outlet } from 'react-router-dom';
 import { ReactUISDKConfig } from '../types';
 import { initializeRuntimeEEChecks } from '../utils/runtime-ee-check';
 
 // Initialize i18n for translations - must be imported before any components that use translations
 import '../../../web/src/i18n';
+
+// Route display component - shows current route in console
+const RouteDisplay = () => {
+  const location = useLocation();
+  
+  React.useEffect(() => {
+    console.log('[Activepieces SDK] Current route:', location.pathname);
+  }, [location.pathname]);
+  
+  // @ts-expect-error - React 18/19 type incompatibility
+  return <Outlet />; // Render child routes
+};
 
 // Loading fallback component
 const LoadingFallback = () => (
@@ -222,7 +234,17 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
   const router = React.useMemo(() => {
     if (routes.length > 0) {
       const startRoute = initialRoute || routes[0]?.path || '/';
-      return createMemoryRouter(routes, { 
+      console.log('[Activepieces SDK] Initializing with route:', startRoute);
+      console.log('[Activepieces SDK] Available routes:', routes.map(r => r.path));
+      
+      // Wrap all routes with RouteDisplay for logging
+      const wrappedRoutes: RouteObject[] = [{
+        path: '/',
+        element: <RouteDisplay />,
+        children: routes
+      }];
+      
+      return createMemoryRouter(wrappedRoutes, { 
         initialEntries: [startRoute] 
       });
     }

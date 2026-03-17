@@ -59,20 +59,49 @@ function DropdownMenuContent({
     if (contentRef) {
       const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
       if (wrapper) {
-        // Check if transform has percentage (indicates broken positioning)
-        const transform = wrapper.style.transform;
-        if (transform && transform.includes('%')) {
-          // Find the trigger element
-          const trigger = document.querySelector('[data-slot="dropdown-menu-trigger"][data-state="open"]') as HTMLElement;
-          if (trigger) {
-            const triggerRect = trigger.getBoundingClientRect();
-            const contentWidth = contentRef.offsetWidth || 160;
-            // Override with correct pixel positioning - align to right edge of trigger
-            wrapper.style.transform = 'none';
-            wrapper.style.top = `${triggerRect.bottom + sideOffset}px`;
-            // Align right edge of dropdown with right edge of trigger
-            wrapper.style.left = `${triggerRect.right - contentWidth}px`;
+        // Find the trigger element
+        const trigger = document.querySelector('[data-slot="dropdown-menu-trigger"][data-state="open"]') as HTMLElement;
+        if (trigger) {
+          const triggerRect = trigger.getBoundingClientRect();
+          const contentHeight = contentRef.offsetHeight || 200;
+          const contentWidth = contentRef.offsetWidth || 160;
+          const viewportHeight = window.innerHeight;
+          const viewportWidth = window.innerWidth;
+          
+          // Check if there's enough space below the trigger
+          const spaceBelow = viewportHeight - triggerRect.bottom - 20; // 20px padding
+          const spaceAbove = triggerRect.top - 20;
+          
+          // Determine vertical position (flip to top if not enough space below)
+          let top: number;
+          if (spaceBelow >= contentHeight) {
+            // Enough space below - position below trigger
+            top = triggerRect.bottom + sideOffset;
+          } else if (spaceAbove >= contentHeight) {
+            // Not enough below but enough above - position above trigger
+            top = triggerRect.top - contentHeight - sideOffset;
+          } else {
+            // Not enough space either way - position at best available spot
+            if (spaceBelow > spaceAbove) {
+              top = triggerRect.bottom + sideOffset;
+            } else {
+              top = Math.max(10, triggerRect.top - contentHeight - sideOffset);
+            }
           }
+          
+          // Calculate horizontal position - align right edge with trigger
+          let left = triggerRect.right - contentWidth;
+          // Ensure it doesn't go off-screen left
+          if (left < 10) left = 10;
+          // Ensure it doesn't go off-screen right
+          if (left + contentWidth > viewportWidth - 10) {
+            left = viewportWidth - contentWidth - 10;
+          }
+          
+          // Override Radix positioning
+          wrapper.style.transform = 'none';
+          wrapper.style.top = `${top}px`;
+          wrapper.style.left = `${left}px`;
         }
       }
     }
