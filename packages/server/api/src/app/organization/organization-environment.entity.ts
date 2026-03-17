@@ -1,3 +1,8 @@
+/**
+ * BMP Entity - Organization Environment
+ * This entity is part of the BMP (Business Process Management) extension.
+ * Entity definition kept in core for TypeORM compilation compatibility.
+ */
 import { OrganizationEnvironment } from '@activepieces/shared'
 import { EntitySchema } from 'typeorm'
 import { BaseColumnSchemaPart } from '../database/database-common'

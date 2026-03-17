@@ -1,3 +1,8 @@
+/**
+ * BMP Entity - Account Switching Activity
+ * This entity is part of the BMP (Business Process Management) extension.
+ * Entity definition kept in core for TypeORM compilation compatibility.
+ */
 import { EntitySchema } from 'typeorm'
 import {
     BaseColumnSchemaPart,
