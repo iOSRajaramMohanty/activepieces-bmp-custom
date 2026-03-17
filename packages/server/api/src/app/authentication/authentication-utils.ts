@@ -9,6 +9,7 @@ import { userService } from '../user/user-service'
 import { userInvitationsService } from '../user-invitations/user-invitation.service'
 import { accessTokenManager } from './lib/access-token-manager'
 import { userIdentityService } from './user-identity/user-identity-service'
+import { authHooks } from './auth-hooks'
 
 export const authenticationUtils = (log: FastifyBaseLogger) => ({
     async assertUserIsInvitedToPlatformOrProject({
@@ -41,7 +42,8 @@ export const authenticationUtils = (log: FastifyBaseLogger) => ({
     async getProjectAndToken(params: GetProjectAndTokenParams): Promise<AuthenticationResponse> {
         const user = await userService(log).getOneOrFail({ id: params.userId })
         await userService(log).updateLastActiveDate({ id: params.userId })
-        if (user.platformRole === PlatformRole.SUPER_ADMIN || user.platformRole === PlatformRole.OWNER) {
+        // Use authHooks to check if role should skip project assignment
+        if (authHooks.get(log).shouldSkipProjectCheck(user.platformRole)) {
             const identity = await userIdentityService(log).getOneOrFail({ id: user.identityId })
             if (!identity.verified) {
                 throw new ActivepiecesError({

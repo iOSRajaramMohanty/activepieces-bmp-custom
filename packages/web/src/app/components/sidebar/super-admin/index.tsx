@@ -1,6 +1,8 @@
 import { PlatformRole } from '@activepieces/shared';
 import { t } from 'i18next';
+import { Navigate } from 'react-router-dom';
 
+import { isBmpEnabled } from '@/app/routes/bmp-routes';
 import { FileHeartIcon } from '@/components/icons/file-heart';
 import { MousePointerClickIcon } from '@/components/icons/mouse-pointer-click';
 import { PuzzleIcon } from '@/components/icons/puzzle';
@@ -26,6 +28,12 @@ import { SidebarUser } from '../sidebar-user';
 export function SuperAdminSidebar() {
   const { data: currentUser } = userHooks.useCurrentUser();
   
+  // Super Admin sidebar only shows when BMP is enabled
+  // If BMP is disabled, redirect to platform users
+  if (!isBmpEnabled()) {
+    return <Navigate to="/platform/users" replace />;
+  }
+
   const isSuperAdmin = currentUser?.platformRole === PlatformRole.SUPER_ADMIN;
 
   // For Super Admin - only show the dashboard

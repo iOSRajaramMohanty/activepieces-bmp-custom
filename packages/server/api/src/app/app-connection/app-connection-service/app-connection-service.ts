@@ -59,10 +59,13 @@ import { appConnectionHandler } from './app-connection.handler'
 import { oauth2Handler } from './oauth2'
 import { oauth2Util } from './oauth2/oauth2-util'
 import { organizationEnvironmentService } from '../../organization/organization-environment.service'
+import { connectionHooks } from '../connection-hooks'
 export const appConnectionsRepo = repoFactory(AppConnectionEntity)
 
-const isBmpPiece = (pieceName: string): boolean =>
-    pieceName === '@activepieces/piece-ada-bmp'
+// Use connectionHooks to check if a piece is a BMP piece
+// Default: returns false; BMP override: returns true for '@activepieces/piece-ada-bmp'
+const isBmpPiece = (pieceName: string, log: FastifyBaseLogger): boolean =>
+    connectionHooks.get(log).isBmpPiece(pieceName)
 
 export const appConnectionService = (log: FastifyBaseLogger) => ({
     async upsert(params: UpsertParams): Promise<AppConnectionWithoutSensitiveData> {
@@ -96,7 +99,7 @@ export const appConnectionService = (log: FastifyBaseLogger) => ({
         const connectionMetadata: Metadata = {
             ...(metadata ?? {}),
             ...(creatorPlatformRole ? { creatorPlatformRole } : {}),
-            ...(isBmpPiece(pieceName) && value && typeof value === 'object' && 'props' in value
+            ...(isBmpPiece(pieceName, log) && value && typeof value === 'object' && 'props' in value
                 ? (value.props && typeof value.props === 'object' && 'environment' in value.props
                     ? { environment: (value.props as Record<string, unknown>).environment }
                     : {})
@@ -552,8 +555,8 @@ const engineValidateAuth = async (
             environmentMetadata = orgEnv.metadata as Record<string, unknown>
         }
     }
-    const hasBmpApiUrl = isBmpPiece(pieceName) && !!environmentMetadata?.ADA_BMP_API_URL
-    if (isBmpPiece(pieceName) && (!project?.organizationId || !authEnvironment || !hasBmpApiUrl)) {
+    const hasBmpApiUrl = isBmpPiece(pieceName, log) && !!environmentMetadata?.ADA_BMP_API_URL
+    if (isBmpPiece(pieceName, log) && (!project?.organizationId || !authEnvironment || !hasBmpApiUrl)) {
         throw new ActivepiecesError({
             code: ErrorCode.VALIDATION,
             params: {

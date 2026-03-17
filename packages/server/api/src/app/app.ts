@@ -75,8 +75,12 @@ import { platformBackgroundJobs } from './platform/platform-jobs'
 import { platformModule } from './platform/platform.module'
 import { projectHooks } from './project/project-hooks'
 import { projectModule } from './project/project-module'
+// BMP modules - conditionally loaded based on AP_BMP_ENABLED
+// Import references kept for type checking, actual registration is conditional
 import { organizationModule } from './organization/organization.module'
 import { superAdminModule } from './super-admin/super-admin.module'
+import { authHooks } from './authentication/auth-hooks'
+import { connectionHooks } from './app-connection/connection-hooks'
 import { storeEntryModule } from './store-entry/store-entry.module'
 import { tablesModule } from './tables/tables.module'
 import { templateModule } from './template/template.module'
@@ -200,8 +204,34 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(authenticationModule)
     await app.register(triggerModule)
     await app.register(platformModule)
-    await app.register(organizationModule)
-    await app.register(superAdminModule)
+    
+    // BMP Modules - Conditionally registered based on AP_BMP_ENABLED
+    const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
+    if (bmpEnabled) {
+        app.log.info('[BMP] BMP is enabled, registering organization and super-admin modules')
+        await app.register(organizationModule)
+        await app.register(superAdminModule)
+        
+        // Set BMP-specific hooks to override default behavior
+        authHooks.set(_log => ({
+            isPrivilegedRole: (role) => ['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(role ?? ''),
+            getDefaultRoute: (role) => {
+                if (role === 'SUPER_ADMIN') return '/platform/super-admin'
+                if (role === 'OWNER') return '/platform/owner-dashboard'
+                return '/flows'
+            },
+            shouldSkipProjectCheck: (role) => role === 'SUPER_ADMIN',
+        }))
+        connectionHooks.set(_log => ({
+            isBmpPiece: (name) => name === '@activepieces/piece-ada-bmp',
+            canDeleteConnection: (conn) => !conn.externalId?.startsWith('bmp-auto-'),
+            getEnvironmentMetadata: async () => undefined,
+        }))
+        app.log.info('[BMP] BMP hooks registered')
+    } else {
+        app.log.info('[BMP] BMP is disabled, skipping organization and super-admin modules')
+    }
+    
     await app.register(humanInputModule)
     await app.register(tagsModule)
     await app.register(mcpServerModule)

@@ -186,6 +186,15 @@ const systemPropValidators: {
     // Webhook payload limits
     [AppSystemProp.MAX_WEBHOOK_PAYLOAD_SIZE_MB]: numberValidator,
     [AppSystemProp.WEBHOOK_PAYLOAD_INLINE_THRESHOLD_KB]: numberValidator,
+
+    // BMP Extension
+    [AppSystemProp.BMP_ENABLED]: booleanValidator,
+    [AppSystemProp.BMP_ORGANIZATIONS_ENABLED]: booleanValidator,
+    [AppSystemProp.BMP_SUPER_ADMIN_ENABLED]: booleanValidator,
+    [AppSystemProp.BMP_ACCOUNT_SWITCHING_ENABLED]: booleanValidator,
+
+    // PM2 support
+    [AppSystemProp.PM2_ENABLED]: booleanValidator,
 }
 
 

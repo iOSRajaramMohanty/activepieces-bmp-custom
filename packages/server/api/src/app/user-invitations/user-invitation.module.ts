@@ -69,19 +69,44 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                     // ADMIN invite: organization only, no environment; multiple Admins per org allowed
                     if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
                         const body = request.body as any;
-                        if (!body.organizationName) {
+                        // Accept either organizationName (for creating new) or organizationId (for existing)
+                        if (!body.organizationName && !body.organizationId) {
                             throw new ActivepiecesError({
                                 code: ErrorCode.VALIDATION,
                                 params: {
-                                    message: 'Organization name is required when inviting admins',
+                                    message: 'Organization name or organization ID is required when inviting admins',
                                 },
                             })
                         }
                         
-                        const organization = await organizationService.getOrCreate({
-                            name: body.organizationName,
-                            platformId: request.principal.platform.id,
-                        })
+                        let organization;
+                        if (body.organizationId) {
+                            // Use existing organization by ID
+                            organization = await organizationService.getById(body.organizationId)
+                            if (!organization) {
+                                throw new ActivepiecesError({
+                                    code: ErrorCode.ENTITY_NOT_FOUND,
+                                    params: {
+                                        message: `Organization with ID ${body.organizationId} not found`,
+                                    },
+                                })
+                            }
+                            // Verify organization belongs to this platform
+                            if (organization.platformId !== request.principal.platform.id) {
+                                throw new ActivepiecesError({
+                                    code: ErrorCode.AUTHORIZATION,
+                                    params: {
+                                        message: 'Organization does not belong to this platform',
+                                    },
+                                })
+                            }
+                        } else {
+                            // Create or get organization by name
+                            organization = await organizationService.getOrCreate({
+                                name: body.organizationName,
+                                platformId: request.principal.platform.id,
+                            })
+                        }
                         organizationId = organization.id
                         // No environment for ADMIN; org's shared project used on accept
                         

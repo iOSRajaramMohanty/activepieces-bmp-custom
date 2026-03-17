@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 
@@ -18,6 +18,7 @@ const getAPIBaseUrl = (): string => {
 
 // Module-level socket instance (created lazily on first access)
 let socketInstance: Socket | null = null;
+let socketConnectionCount = 0;
 
 const getOrCreateSocket = (): Socket => {
   if (!socketInstance) {
@@ -28,6 +29,8 @@ const getOrCreateSocket = (): Socket => {
       path: '/api/socket.io',
       autoConnect: false,
       reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
   }
   return socketInstance;
@@ -43,47 +46,81 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const token = authenticationSession.getToken();
   const projectId = authenticationSession.getProjectId();
   const toastIdRef = useRef<string | null>(null);
+  const isCleaningUpRef = useRef(false);
   
   // Get the socket instance (will reuse existing or create new with current config)
   const socket = useMemo(() => getOrCreateSocket(), []);
 
+  const handleConnect = useCallback(() => {
+    if (toastIdRef.current) {
+      toast.dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+    console.log('connected to socket');
+  }, []);
+
+  const handleDisconnect = useCallback((reason: string) => {
+    // Don't show toast if we're cleaning up (component unmounting)
+    if (isCleaningUpRef.current) {
+      return;
+    }
+    
+    if (!toastIdRef.current) {
+      const id = toast('Connection Lost', {
+        id: 'websocket-disconnected',
+        description: 'We are trying to reconnect...',
+        duration: Infinity,
+      });
+      toastIdRef.current = id?.toString() ?? null;
+    }
+    if (reason === 'io server disconnect') {
+      socket.connect();
+    }
+  }, [socket]);
+
   useEffect(() => {
+    isCleaningUpRef.current = false;
+    
     if (token) {
       socket.auth = { token, projectId };
+      
+      // Remove old listeners before adding new ones
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      
+      // Add listeners
+      socket.on('connect', handleConnect);
+      socket.on('disconnect', handleDisconnect);
+      
+      // Track connection count to prevent reconnect on Strict Mode remount
+      socketConnectionCount++;
+      const currentCount = socketConnectionCount;
+      
       if (!socket.connected) {
         socket.connect();
-
-        socket.on('connect', () => {
-          if (toastIdRef.current) {
-            toast.dismiss(toastIdRef.current);
-            toastIdRef.current = null;
-          }
-          console.log('connected to socket');
-        });
-
-        socket.on('disconnect', (reason) => {
-          if (!toastIdRef.current) {
-            const id = toast('Connection Lost', {
-              id: 'websocket-disconnected',
-              description: 'We are trying to reconnect...',
-              duration: Infinity,
-            });
-            toastIdRef.current = id?.toString() ?? null;
-          }
-          if (reason === 'io server disconnect') {
-            socket.connect();
-          }
-        });
       }
+      
+      return () => {
+        isCleaningUpRef.current = true;
+        socket.off('connect', handleConnect);
+        socket.off('disconnect', handleDisconnect);
+        
+        // Only disconnect if this is the last component using the socket
+        // This prevents disconnection during React Strict Mode double-invocation
+        if (currentCount === socketConnectionCount) {
+          // Use setTimeout to allow React Strict Mode's immediate remount
+          setTimeout(() => {
+            if (currentCount === socketConnectionCount && !token) {
+              socket.disconnect();
+            }
+          }, 100);
+        }
+      };
     } else {
       socket.disconnect();
+      return undefined;
     }
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.disconnect();
-    };
-  }, [token, projectId, socket]);
+  }, [token, projectId, socket, handleConnect, handleDisconnect]);
 
   return (
     <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>

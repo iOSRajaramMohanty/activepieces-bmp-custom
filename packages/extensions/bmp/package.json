@@ -10,6 +10,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./hooks": {
+      "import": "./dist/hooks/index.js",
+      "types": "./dist/hooks/index.d.ts"
+    },
     "./server": {
       "import": "./dist/server/index.js",
       "types": "./dist/server/index.d.ts"
@@ -32,10 +36,10 @@
     "bmp",
     "extension",
     "multi-tenant",
-    "organization"
+    "organization",
+    "hooks"
   ],
   "dependencies": {
-    "@activepieces/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.33"
   },
   "devDependencies": {

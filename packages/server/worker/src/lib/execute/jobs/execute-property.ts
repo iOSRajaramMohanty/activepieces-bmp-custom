@@ -43,6 +43,7 @@ export const executePropertyJob: JobHandler<ExecutePropertyJobData> = {
                     internalApiUrl: ctx.internalApiUrl,
                     publicApiUrl: ctx.publicApiUrl,
                     timeoutInSeconds,
+                    organizationEnvironmentMetadata: data.organizationEnvironmentMetadata,
                 },
                 { timeoutInSeconds },
             )

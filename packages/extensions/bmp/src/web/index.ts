@@ -7,6 +7,7 @@
  * - Owner dashboard
  * - Account switching UI
  * - Environment selection components
+ * - Role-based utilities
  */
 
 // Routes
@@ -20,3 +21,6 @@ export * from './hooks'
 
 // API
 export * from './api'
+
+// Facade (utilities for mixed files)
+export * from './facade'

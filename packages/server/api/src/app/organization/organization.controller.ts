@@ -1,25 +1,29 @@
-import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
-import { Type } from '@sinclair/typebox'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 import { organizationService } from './organization.service'
 import { organizationEnvironmentService } from './organization-environment.service'
 import {
-    CreateOrganizationRequest,
-    CheckAdminAvailabilityRequest,
-    CheckAdminAvailabilityResponse,
-    Organization,
-    OrganizationEnvironment,
     EnvironmentType,
     ActivepiecesError,
     ErrorCode,
     PrincipalType,
     PlatformRole,
-    SeekPage,
 } from '@activepieces/shared'
 import { StatusCodes } from 'http-status-codes'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 
-export const organizationController: FastifyPluginAsyncTypebox = async (app) => {
+// Zod schemas for request validation (converted from TypeBox for Zod validator compatibility)
+const CreateOrganizationRequestZod = z.object({
+    name: z.string().min(1).max(50).regex(/^[A-Z]+$/, 'Organization name must be uppercase letters only'),
+    platformId: z.string(),
+})
+
+const CheckAdminAvailabilityRequestZod = z.object({
+    organizationId: z.string(),
+    environment: z.enum(['DEVELOPMENT', 'STAGING', 'PRODUCTION']),
+})
+
+export const organizationController: FastifyPluginAsyncZod = async (app) => {
     // Create organization
     app.post('/', CreateOrganizationRequestParams, async (request, reply) => {
         const { name, platformId } = request.body as { name: string; platformId: string }
@@ -249,10 +253,11 @@ export const organizationController: FastifyPluginAsyncTypebox = async (app) => 
 
     // Check admin availability for org-env
     app.post('/check-admin', CheckAdminRequestParams, async (request) => {
-        const { organizationId, environment } = request.body as { organizationId: string; environment: EnvironmentType }
+        const body = request.body as { organizationId: string; environment: string }
+        const environment = body.environment as EnvironmentType
 
         return await organizationEnvironmentService.checkAdminAvailability({
-            organizationId,
+            organizationId: body.organizationId,
             environment
         })
     })
@@ -390,10 +395,8 @@ const CreateOrganizationRequestParams = {
     schema: {
         tags: ['organizations'],
         summary: 'Create an organization',
-        body: CreateOrganizationRequest,
-        response: {
-            [StatusCodes.CREATED]: Organization,
-        },
+        body: CreateOrganizationRequestZod,
+        // Response schema omitted due to TypeBox/Zod compatibility
     },
 }
 
@@ -469,9 +472,7 @@ const UpdateEnvironmentMetadataRequestParams = {
         body: z.object({
             metadata: z.unknown().optional(),
         }),
-        response: {
-            [StatusCodes.OK]: OrganizationEnvironment,
-        },
+        // Response schema omitted due to TypeBox/Zod compatibility
     },
 }
 
@@ -482,10 +483,8 @@ const CheckAdminRequestParams = {
     schema: {
         tags: ['organizations'],
         summary: 'Check if admin slot is available for organization-environment',
-        body: CheckAdminAvailabilityRequest,
-        response: {
-            [StatusCodes.OK]: CheckAdminAvailabilityResponse,
-        },
+        body: CheckAdminAvailabilityRequestZod,
+        // Response schema omitted due to TypeBox/Zod compatibility
     },
 }
 
@@ -496,7 +495,7 @@ const GetOrCreateOrganizationRequestParams = {
     schema: {
         tags: ['organizations'],
         summary: 'Get existing organization or create new one',
-        body: CreateOrganizationRequest,
+        body: CreateOrganizationRequestZod,
         // Response schema omitted due to TypeBox/Zod compatibility
     },
 }

@@ -4,6 +4,7 @@ import { ComponentType, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
 import { useAuthorization } from '@/hooks/authorization-hooks';
+import { isBmpEnabled, isBmpRoute } from '@/app/routes/bmp-routes';
 
 import { BotIcon } from '@/components/icons/bot';
 import {
@@ -263,16 +264,34 @@ export function PlatformSidebar() {
     ]),
   ];
 
-  // Filter out locked items and empty groups
+  // Filter out locked items, BMP routes (when BMP disabled), and empty groups
+  const bmpEnabled = isBmpEnabled();
   const fullGroups = fullGroupsRaw
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.locked),
+      items: group.items.filter((item) => {
+        // Filter out locked items
+        if (item.locked) return false;
+        // Filter out BMP routes when BMP is disabled
+        if (!bmpEnabled && isBmpRoute(item.to)) return false;
+        return true;
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  // Filter owner groups for BMP routes too
+  const filteredOwnerGroups = ownerGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!bmpEnabled && isBmpRoute(item.to)) return false;
+        return true;
+      }),
     }))
     .filter((group) => group.items.length > 0);
 
   // Use owner groups for Owner users, full groups for others
-  const groups = isOwner ? ownerGroups : fullGroups;
+  const groups = isOwner ? filteredOwnerGroups : fullGroups;
 
   // Hide "Back to app" for Super Admin and Owner users
   const showBackToApp = !isSuperAdmin && !isOwner;

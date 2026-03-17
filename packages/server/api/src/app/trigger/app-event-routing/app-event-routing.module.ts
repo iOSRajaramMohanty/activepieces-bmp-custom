@@ -28,7 +28,8 @@ import { payloadOffloader } from '../../workers/payload-offloader'
 import { triggerSourceService } from '../trigger-source/trigger-source-service'
 import { appEventRoutingService } from './app-event-routing.service'
 
-const appWebhooks: Record<string, Piece<PieceAuthProperty | undefined>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const appWebhooks: Record<string, Piece<any>> = {
     'ada-bmp': adaBmp,
     square,
     'facebook-leads': facebookLeads,

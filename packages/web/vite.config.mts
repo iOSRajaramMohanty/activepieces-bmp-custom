@@ -1,15 +1,40 @@
 /// <reference types='vitest' />
 import path from 'path';
+import fs from 'fs';
 
 import tsconfigPaths from 'vite-tsconfig-paths';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import checker from 'vite-plugin-checker';
 import tailwindcss from '@tailwindcss/vite';
 import customHtmlPlugin from './vite-plugins/html-plugin';
 
+// Load root .env file to get AP_BMP_ENABLED and other env vars
+function loadRootEnv() {
+  const rootEnvPath = path.resolve(__dirname, '../../.env');
+  const envVars: Record<string, string> = {};
+  
+  if (fs.existsSync(rootEnvPath)) {
+    const content = fs.readFileSync(rootEnvPath, 'utf-8');
+    content.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        if (key) {
+          envVars[key.trim()] = valueParts.join('=').trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    });
+  }
+  
+  return envVars;
+}
+
 export default defineConfig(({ command, mode }) => {
   const isDev = command === 'serve' || mode === 'development';
+  
+  // Load environment from root .env file
+  const rootEnv = loadRootEnv();
 
   const AP_TITLE = 'Activepieces';
   const AP_FAVICON = 'https://activepieces.com/favicon.ico';
@@ -95,6 +120,13 @@ export default defineConfig(({ command, mode }) => {
           ]
         : []),
     ],
+
+    // Expose BMP feature flag from environment (loaded from root .env)
+    define: {
+      'import.meta.env.VITE_BMP_ENABLED': JSON.stringify(
+        process.env.AP_BMP_ENABLED ?? rootEnv.AP_BMP_ENABLED ?? 'false'
+      ),
+    },
 
     build: {
       outDir: '../../dist/packages/web',

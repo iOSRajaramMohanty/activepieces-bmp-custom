@@ -5,7 +5,7 @@
  * 
  * The actual implementation files remain in packages/server/api/src/app/organization/
  * for compatibility with the Activepieces server architecture. This extension package
- * provides the public API and type definitions.
+ * provides the public API, type definitions, and facade interfaces.
  * 
  * Files location: packages/server/api/src/app/organization/
  * - organization.entity.ts - TypeORM entity for organizations
@@ -21,6 +21,9 @@
 // Re-export types from shared
 export * from '../../shared/organization'
 
+// Export facade interfaces and loaders
+export * from './facade'
+
 // Module paths for reference
 export const ORGANIZATION_MODULE_PATHS = {
     entity: 'packages/server/api/src/app/organization/organization.entity.ts',
@@ -31,5 +34,5 @@ export const ORGANIZATION_MODULE_PATHS = {
     environmentService: 'packages/server/api/src/app/organization/organization-environment.service.ts',
 } as const
 
-// Feature flag for BMP functionality
+// Feature flag for BMP organization functionality
 export const BMP_ORGANIZATION_ENABLED = true

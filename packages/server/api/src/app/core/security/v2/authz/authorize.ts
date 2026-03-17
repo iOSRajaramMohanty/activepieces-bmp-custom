@@ -5,6 +5,7 @@ import { system } from '../../../../helper/system/system'
 import { userService } from '../../../../user/user-service'
 import { AuthorizationRouteSecurity, ProjectAuthorizationConfig } from '../../authorization/authorization'
 import { AuthorizationType, RouteKind } from '../../authorization/common'
+import { authHooks } from '../../../../authentication/auth-hooks'
 
 export const authorizeOrThrow = async (principal: Principal, security: AuthorizationRouteSecurity, log: FastifyBaseLogger): Promise<void> => {
     if (security.kind === RouteKind.PUBLIC) {
@@ -35,7 +36,8 @@ async function assertPlatformIsOwnedByCurrentPrincipal(principal: Principal, log
         return
     }
     const user = await userService(log).getOneOrFail({ id: principal.id })
-    if (user.platformRole !== PlatformRole.ADMIN && user.platformRole !== PlatformRole.OWNER) {
+    // Use authHooks to check if role is privileged (ADMIN, OWNER, or SUPER_ADMIN when BMP enabled)
+    if (!authHooks.get(log).isPrivilegedRole(user.platformRole)) {
         throw new ActivepiecesError({
             code: ErrorCode.AUTHORIZATION,
             params: {

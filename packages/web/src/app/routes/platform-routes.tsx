@@ -8,6 +8,7 @@ import { PlatformDefaultRoute } from '@/app/guards/platform-default-route';
 
 import { PlatformLayout } from '../components/platform-layout';
 import { SuperAdminLayout } from '../components/super-admin-layout';
+import { filterBmpRoutes } from './bmp-routes';
 
 const SettingsBilling = React.lazy(() => import('./platform/billing'));
 const EventDestinationsPage = React.lazy(
@@ -85,7 +86,9 @@ function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<LoadingScreen />}>{children}</Suspense>;
 }
 
-export const platformRoutes = [
+// Note: BMP routes (/super-admin, /owner-dashboard, /platform/organizations) 
+// are filtered by filterBmpRoutes based on VITE_BMP_ENABLED
+const allPlatformRoutes = [
   {
     path: '/platform',
     element: (
@@ -399,3 +402,6 @@ export const platformRoutes = [
     ),
   },
 ];
+
+// Export filtered routes based on BMP enabled status
+export const platformRoutes = filterBmpRoutes(allPlatformRoutes);

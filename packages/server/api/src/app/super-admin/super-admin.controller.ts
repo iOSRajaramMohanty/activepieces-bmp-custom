@@ -1,5 +1,5 @@
-import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
-import { Type } from '@sinclair/typebox'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
+import { z } from 'zod'
 import { StatusCodes } from 'http-status-codes'
 import { ActivepiecesError, AuthenticationResponse, ErrorCode, FilteredPieceBehavior, PlatformRole, PrincipalType, apId, UserIdentityProvider, ProjectType } from '@activepieces/shared'
 import { securityAccess } from '../core/security/authorization/fastify-security'
@@ -18,7 +18,7 @@ import { defaultTheme } from '../flags/theme'
  * POST /super-admins (create) - No auth required (internal bootstrap)
  * All other routes - Require logged-in super admin token
  */
-export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
+export const superAdminController: FastifyPluginAsyncZod = async (app) => {
     
     // Middleware: skip auth for POST /super-admins (no token required). Other routes require super admin token.
     app.addHook('preHandler', async (request, reply) => {
@@ -53,7 +53,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -96,7 +96,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -134,11 +134,11 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                platformId: Type.String(),
+            params: z.object({
+                platformId: z.string(),
             }),
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -175,11 +175,11 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                platformId: Type.String(),
+            params: z.object({
+                platformId: z.string(),
             }),
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -214,9 +214,9 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    total: Type.Number(),
-                    tenants: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.object({
+                    total: z.number(),
+                    tenants: z.array(z.any()),
                 }),
             },
         },
@@ -269,7 +269,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -325,16 +325,16 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    totalPlatforms: Type.Number(),
-                    totalUsers: Type.Number(),
-                    totalProjects: Type.Number(),
-                    totalFlows: Type.Number(),
-                    totalSuperAdmins: Type.Number(),
-                    totalOwners: Type.Number(),
-                    totalAdmins: Type.Number(),
-                    totalOperators: Type.Number(),
-                    totalMembers: Type.Number(),
+                [StatusCodes.OK]: z.object({
+                    totalPlatforms: z.number(),
+                    totalUsers: z.number(),
+                    totalProjects: z.number(),
+                    totalFlows: z.number(),
+                    totalSuperAdmins: z.number(),
+                    totalOwners: z.number(),
+                    totalAdmins: z.number(),
+                    totalOperators: z.number(),
+                    totalMembers: z.number(),
                 }),
             },
         },
@@ -380,7 +380,7 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Array(Type.Any()),
+                [StatusCodes.OK]: z.array(z.any()),
             },
         },
     }, async (request) => {
@@ -414,18 +414,18 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.public(),
         },
         schema: {
-            body: Type.Object({
-                email: Type.String({ format: 'email' }),
-                password: Type.String({ minLength: 8, maxLength: 64 }),
-                firstName: Type.String({ minLength: 1 }),
-                lastName: Type.String({ minLength: 1 }),
+            body: z.object({
+                email: z.string().email(),
+                password: z.string().min(8).max(64),
+                firstName: z.string().min(1),
+                lastName: z.string().min(1),
             }),
             response: {
-                [StatusCodes.CREATED]: Type.Object({
-                    id: Type.String(),
-                    email: Type.String(),
-                    platformRole: Type.String(),
-                    message: Type.String(),
+                [StatusCodes.CREATED]: z.object({
+                    id: z.string(),
+                    email: z.string(),
+                    platformRole: z.string(),
+                    message: z.string(),
                 }),
             },
         },
@@ -508,19 +508,17 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                userId: Type.String(),
+            params: z.object({
+                userId: z.string(),
             }),
-            body: Type.Object({
-                platformRole: Type.Enum(PlatformRole, {
-                    description: 'New role (e.g. ADMIN to demote)',
-                }),
+            body: z.object({
+                platformRole: z.enum(['SUPER_ADMIN', 'OWNER', 'ADMIN', 'MEMBER', 'OPERATOR']),
             }),
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    message: Type.String(),
-                    platformRole: Type.String(),
+                [StatusCodes.OK]: z.object({
+                    success: z.boolean(),
+                    message: z.string(),
+                    platformRole: z.string(),
                 }),
             },
         },
@@ -587,14 +585,14 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                userId: Type.String(),
+            params: z.object({
+                userId: z.string(),
             }),
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    message: Type.String(),
-                    platformRole: Type.String(),
+                [StatusCodes.OK]: z.object({
+                    success: z.boolean(),
+                    message: z.string(),
+                    platformRole: z.string(),
                 }),
             },
         },
@@ -642,20 +640,20 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            body: Type.Object({
-                name: Type.String({ minLength: 1, maxLength: 100 }),
-                ownerEmail: Type.String({ format: 'email' }),
-                ownerPassword: Type.String({ minLength: 8 }),
-                ownerFirstName: Type.String({ minLength: 1 }),
-                ownerLastName: Type.String({ minLength: 1 }),
+            body: z.object({
+                name: z.string().min(1).max(100),
+                ownerEmail: z.string().email(),
+                ownerPassword: z.string().min(8),
+                ownerFirstName: z.string().min(1),
+                ownerLastName: z.string().min(1),
             }),
             response: {
-                [StatusCodes.CREATED]: Type.Object({
-                    id: Type.String(),
-                    name: Type.String(),
-                    ownerId: Type.String(),
-                    ownerEmail: Type.String(),
-                    message: Type.String(),
+                [StatusCodes.CREATED]: z.object({
+                    id: z.string(),
+                    name: z.string(),
+                    ownerId: z.string(),
+                    ownerEmail: z.string(),
+                    message: z.string(),
                 }),
             },
         },
@@ -753,13 +751,13 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                platformId: Type.String(),
+            params: z.object({
+                platformId: z.string(),
             }),
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    message: Type.String(),
+                [StatusCodes.OK]: z.object({
+                    success: z.boolean(),
+                    message: z.string(),
                 }),
             },
         },
@@ -951,10 +949,10 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
         },
         schema: {
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    message: Type.String(),
-                    deletedProjects: Type.Number(),
+                [StatusCodes.OK]: z.object({
+                    success: z.boolean(),
+                    message: z.string(),
+                    deletedProjects: z.number(),
                 }),
             },
         },
@@ -1006,13 +1004,13 @@ export const superAdminController: FastifyPluginAsyncTypebox = async (app) => {
             security: securityAccess.publicPlatform([PrincipalType.USER]),
         },
         schema: {
-            params: Type.Object({
-                userId: Type.String(),
+            params: z.object({
+                userId: z.string(),
             }),
             response: {
-                [StatusCodes.OK]: Type.Object({
-                    success: Type.Boolean(),
-                    message: Type.String(),
+                [StatusCodes.OK]: z.object({
+                    success: z.boolean(),
+                    message: z.string(),
                 }),
             },
         },

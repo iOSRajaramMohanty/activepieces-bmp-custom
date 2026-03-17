@@ -1,4 +1,5 @@
 import { ApId,
+    ActivepiecesError,
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,
