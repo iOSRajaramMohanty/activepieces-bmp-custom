@@ -63,13 +63,20 @@ function PopoverContent({
         wrapper.style.transform = 'none';
         wrapper.style.top = `${rect.bottom + sideOffset}px`;
         wrapper.style.left = `${rect.left}px`;
-        // Match the trigger width for proper alignment
-        wrapper.style.width = `${rect.width}px`;
-        wrapper.style.minWidth = `${rect.width}px`;
-        if (contentRef) {
-          contentRef.style.width = `${rect.width}px`;
-          contentRef.style.minWidth = `${rect.width}px`;
-          contentRef.style.maxWidth = `${rect.width}px`;
+        
+        // For SearchableSelect/Combobox popovers (role="combobox"), match the trigger width
+        // This ensures the dropdown has proper width even if inline styles had 0px initially
+        // Don't apply to regular filter popovers (they use normal buttons without combobox role)
+        const isCombobox = trigger.getAttribute('role') === 'combobox' || 
+                           trigger.querySelector('[role="combobox"]') !== null;
+        if (isCombobox) {
+          wrapper.style.width = `${rect.width}px`;
+          wrapper.style.minWidth = `${rect.width}px`;
+          if (contentRef) {
+            contentRef.style.width = `${rect.width}px`;
+            contentRef.style.minWidth = `${rect.width}px`;
+            contentRef.style.maxWidth = `${rect.width}px`;
+          }
         }
       }
     };

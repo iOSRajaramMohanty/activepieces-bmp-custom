@@ -20,6 +20,12 @@
    ========================================================================== */
 
 .ap-sdk-root {
+  /* Define CSS variables that Tailwind classes depend on */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --primary: #7c3aed;
+  --input: #e5e7eb;
+  
   /* Create a new stacking context - REDUCED containment to avoid layout issues */
   contain: paint;
   isolation: isolate;
@@ -40,6 +46,220 @@
   
   /* Prevent text size adjustment on orientation change */
   -webkit-text-size-adjust: 100%;
+
+  /* --------------------------------------------------------------------------
+     Embedded layout: Fill parent container completely, no extra padding
+     -------------------------------------------------------------------------- */
+  min-height: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+
+/* Remove padding from the outer flex container that wraps the sidebar layout */
+.ap-sdk-root > div.flex.flex-col.h-full.overflow-hidden,
+.ap-sdk-root > div.p-2.pt-3.pb-3,
+.ap-sdk-root > div[class*="p-2"][class*="pt-3"][class*="pb-3"],
+.ap-sdk-root div.flex-1.flex.flex-col.p-2.pt-3.pb-3.overflow-hidden,
+.ap-sdk-root .p-2.pt-3.pb-3,
+.ap-sdk-root .flex-1.p-2,
+.ap-sdk-root [class*="p-2"][class*="pt-3"][class*="pb-3"] {
+  padding: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Reduce horizontal padding from scrollable content area (px-4 -> px-2) */
+/* Add bottom padding to ensure last elements are fully visible when scrolled */
+.ap-sdk-root div.flex-1.overflow-auto.scrollbar-none.px-4,
+.ap-sdk-root .flex-1.overflow-auto.px-4,
+.ap-sdk-root .overflow-auto.px-4,
+.ap-sdk-root [class*="px-4"].overflow-auto {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+  padding-bottom: 4rem !important;
+}
+
+/* Ensure pagination row and its elements are fully visible */
+.ap-sdk-root [class*="Rows per page"],
+.ap-sdk-root button[data-slot="select-trigger"],
+.ap-sdk-root [data-slot="select-trigger"] {
+  overflow: visible !important;
+}
+
+/* Fix select trigger in pagination - ensure text is fully visible */
+.ap-sdk-root [data-slot="select-trigger"][data-size="sm"],
+.ap-sdk-root button[data-slot="select-trigger"].h-8,
+.ap-sdk-root button[data-slot="select-trigger"].h-9 {
+  min-height: 2.25rem !important;
+  height: auto !important;
+  line-height: 1.5 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Ensure select value text is visible */
+.ap-sdk-root [data-slot="select-value"],
+.ap-sdk-root [data-slot="select-trigger"] span {
+  line-height: 1.5 !important;
+  overflow: visible !important;
+}
+
+/* Direct wrapper from SDKProviders – must scroll; overrides inline overflow:hidden */
+.ap-sdk-root > div {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--background, #ffffff) !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border, #e5e7eb) !important;
+  box-sizing: border-box !important;
+}
+
+/* Flow builder / full-height routes use 100vh; in embed use parent height */
+.ap-sdk-root .max-h-\[100vh\] {
+  max-height: 100% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+/* Tailwind spacing override inside SDK (match original embed) */
+.ap-sdk-root .mb-5 {
+  margin-bottom: 1rem !important;
+}
+
+/* ==========================================================================
+   Migrated from angular-test-app (uncommented rules)
+   Keep SDK working without host overrides.
+   Scoped to SDK root + Radix portals used by the SDK.
+   ========================================================================== */
+
+/* Search inputs inside SDK/popovers */
+.ap-sdk-root input[placeholder*='Search'],
+.ap-sdk-root input[placeholder*='search'],
+[data-radix-portal] [data-slot='popover-content'] input[placeholder*='Search'],
+[data-radix-portal] [data-slot='popover-content'] input[placeholder*='search'],
+[data-radix-popper-content-wrapper] input[placeholder*='Search'],
+[data-radix-popper-content-wrapper] input[placeholder*='search'] {
+  padding-left: 2.25rem !important;
+}
+
+/* Primary button variant */
+.ap-sdk-root button[data-variant='default'],
+.ap-sdk-root [data-slot='button'][data-variant='default'],
+[data-radix-portal] [data-slot='dialog-content'] button[data-variant='default'],
+[data-radix-portal] [data-slot='dialog-content'] [data-slot='button'][data-variant='default'],
+[data-radix-portal] button[data-slot='button'][data-variant='default'] {
+  background-color: #7c3aed !important;
+  color: #fff !important;
+}
+
+.ap-sdk-root button[data-variant='default']:hover,
+.ap-sdk-root [data-slot='button'][data-variant='default']:hover,
+[data-radix-portal] [data-slot='dialog-content'] button[data-variant='default']:hover,
+[data-radix-portal] button[data-slot='button'][data-variant='default']:hover {
+  background-color: #6d28d9 !important;
+}
+
+/* Dialog footer primary button */
+[data-radix-portal] [data-slot='dialog-footer'] button[data-variant='default'],
+[data-radix-portal] [data-slot='dialog-footer'] [data-slot='button'][data-variant='default'] {
+  background-color: #7c3aed !important;
+  color: #fff !important;
+}
+
+/* Dialog footer cancel buttons (outline/ghost) */
+[data-radix-portal] [data-slot='dialog-footer'] button[data-variant='outline'],
+[data-radix-portal] [data-slot='dialog-footer'] [data-slot='button'][data-variant='outline'],
+[data-radix-portal] [data-slot='dialog-footer'] button[data-variant='ghost'],
+[data-radix-portal] [data-slot='dialog-footer'] [data-slot='button'][data-variant='ghost'],
+[data-radix-portal] button[data-slot='button'][data-variant='outline'],
+[data-radix-portal] button[data-slot='button'][data-variant='ghost'] {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+[data-radix-portal] [data-slot='dialog-footer'] button[data-variant='outline']:hover,
+[data-radix-portal] [data-slot='dialog-footer'] button[data-variant='ghost']:hover {
+  background-color: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+/* Outline buttons (filters) */
+.ap-sdk-root button[data-variant='outline'] {
+  border: 1px solid var(--border, #e5e7eb) !important;
+  background: var(--background, #ffffff) !important;
+}
+
+/* Dialog typography/alignment: protect against host/global heading styles. */
+[data-radix-portal] [data-slot='dialog-header'] {
+  text-align: left !important;
+}
+
+[data-radix-portal] [data-slot='dialog-title'] {
+  font-size: 1.125rem !important; /* matches Tailwind `text-lg` */
+  line-height: 1.75rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+}
+
+[data-radix-portal] [data-slot='dialog-description'] {
+  font-size: 0.875rem !important; /* matches Tailwind `text-sm` */
+  line-height: 1.25rem !important;
+  color: var(--muted-foreground, hsl(0 0% 45.1%)) !important;
+}
+
+/* Dialog footer buttons: ensure consistent radius/shadow in embed contexts. */
+[data-radix-portal] [data-slot='dialog-footer'] [data-slot='button'] {
+  border-radius: 0.375rem !important; /* Tailwind `rounded-md` */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+.ap-sdk-root button[data-variant='outline']:hover {
+  background: #fafafa !important;
+  border-color: #e8e8e8 !important;
+}
+
+/* Toggle switch - track styling
+   Only override colors, let Tailwind handle dimensions and layout */
+.ap-sdk-root [role='switch'][data-state='unchecked'],
+.ap-sdk-root button[role='switch'][data-state='unchecked'],
+.ap-sdk-root [data-slot='switch'][data-state='unchecked'] {
+  background-color: #e5e7eb !important;
+}
+
+.ap-sdk-root [role='switch'][data-state='checked'],
+.ap-sdk-root button[role='switch'][data-state='checked'],
+.ap-sdk-root [data-slot='switch'][data-state='checked'] {
+  background-color: var(--primary, #7c3aed) !important;
+}
+
+/* Switch thumb - ONLY override the background color to white
+   Let Tailwind handle all dimensions, positioning, and transforms */
+.ap-sdk-root [data-slot='switch-thumb'],
+.ap-sdk-root [data-slot='switch'] > span[data-slot='switch-thumb'],
+.ap-sdk-root [role='switch'] > span[data-slot='switch-thumb'],
+.ap-sdk-root button[role='switch'] > span[data-slot='switch-thumb'] {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* Tabs */
+.ap-sdk-root [role='tab'][data-state='active'] {
+  border-bottom-color: var(--primary, #7c3aed) !important;
+}
+
+/* Main shell inset: full width inside white card */
+.ap-sdk-root [data-slot="sidebar-inset"] {
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
 }
 
 /* ==========================================================================
@@ -119,16 +339,51 @@
   border-bottom: none !important;
 }
 
-.ap-sdk-root th {
+/* IMPORTANT:
+   Avoid overriding Tailwind table cell utilities (px-*, py-*, align-middle).
+   Use :where() to keep selector specificity at 0 so Tailwind wins. */
+.ap-sdk-root :where(th) {
   text-align: inherit;
   text-align: -webkit-match-parent;
   font-weight: inherit;
-  padding: 0;
+  vertical-align: middle;
 }
 
-.ap-sdk-root td {
-  padding: 0;
-  vertical-align: inherit;
+.ap-sdk-root :where(td) {
+  vertical-align: middle;
+}
+
+/* Center the PieceIconList inside "Details" table cells.
+   The icons render as: <td><div class="flex gap-0.5">...</div></td>
+   Without this, the wrapper stays left-aligned inside the fixed-width column. */
+.ap-sdk-root :where(td):has(> div.flex.gap-0\.5),
+.ap-sdk-root [data-slot="table-cell"]:has(> div.flex.gap-0\.5) {
+  text-align: center;
+}
+
+.ap-sdk-root :where(td) > div.flex.gap-0\.5,
+.ap-sdk-root [data-slot="table-cell"] > div.flex.gap-0\.5 {
+  display: inline-flex;
+  justify-content: center;
+}
+
+
+.ap-sdk-root
+  :where(div.w-\[230px\].shrink-0.px-2.flex.items-center)
+  span.relative.inline-block.w-full.h-full:has(> img) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.ap-sdk-root
+  :where(div.w-\[230px\].shrink-0.px-2.flex.items-center)
+  span.relative.inline-block.w-full.h-full:has(> img)
+  > img {
+  display: block !important;
+  margin: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
 
 /* ==========================================================================
@@ -206,11 +461,13 @@
 /* Remove spinner from number inputs */
 .ap-sdk-root input[type="number"]::-webkit-inner-spin-button,
 .ap-sdk-root input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;
   -webkit-appearance: none;
   margin: 0;
 }
 
 .ap-sdk-root input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
@@ -259,14 +516,9 @@
    Bootstrap applies margin and font styles to headings
    ========================================================================== */
 
-.ap-sdk-root h1,
-.ap-sdk-root h2,
-.ap-sdk-root h3,
-.ap-sdk-root h4,
-.ap-sdk-root h5,
-.ap-sdk-root h6 {
-  font-size: inherit;
-  font-weight: inherit;
+/* IMPORTANT: Don't override Tailwind typography utilities on headings.
+   Only remove default margins (Bootstrap/host styles can add spacing). */
+.ap-sdk-root :where(h1, h2, h3, h4, h5, h6) {
   margin: 0;
 }
 
@@ -282,8 +534,10 @@
    Bootstrap Image Reset
    ========================================================================== */
 
-.ap-sdk-root img,
-.ap-sdk-root svg {
+/* IMPORTANT:
+   Keep selector specificity at 0 so Tailwind utilities like `h-full`/`w-full`
+   on icons/images (e.g. PieceIcon) can override this reset. */
+.ap-sdk-root :where(img, svg) {
   display: inline-block;
   vertical-align: middle;
   max-width: 100%;
@@ -588,14 +842,9 @@
   padding: 0;
 }
 
-[data-radix-portal] h1,
-[data-radix-portal] h2,
-[data-radix-portal] h3,
-[data-radix-portal] h4,
-[data-radix-portal] h5,
-[data-radix-portal] h6 {
-  font-size: inherit;
-  font-weight: inherit;
+/* IMPORTANT: Radix DialogTitle renders a heading element.
+   Keep selector specificity at 0 so Tailwind's `text-*` / `font-*` wins. */
+[data-radix-portal] :where(h1, h2, h3, h4, h5, h6) {
   margin: 0;
 }
 
@@ -756,6 +1005,22 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
   border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
   border-radius: 0.5rem !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Filter popovers (MultiSelectFilter) use PopoverContent className="w-56 p-0".
+   In embedded SDK contexts they can become too narrow, causing labels like
+   "Flow" / "Table" to truncate (Flo..., Ta...). Widen only these popovers. */
+[data-radix-portal] [data-slot="popover-content"].w-56.p-0,
+[data-radix-portal] .w-56.p-0[data-slot="popover-content"] {
+  width: 18rem !important; /* 288px */
+  min-width: 18rem !important;
+}
+
+/* And inside those filter popovers, don't truncate option labels. */
+[data-radix-portal] [data-slot="popover-content"].w-56.p-0 span.truncate {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
 }
 
 /* Calendar component styling */
@@ -952,12 +1217,12 @@ button[data-variant="link"] {
 }
 
 /* Time picker input fields - proper border and styling */
-[data-radix-portal] [data-slot="popover-content"] input[type="text"],
-[data-radix-portal] [data-slot="popover-content"] input[type="number"],
-[data-radix-portal] [data-slot="popover-content"] input:not([type]),
-[data-slot="popover-content"] input[type="text"],
-[data-slot="popover-content"] input[type="number"],
-[data-slot="popover-content"] input:not([type]) {
+[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="text"],
+[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="number"],
+[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input:not([type]),
+[data-slot="popover-content"]:has([data-slot="calendar"]) input[type="text"],
+[data-slot="popover-content"]:has([data-slot="calendar"]) input[type="number"],
+[data-slot="popover-content"]:has([data-slot="calendar"]) input:not([type]) {
   border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
   border-radius: 0.375rem !important;
   background-color: var(--background, #ffffff) !important;
@@ -966,8 +1231,8 @@ button[data-variant="link"] {
 }
 
 /* Time picker select (AM/PM) - proper styling */
-[data-radix-portal] [data-slot="popover-content"] select,
-[data-slot="popover-content"] select {
+[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) select,
+[data-slot="popover-content"]:has([data-slot="calendar"]) select {
   border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
   border-radius: 0.375rem !important;
   background-color: var(--background, #ffffff) !important;
