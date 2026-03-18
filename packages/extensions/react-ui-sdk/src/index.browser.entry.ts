@@ -3,20 +3,22 @@
  * When loaded via script tag, i18next fetches translations from
  * {script-base-path}/locales/{{lng}}/{{ns}}.json
  *
- * Import SDK isolation styles FIRST to reset host framework styles (Bootstrap, etc.)
- * Then import web global styles (Tailwind, fonts, theme) so the SDK has proper styling
- * when embedded in host apps. The main web app loads these via HTML link; the SDK
- * must import them into the bundle.
+ * Import web global styles (Tailwind, fonts, theme) FIRST so the SDK has proper
+ * styling when embedded in host apps. The main web app loads these via HTML link;
+ * the SDK must import them into the bundle.
+ *
+ * Then import SDK isolation styles LAST to override both host framework styles
+ * (Bootstrap, etc.) AND Tailwind utilities for proper embedded appearance.
  *
  * @license MIT
  */
 
-// Import SDK isolation styles FIRST - resets Bootstrap/Foundation/Bulma styles
-// This must come before styles.css so Tailwind utilities are applied on top
-import './styles/sdk-isolation.css';
-
-// Import web global styles (Tailwind, fonts, theme)
+// Import web global styles FIRST (Tailwind, fonts, theme)
 import '../../../web/src/styles.css';
+
+// Import SDK isolation styles LAST - overrides host frameworks AND Tailwind for SDK context
+// This must come AFTER styles.css so our !important overrides take effect
+import './styles/sdk-isolation.css';
 
 if (typeof document !== 'undefined' && document.currentScript) {
   try {

@@ -16,6 +16,86 @@
  */
 
 /* ==========================================================================
+   Inter Font Face - Same as original Activepieces project
+   ========================================================================== */
+
+/* inter-regular - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Inter Regular'), local('Inter-Regular'),
+       url('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2') format('woff2');
+}
+
+/* inter-500 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  src: local('Inter Medium'), local('Inter-Medium'),
+       url('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff2') format('woff2');
+}
+
+/* inter-600 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  src: local('Inter SemiBold'), local('Inter-SemiBold'),
+       url('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuGKYAZ9hjp-Ek-_EeA.woff2') format('woff2');
+}
+
+/* inter-700 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  src: local('Inter Bold'), local('Inter-Bold'),
+       url('https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hjp-Ek-_EeA.woff2') format('woff2');
+}
+
+/* ==========================================================================
+   Container Height Propagation
+   Ensure parent containers propagate height to child elements
+   ========================================================================== */
+
+/* Parent container - ensure it has explicit height */
+.activepieces-container.sdk-frame,
+.activepieces-container,
+.sdk-frame {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* React mount point - inherit full height from parent */
+#react-mount-point,
+.react-mount-point,
+[id*="react-mount-point"],
+[class*="react-mount-point"],
+div.react-mount-point {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  flex: 1 1 0% !important;
+}
+
+/* ==========================================================================
    Root Container Isolation
    ========================================================================== */
 
@@ -52,8 +132,11 @@
      -------------------------------------------------------------------------- */
   min-height: 0 !important;
   width: 100% !important;
-  height: 100% !important;
+  height: calc(100% - 40px) !important;
+  max-height: calc(100vh) !important;
   padding: 0 !important;
+  overflow: hidden !important;
+  flex: 1 1 0% !important;
 }
 
 /* Remove padding from the outer flex container that wraps the sidebar layout */
@@ -148,7 +231,30 @@
   padding-left: 2.25rem !important;
 }
 
-/* Primary button variant */
+/* ==========================================================================
+   Button Rounded Corners - Match original view styling
+   Exclude: tabs (role="tab"), checkboxes (data-slot="checkbox"), switches
+   ========================================================================== */
+
+/* All buttons should have rounded corners EXCEPT tabs, checkboxes, and switches */
+.ap-sdk-root button:not([role="tab"]):not([data-slot="checkbox"]):not([role="switch"]),
+.ap-sdk-root [data-slot='button']:not([role="tab"]):not([data-slot="checkbox"]) {
+  border-radius: 0.5rem !important; /* rounded-lg equivalent */
+}
+
+/* Checkboxes should have smaller rounded corners (square-ish) */
+.ap-sdk-root [data-slot="checkbox"],
+.ap-sdk-root button[data-slot="checkbox"] {
+  border-radius: 0.25rem !important; /* rounded-sm */
+}
+
+/* Tabs should not have rounded corners - keep default styling */
+.ap-sdk-root [role="tab"],
+.ap-sdk-root button[role="tab"] {
+  border-radius: 0 !important;
+}
+
+/* Primary button variant (Create New, etc.) */
 .ap-sdk-root button[data-variant='default'],
 .ap-sdk-root [data-slot='button'][data-variant='default'],
 [data-radix-portal] [data-slot='dialog-content'] button[data-variant='default'],
@@ -156,6 +262,7 @@
 [data-radix-portal] button[data-slot='button'][data-variant='default'] {
   background-color: #7c3aed !important;
   color: #fff !important;
+  border-radius: 0.5rem !important;
 }
 
 .ap-sdk-root button[data-variant='default']:hover,
@@ -170,6 +277,7 @@
 [data-radix-portal] [data-slot='dialog-footer'] [data-slot='button'][data-variant='default'] {
   background-color: #7c3aed !important;
   color: #fff !important;
+  border-radius: 0.5rem !important;
 }
 
 /* Dialog footer cancel buttons (outline/ghost) */
@@ -182,6 +290,7 @@
   background-color: #ffffff !important;
   border: 1px solid #e5e7eb !important;
   color: #111827 !important;
+  border-radius: 0.5rem !important;
 }
 
 [data-radix-portal] [data-slot='dialog-footer'] button[data-variant='outline']:hover,
@@ -190,10 +299,23 @@
   border-color: #d1d5db !important;
 }
 
-/* Outline buttons (filters) */
+/* Outline buttons (filters like Type, Status, Connections, Owner, Folder) */
 .ap-sdk-root button[data-variant='outline'] {
   border: 1px solid var(--border, #e5e7eb) !important;
   background: var(--background, #ffffff) !important;
+  border-radius: 0.5rem !important;
+}
+
+/* Search input rounded corners */
+.ap-sdk-root input[type="text"],
+.ap-sdk-root input[type="search"],
+.ap-sdk-root input[placeholder*="Search"] {
+  border-radius: 0.5rem !important;
+}
+
+/* Import button */
+.ap-sdk-root button[data-variant='outline']:has(svg) {
+  border-radius: 0.5rem !important;
 }
 
 /* Dialog typography/alignment: protect against host/global heading styles. */
@@ -224,8 +346,13 @@
   border-color: #e8e8e8 !important;
 }
 
-/* Toggle switch - track styling
-   Only override colors, let Tailwind handle dimensions and layout */
+/* Toggle switch - track styling with full rounded (pill shape) */
+.ap-sdk-root [role='switch'],
+.ap-sdk-root button[role='switch'],
+.ap-sdk-root [data-slot='switch'] {
+  border-radius: 9999px !important; /* fully rounded pill shape */
+}
+
 .ap-sdk-root [role='switch'][data-state='unchecked'],
 .ap-sdk-root button[role='switch'][data-state='unchecked'],
 .ap-sdk-root [data-slot='switch'][data-state='unchecked'] {
@@ -648,36 +775,196 @@
 
 /* ==========================================================================
    Piece Selector Popover Width Fix
-   
+
    The Piece Selector uses Tailwind responsive classes: w-[340px] md:w-[600px]
    In embedded SDK contexts, the container may be narrower than 768px,
-   causing the mobile width to be applied. Force the desktop width.
+   causing the mobile width (340px) to be applied instead of desktop (600px).
    
-   The popover has classes like: w-[340px] md:w-[600px]
-   We need to override the 340px and force 600px.
+   Force the desktop width (600px) to match the original view.
+   
+   IMPORTANT: Radix portals render OUTSIDE .ap-sdk-root at body level,
+   so we need global selectors that work regardless of DOM position.
    ========================================================================== */
 
 /* Force Piece Selector popover to use desktop width (600px) in SDK */
-/* Target by the specific Tailwind class w-[340px] */
-.ap-sdk-root [data-slot="popover-content"][class*="w-[340px]"],
-[data-radix-popper-content-wrapper] [data-slot="popover-content"][class*="w-[340px]"] {
+/* Target by the specific Tailwind class w-[340px] - use global selectors */
+[data-slot="popover-content"][class*="w-[340px]"],
+[data-slot="popover-content"].w-\[340px\],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"][class*="w-[340px]"],
+[data-radix-portal] [data-slot="popover-content"][class*="w-[340px]"] {
   width: 600px !important;
   min-width: 600px !important;
   max-width: 600px !important;
 }
 
 /* Also target the popover content that contains the piece selector tabs */
-.ap-sdk-root [data-slot="popover-content"]:has([class*="piece-selector"]),
-.ap-sdk-root [data-slot="popover-content"]:has(input[placeholder*="Search"]) {
+[data-slot="popover-content"]:has([class*="piece-selector"]),
+[data-slot="popover-content"]:has(input[placeholder*="Search"]),
+[data-radix-portal] [data-slot="popover-content"]:has(input[placeholder*="Search"]) {
   width: 600px !important;
   min-width: 600px !important;
   max-width: 600px !important;
 }
 
 /* Direct override for any popover with the md:w-[600px] class */
-[data-radix-popper-content-wrapper] .w-\[340px\].md\:w-\[600px\] {
+[data-radix-popper-content-wrapper] .w-\[340px\].md\:w-\[600px\],
+.w-\[340px\].md\:w-\[600px\][data-slot="popover-content"],
+[data-slot="popover-content"].w-\[340px\].md\:w-\[600px\] {
   width: 600px !important;
   min-width: 600px !important;
+}
+
+/* Target the wrapper itself to ensure width is applied */
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"][class*="w-[340px]"]),
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"].w-\[340px\]) {
+  width: 600px !important;
+  min-width: 600px !important;
+}
+
+/* 
+ * Piece Selector specific targeting by content structure
+ * The Piece Selector has: Search input -> Tabs (Explore, Apps, Utility) -> List
+ * Target by the presence of this unique structure
+ */
+
+/* Target popover that contains the Piece Selector tabs structure */
+[data-slot="popover-content"]:has(input[placeholder="Search"]),
+[data-slot="popover-content"]:has([data-state="active"][data-value]),
+[data-slot="popover-content"]:has(.flex.flex-row.max-h-\[300px\]) {
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 600px !important;
+}
+
+/* Target any popover with p-0 shadow-lg (Piece Selector specific styling) */
+[data-slot="popover-content"].p-0.shadow-lg {
+  width: 600px !important;
+  min-width: 600px !important;
+  max-width: 600px !important;
+}
+
+/* Override inline styles that Radix might apply - use attribute selector */
+[data-slot="popover-content"][style*="width"] {
+  width: 600px !important;
+  min-width: 600px !important;
+}
+
+/* Ensure wrapper doesn't constrain the popover */
+[data-radix-popper-content-wrapper] {
+  min-width: auto !important;
+}
+
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"].p-0.shadow-lg) {
+  width: auto !important;
+  min-width: 600px !important;
+}
+
+/* ==========================================================================
+   Piece Selector Popover Height and Z-Index Fix
+   
+   Ensure the Piece Selector popover displays above all other UI elements
+   and has proper height for the list area to show multiple items.
+   ========================================================================== */
+
+/* Ensure Piece Selector popover has high z-index to appear above toolbar */
+[data-radix-portal]:has([data-slot="popover-content"].p-0.shadow-lg),
+[data-radix-portal]:has([data-slot="popover-content"][class*="w-[340px]"]) {
+  z-index: 9999 !important;
+}
+
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"].p-0.shadow-lg),
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"][class*="w-[340px]"]) {
+  z-index: 9999 !important;
+}
+
+[data-slot="popover-content"].p-0.shadow-lg,
+[data-slot="popover-content"][class*="w-[340px]"] {
+  z-index: 9999 !important;
+}
+
+/* Ensure the Piece Selector list area has proper height */
+/* The list area uses max-h-[300px] - ensure this is respected and visible */
+[data-slot="popover-content"].p-0.shadow-lg .max-h-\[300px\],
+[data-slot="popover-content"][class*="w-[340px]"] .max-h-\[300px\],
+[data-slot="popover-content"].p-0.shadow-lg .flex.flex-row.max-h-\[300px\],
+[data-slot="popover-content"][class*="w-[340px]"] .flex.flex-row.max-h-\[300px\] {
+  max-height: 300px !important;
+  min-height: 200px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure the popover has proper background to cover any elements behind it */
+[data-slot="popover-content"].p-0.shadow-lg,
+[data-slot="popover-content"][class*="w-[340px]"].p-0 {
+  background-color: var(--popover, hsl(0 0% 100%)) !important;
+  background: var(--popover, #ffffff) !important;
+  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Ensure popover content doesn't get clipped */
+[data-radix-popper-content-wrapper]:has([data-slot="popover-content"].p-0) {
+  overflow: visible !important;
+}
+
+/* ==========================================================================
+   Piece Selector List Item Spacing Fix
+   
+   Ensure piece list items have proper height (48px) and compact spacing
+   matching the original view. The CardListItem component uses:
+   - height: 48px (PIECE_ITEM_HEIGHT constant)
+   - padding: p-3 (0.75rem)
+   - gap: gap-1 (0.25rem)
+   ========================================================================== */
+
+/* Piece Selector list items - enforce proper height and spacing */
+[data-slot="popover-content"].p-0.shadow-lg .flex-col.p-3.gap-1,
+[data-slot="popover-content"][class*="w-[340px]"] .flex-col.p-3.gap-1,
+[data-slot="popover-content"].p-0.shadow-lg [class*="flex-col"][class*="p-3"][class*="gap-1"],
+[data-slot="popover-content"][class*="w-[340px]"] [class*="flex-col"][class*="p-3"][class*="gap-1"] {
+  height: 48px !important;
+  max-height: 48px !important;
+  min-height: 48px !important;
+  padding: 0.75rem !important;
+  gap: 0.25rem !important;
+  margin: 0 !important;
+}
+
+/* Piece icon and text container inside list items */
+[data-slot="popover-content"].p-0.shadow-lg .flex.gap-2.items-center.h-full,
+[data-slot="popover-content"][class*="w-[340px]"] .flex.gap-2.items-center.h-full {
+  height: 100% !important;
+  gap: 0.5rem !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Piece name text */
+[data-slot="popover-content"].p-0.shadow-lg .grow.h-full.flex.items-center,
+[data-slot="popover-content"][class*="w-[340px]"] .grow.h-full.flex.items-center {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+/* Category headers (Popular, etc.) */
+[data-slot="popover-content"].p-0.shadow-lg .p-2.pb-0.text-sm,
+[data-slot="popover-content"][class*="w-[340px]"] .p-2.pb-0.text-sm,
+[data-slot="popover-content"].p-0.shadow-lg [class*="p-2"][class*="pb-0"][class*="text-muted"],
+[data-slot="popover-content"][class*="w-[340px]"] [class*="p-2"][class*="pb-0"][class*="text-muted"] {
+  height: 28px !important;
+  padding: 0.5rem !important;
+  padding-bottom: 0 !important;
+  font-size: 0.875rem !important;
+  margin: 0 !important;
+}
+
+/* VirtualizedScrollArea container - ensure no extra spacing */
+[data-slot="popover-content"].p-0.shadow-lg [data-radix-scroll-area-viewport] > div,
+[data-slot="popover-content"][class*="w-[340px]"] [data-radix-scroll-area-viewport] > div {
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 /* ==========================================================================
@@ -751,6 +1038,97 @@
 .ap-sdk-root label {
   display: inline-block;
   margin: 0;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Form label styling - ensure proper appearance without background highlight */
+/* CRITICAL: Override any yellow/highlight backgrounds from host app or browser */
+.ap-sdk-root [data-slot="form-label"],
+.ap-sdk-root label[data-slot="form-label"],
+.ap-sdk-root label.text-sm,
+.ap-sdk-root label.font-medium,
+.ap-sdk-root label.leading-none,
+.ap-sdk-root label.select-none,
+.ap-sdk-root label.group-data-\[disabled\=true\]\:pointer-events-none,
+.ap-sdk-root [data-slot="form-item"] label,
+.ap-sdk-root [class*="form-item"] label,
+.ap-sdk-root .space-y-2 label,
+.ap-sdk-root .space-y-1 label,
+[data-radix-portal] [data-slot="form-label"],
+[data-radix-portal] label[data-slot="form-label"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.25rem !important;
+  color: var(--foreground, #0a0a0a) !important;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  padding: 0 !important;
+  margin-bottom: 0.5rem !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  -webkit-box-decoration-break: clone !important;
+  box-decoration-break: clone !important;
+  -webkit-highlight: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  text-shadow: none !important;
+}
+
+/* Target ALL labels and their children inside ap-sdk-root to remove yellow highlight */
+.ap-sdk-root label *,
+.ap-sdk-root [data-slot="form-label"] *,
+.ap-sdk-root [data-slot="form-item"] label,
+.ap-sdk-root [data-slot="form-item"] label *,
+.ap-sdk-root [class*="form-item"] label *,
+.ap-sdk-root .space-y-2 label *,
+.ap-sdk-root .space-y-1 label * {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-highlight: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Specifically target the label classes seen in DevTools */
+.ap-sdk-root label.text-sm.leading-none.font-medium.select-none,
+.ap-sdk-root label[class*="text-sm"][class*="leading-none"][class*="font-medium"] {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-highlight: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Override browser/extension autofill highlighting on labels */
+.ap-sdk-root label:-webkit-autofill,
+.ap-sdk-root label:-webkit-autofill:hover,
+.ap-sdk-root label:-webkit-autofill:focus,
+.ap-sdk-root label:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  background-color: transparent !important;
+}
+
+/* Remove selection highlight from labels */
+.ap-sdk-root label::selection,
+.ap-sdk-root label *::selection,
+.ap-sdk-root [data-slot="form-label"]::selection,
+.ap-sdk-root [data-slot="form-label"] *::selection {
+  background: transparent !important;
+}
+
+/* Remove mark/highlight styling */
+.ap-sdk-root label mark,
+.ap-sdk-root [data-slot="form-label"] mark {
+  background: none !important;
+  background-color: transparent !important;
 }
 
 /* ==========================================================================
@@ -873,10 +1251,182 @@
   pointer-events: auto !important;
 }
 
-/* Dialog content - above overlay */
+/* Dialog content - above overlay, white background with proper styling */
 [data-slot="dialog-content"],
-[data-radix-dialog-content] {
+[data-radix-dialog-content],
+[role="dialog"] {
   z-index: 9999 !important;
+  max-height: calc(100vh - 4rem) !important;
+  /* height: auto !important; */
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
+}
+
+/* For embedded contexts (inside .react-mount-point or similar containers) */
+/* Constrain dialog to container height instead of viewport height */
+.react-mount-point [data-slot="dialog-content"],
+.react-mount-point [data-radix-dialog-content],
+.react-mount-point [role="dialog"],
+.activepieces-container [data-radix-portal] [data-slot="dialog-content"],
+.activepieces-container [data-radix-portal] [data-radix-dialog-content],
+.activepieces-container [data-radix-portal] [role="dialog"],
+.sdk-frame [data-radix-portal] [data-slot="dialog-content"],
+.sdk-frame [data-radix-portal] [data-radix-dialog-content],
+.sdk-frame [data-radix-portal] [role="dialog"],
+[data-radix-portal] [data-slot="dialog-content"],
+[data-radix-portal] [data-radix-dialog-content],
+[data-radix-portal] [role="dialog"] {
+  max-height: calc(100vh - 4rem) !important;
+}
+
+/* Dialog header - fixed at top, no shrink */
+[data-slot="dialog-header"],
+[data-radix-dialog-content] > div:first-child:has(h2, [data-slot="dialog-title"]) {
+  flex-shrink: 0 !important;
+  padding: 1.5rem !important;
+  padding-bottom: 1rem !important;
+}
+
+/* Dialog body/content area - scrollable when content overflows */
+/* Target the main content wrapper between header and footer */
+/* IMPORTANT: Do NOT use bare [role="dialog"] — Radix PopoverContent also uses
+   role="dialog". Applying padding to its children breaks piece selector / trigger
+   picker (w-[340px] md:w-[600px] p-0). Only target actual modal dialogs.
+   
+   ALSO EXCLUDE: New Connection dialog (h-[680px]) which has its own layout. */
+[data-slot="dialog-body"],
+[data-slot="dialog-content"]:not([class*="h-[680px]"]):not([class*="min-w-[700px]"]) > div:not([data-slot]):not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]),
+[data-radix-dialog-content]:not([class*="h-[680px]"]) > div:not(:first-child):not(:last-child) {
+  flex: 1 1 0% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+  padding: 0 1.5rem !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* ==========================================================================
+   New Connection Piece Picker Dialog (h-[680px], min-w-[700px])
+   
+   This dialog has a specific structure:
+   - DialogHeader (data-slot="dialog-header")
+   - div.mb-4 containing the Search input
+   - ScrollArea (data-slot="scroll-area") with grid of piece cards
+   - DialogFooter (data-slot="dialog-footer")
+   
+   The generic dialog-body padding rules (0 1.5rem) break this layout.
+   We need to:
+   1. Let the dialog use its original Tailwind classes (p-6 from DialogContent)
+   2. Not add extra padding to children
+   3. Ensure the ScrollArea scrolls properly
+   ========================================================================== */
+
+/* Target the New Connection dialog by its unique dimensions */
+[data-slot="dialog-content"].h-\[680px\],
+[data-slot="dialog-content"][class*="h-[680px]"],
+[data-slot="dialog-content"][class*="min-w-[700px]"][class*="max-w-[700px]"] {
+  /* Let the dialog's own p-6 padding work - don't override */
+  padding: 1.5rem !important;
+}
+
+/* Don't add extra padding to the search row or scroll area in this dialog */
+[data-slot="dialog-content"].h-\[680px\] > div:not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]),
+[data-slot="dialog-content"][class*="h-[680px]"] > div:not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]),
+[data-slot="dialog-content"][class*="min-w-[700px]"] > div:not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]) {
+  padding: 0 !important;
+}
+
+/* Ensure the ScrollArea in New Connection dialog works properly */
+[data-slot="dialog-content"].h-\[680px\] [data-slot="scroll-area"],
+[data-slot="dialog-content"][class*="h-[680px]"] [data-slot="scroll-area"],
+[data-slot="dialog-content"][class*="min-w-[700px]"] [data-slot="scroll-area"] {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+[data-slot="dialog-content"].h-\[680px\] [data-slot="scroll-area-viewport"],
+[data-slot="dialog-content"][class*="h-[680px]"] [data-slot="scroll-area-viewport"],
+[data-slot="dialog-content"][class*="min-w-[700px]"] [data-slot="scroll-area-viewport"] {
+  height: 100% !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure search input is visible and styled correctly */
+[data-slot="dialog-content"].h-\[680px\] input,
+[data-slot="dialog-content"][class*="h-[680px]"] input,
+[data-slot="dialog-content"][class*="min-w-[700px]"] input {
+  color: var(--foreground, #0a0a0a) !important;
+  background-color: var(--background, #ffffff) !important;
+  border: 1px solid var(--input, #e5e7eb) !important;
+  -webkit-text-fill-color: var(--foreground, #0a0a0a) !important;
+}
+
+[data-slot="dialog-content"].h-\[680px\] input::placeholder,
+[data-slot="dialog-content"][class*="h-[680px]"] input::placeholder,
+[data-slot="dialog-content"][class*="min-w-[700px]"] input::placeholder {
+  color: var(--muted-foreground, hsl(0 0% 45.1%)) !important;
+  opacity: 1 !important;
+}
+
+/* Grid layout for piece cards - match original 4 columns */
+[data-slot="dialog-content"].h-\[680px\] .grid-cols-4,
+[data-slot="dialog-content"][class*="h-[680px]"] .grid-cols-4,
+[data-slot="dialog-content"][class*="min-w-[700px]"] .grid-cols-4 {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+/* Piece cards styling */
+[data-slot="dialog-content"].h-\[680px\] .grid-cols-4 > div,
+[data-slot="dialog-content"][class*="h-[680px]"] .grid-cols-4 > div,
+[data-slot="dialog-content"][class*="min-w-[700px]"] .grid-cols-4 > div {
+  border: 1px solid var(--border, #e5e7eb) !important;
+  border-radius: 0.5rem !important;
+  background: var(--background, #ffffff) !important;
+  cursor: pointer !important;
+}
+
+[data-slot="dialog-content"].h-\[680px\] .grid-cols-4 > div:hover,
+[data-slot="dialog-content"][class*="h-[680px]"] .grid-cols-4 > div:hover,
+[data-slot="dialog-content"][class*="min-w-[700px]"] .grid-cols-4 > div:hover {
+  background: var(--accent, #f5f5f5) !important;
+}
+
+/* Fallback: dialog without data-slot on root (some hosts) — still exclude popovers and New Connection dialog */
+[role="dialog"]:not([data-slot="popover-content"]):not([data-radix-popover-content]):not([class*="h-[680px]"]):not([class*="min-w-[700px]"]) > div:not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]) {
+  flex: 1 1 0% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+/* Specific override for form content inside dialogs (not popovers) */
+[data-slot="dialog-content"] form,
+[data-radix-dialog-content] form,
+[role="dialog"]:not([data-slot="popover-content"]) form {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 0 1.5rem !important;
+}
+
+/* Dialog footer - fixed at bottom, no shrink */
+[data-slot="dialog-footer"],
+[data-radix-dialog-content] > div:last-child:has(button),
+[role="dialog"][data-slot="dialog-content"] > div:last-child:has(button),
+[role="dialog"]:not([data-slot="popover-content"]):not([data-radix-popover-content]) > div:last-child:has(button) {
+  flex-shrink: 0 !important;
+  margin-top: auto !important;
+  padding: 1rem 1.5rem !important;
+  padding-top: 1.5rem !important;
+  border-top: 1px solid var(--border, #e5e7eb) !important;
 }
 
 /* Dialog portal */
@@ -921,17 +1471,52 @@
 /* Ensure Select content has proper styling */
 [role="listbox"],
 [data-slot="select-content"] {
-  background-color: var(--popover, #ffffff) !important;
-  color: var(--foreground, hsl(0 0% 3.9%)) !important;
-  border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
+  background-color: #ffffff !important;
+  color: #0a0a0a !important;
+  border: 1px solid #e5e7eb !important;
   border-radius: 0.5rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  padding: 0.25rem !important;
+  min-width: 8rem !important;
+}
+
+/* SearchableSelect dropdown specific - popover with search input and options list */
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[placeholder*="Select"]),
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[role="combobox"]) {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Search input inside dropdown */
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Select"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[role="combobox"] {
+  width: 100% !important;
+  padding: 0.625rem 0.75rem 0.625rem 2.25rem !important;
+  border: none !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  border-radius: 0 !important;
+  background-color: #ffffff !important;
+  color: #0a0a0a !important;
+  font-size: 0.875rem !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Select"]:focus,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[role="combobox"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* Select items styling */
 [role="listbox"] [role="option"],
 [data-slot="select-item"] {
-  color: var(--foreground, hsl(0 0% 3.9%)) !important;
+  color: #0a0a0a !important;
   cursor: pointer !important;
 }
 
@@ -939,7 +1524,28 @@
 [role="listbox"] [role="option"][data-highlighted],
 [data-slot="select-item"]:hover,
 [data-slot="select-item"][data-highlighted] {
-  background-color: var(--accent, hsl(0 0% 96.1%)) !important;
+  background-color: #f5f5f5 !important;
+}
+
+/* Option list inside searchable dropdown (SearchableSelect combobox only) */
+/* Only target popovers that have a combobox trigger, not filter popovers with checkboxes */
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[role="combobox"]) [role="listbox"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[role="combobox"]) [class*="overflow-auto"] {
+  padding: 0.25rem !important;
+  max-height: 200px !important;
+}
+
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[role="combobox"]) [role="option"] {
+  color: #0a0a0a !important;
+  cursor: pointer !important;
+  font-size: 0.875rem !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 0.375rem !important;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
+[data-radix-popper-content-wrapper] [data-slot="popover-content"]:has(input[role="combobox"]) [role="option"]:hover {
+  background-color: #f5f5f5 !important;
 }
 
 /* ==========================================================================
@@ -1007,20 +1613,130 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
 }
 
-/* Filter popovers (MultiSelectFilter) use PopoverContent className="w-56 p-0".
-   In embedded SDK contexts they can become too narrow, causing labels like
-   "Flow" / "Table" to truncate (Flo..., Ta...). Widen only these popovers. */
+/* ==========================================================================
+   Filter Popovers (Type, Status, Connections, Owner, Folder dropdowns)
+   Match original view styling - clean, compact layout
+   ========================================================================== */
+
+/* Filter popover container - match original styling */
 [data-radix-portal] [data-slot="popover-content"].w-56.p-0,
-[data-radix-portal] .w-56.p-0[data-slot="popover-content"] {
-  width: 18rem !important; /* 288px */
-  min-width: 18rem !important;
+[data-radix-portal] .w-56.p-0[data-slot="popover-content"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56.p-0,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].p-0 {
+  width: auto !important;
+  min-width: 12rem !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  overflow: hidden !important;
 }
 
-/* And inside those filter popovers, don't truncate option labels. */
-[data-radix-portal] [data-slot="popover-content"].w-56.p-0 span.truncate {
+/* Search container inside filter popover (px-2 pt-2 pb-1 border-b) */
+[data-radix-portal] [data-slot="popover-content"] .px-2.pt-2.pb-1.border-b,
+[data-radix-portal] [data-slot="popover-content"] div[class*="px-2"][class*="pt-2"][class*="pb-1"][class*="border-b"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] .px-2.pt-2.pb-1.border-b,
+[data-radix-popper-content-wrapper] .px-2.pt-2.pb-1.border-b {
+  padding: 0.5rem !important;
+  padding-bottom: 0.25rem !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+  margin: 0 !important;
+}
+
+/* Search input inside filter popover */
+[data-radix-portal] [data-slot="popover-content"] input[data-slot="input"],
+[data-radix-portal] [data-slot="popover-content"] input[placeholder*="Search"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[data-slot="input"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Search"] {
+  width: 100% !important;
+  padding: 0.375rem 0.5rem 0.375rem 2rem !important;
+  border-radius: 0.375rem !important;
+  font-size: 0.875rem !important;
+  color: #0a0a0a !important;
+  outline: none !important;
+}
+
+[data-radix-portal] [data-slot="popover-content"] input[data-slot="input"]:focus,
+[data-radix-portal] [data-slot="popover-content"] input[placeholder*="Search"]:focus,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[data-slot="input"]:focus,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Search"]:focus {
+  border-color: #7c3aed !important;
+  box-shadow: none !important;
+}
+
+/* Filter popover scrollable content area (max-h-[300px] overflow-auto) */
+[data-radix-portal] [data-slot="popover-content"] .max-h-\[300px\].overflow-auto,
+[data-radix-portal] [data-slot="popover-content"] div[class*="max-h-"][class*="overflow-auto"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] .max-h-\[300px\].overflow-auto,
+[data-radix-popper-content-wrapper] .max-h-\[300px\].overflow-auto {
+  padding: 0.25rem 0 !important;
+  margin: 0 !important;
+  background: #ffffff !important;
+}
+
+/* Filter checkbox items container (space-y-1) */
+[data-radix-portal] [data-slot="popover-content"] .space-y-1,
+[data-radix-portal] [data-slot="popover-content"] [class*="space-y"],
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] .space-y-1,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"] [class*="space-y"] {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Individual filter checkbox items (Flows, Tables, etc.) 
+   IMPORTANT: Only target filter popovers (w-56), NOT Piece Selector popovers (w-[340px], shadow-lg)
+   to avoid affecting piece list item spacing */
+[data-radix-portal] [data-slot="popover-content"].w-56 label:has([role="checkbox"]),
+[data-radix-portal] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]),
+[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([role="checkbox"]),
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]),
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.5rem 0.75rem !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+[data-radix-portal] [data-slot="popover-content"].w-56 label:has([role="checkbox"]):hover,
+[data-radix-portal] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]):hover,
+[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2:hover,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([role="checkbox"]):hover,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]):hover,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2:hover {
+  background-color: #f5f5f5 !important;
+}
+
+/* Filter item text (Flows, Tables, Slack, ADA BMP, etc.) - only in filter popovers */
+[data-radix-portal] [data-slot="popover-content"].w-56 label span,
+[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 span,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label span,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 span {
+  font-size: 0.875rem !important;
+  color: #0a0a0a !important;
+  background: transparent !important;
   overflow: visible !important;
   text-overflow: clip !important;
   white-space: nowrap !important;
+}
+
+/* Remove any yellow/highlight backgrounds from filter popover elements only
+   Don't apply to Piece Selector popovers as it interferes with hover states */
+[data-radix-portal] [data-slot="popover-content"].w-56 *,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 * {
+  background-color: transparent;
+}
+
+/* Ensure filter popover itself has white background */
+[data-radix-portal] [data-slot="popover-content"].w-56,
+[data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 {
+  background-color: #ffffff !important;
 }
 
 /* Calendar component styling */
@@ -1280,4 +1996,183 @@ button[data-variant="link"] {
   right: 16px !important;
   top: auto !important;
   left: auto !important;
+}
+
+/* ============================================
+   FORM FIELDS - Required indicator and focus (fix red line / red dots UI issue)
+   Use primary purple instead of destructive red for required (*) and focus so
+   it matches the flow node selection style and does not look like an error.
+   ============================================ */
+
+/* Form label - ensure clean appearance without yellow/highlight backgrounds */
+/* CRITICAL: Use high-specificity selectors to override host app/browser highlights */
+/* Matching approach from bmp-overrides.css that works */
+.react-mount-point [data-slot='form-label'],
+.react-mount-point label[data-slot='form-label'],
+.react-mount-point #right-sidebar [data-slot='form-label'],
+.react-mount-point #right-sidebar label,
+.react-mount-point label,
+.react-mount-point label.text-sm,
+.react-mount-point label.font-medium,
+.react-mount-point label.leading-none,
+.react-mount-point .space-y-2 label[class*="flex"],
+.react-mount-point .space-y-1 label[class*="flex"],
+.react-mount-point [class*="form-item"] label,
+.react-mount-point label[data-slot="field-label"],
+.react-mount-point [data-slot="field-label"],
+.ap-sdk-root [data-slot='form-label'],
+.ap-sdk-root [data-slot='form-item'] label,
+.ap-sdk-root .space-y-2 label[class*="flex"],
+.ap-sdk-root .space-y-1 label[class*="flex"],
+.ap-sdk-root [class*="form-item"] label,
+.ap-sdk-root label[data-slot="field-label"],
+.ap-sdk-root [data-slot="field-label"],
+[data-radix-portal] [data-slot='form-label'] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap !important;
+  white-space: nowrap !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.25rem !important;
+  color: var(--foreground, #0a0a0a) !important;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  margin-bottom: 0.375rem !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+  -webkit-text-fill-color: var(--foreground, #0a0a0a) !important;
+  -webkit-highlight: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  text-shadow: none !important;
+}
+
+/* Remove pt-1 from label text div - fixes vertical misalignment (from bmp-overrides) */
+.react-mount-point label > div[class*="pt-1"],
+.ap-sdk-root label > div[class*="pt-1"] {
+  padding-top: 0 !important;
+  align-self: center !important;
+}
+
+/* Dynamic value toggle (f icon) - single line with label (from bmp-overrides) */
+.react-mount-point label > div[class*="gap-2"],
+.ap-sdk-root label > div[class*="gap-2"] {
+  align-items: center !important;
+  align-self: center !important;
+  flex-shrink: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Remove yellow/highlight from ALL elements inside labels */
+.react-mount-point label *,
+.react-mount-point [data-slot='form-label'] *,
+.react-mount-point [data-slot='form-item'] label *,
+.ap-sdk-root label *,
+.ap-sdk-root [data-slot='form-label'] *,
+.ap-sdk-root [data-slot='form-item'] label * {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-highlight: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  text-shadow: none !important;
+}
+
+/* Toggle button + SquareFunction icon - baseline align with text (from bmp-overrides) */
+.react-mount-point label button[data-state],
+.ap-sdk-root label button[data-state] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Lucide square-function icon - align with text baseline (from bmp-overrides) */
+.react-mount-point .lucide-square-function,
+.ap-sdk-root .lucide-square-function,
+.react-mount-point label svg[class*="square-function"],
+.ap-sdk-root label svg[class*="square-function"] {
+  vertical-align: middle !important;
+  display: inline-block !important;
+  background: none !important;
+  background-color: transparent !important;
+}
+
+/* Required asterisk in step settings: red (including Connection* in right panel) */
+.react-mount-point [data-slot='form-label'] span.text-destructive,
+.react-mount-point #right-sidebar label span.text-destructive,
+.react-mount-point #right-sidebar [data-slot='form-label'] span.text-destructive,
+.ap-sdk-root [data-slot='form-label'] span.text-destructive,
+.ap-sdk-root label span.text-destructive {
+  color: var(--color-destructive, #dc2626) !important;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+}
+/* Focus ring on inputs/selects in SDK: primary purple */
+.react-mount-point [data-slot='form-control'] input:focus-visible,
+.react-mount-point [data-slot='form-control'] button:focus-visible,
+.react-mount-point [data-slot='form-control'] [role='combobox']:focus-visible {
+  border-color: var(--ap-primary) !important;
+  box-shadow: 0 0 0 1px var(--ap-primary) !important;
+  outline: none !important;
+}
+/* Invalid/error state keeps red only for actual validation errors */
+.react-mount-point [data-slot='form-control'][aria-invalid='true'] input,
+.react-mount-point [data-slot='form-control'][aria-invalid='true'] button {
+  border-color: var(--color-destructive, #dc2626) !important;
+}
+
+/* SDK only: step settings form controls – spacing (py-2.5) and consistent rounded corners */
+.react-mount-point #right-sidebar [data-slot='form-control'] button,
+.react-mount-point #right-sidebar [data-slot='form-control'] input {
+  padding-top: 0.625rem !important;
+  padding-bottom: 0.625rem !important;
+  border-radius: 0.375rem !important;
+}
+
+/* Connection select: avoid Reconnect button overlapping dropdown chevron; keep rounded corners */
+.react-mount-point #right-sidebar [data-slot='select'] div.relative {
+  overflow: visible !important;
+}
+.react-mount-point #right-sidebar [data-slot='select'] div.relative > div.absolute.right-8 {
+  right: 3.5rem !important;
+}
+.react-mount-point #right-sidebar [data-slot='select-trigger'] {
+  border-radius: 0.375rem !important;
+  overflow: visible !important;
+}
+/* Prevent select value from showing half – allow full text (e.g. Whatsapp, connection names) */
+.react-mount-point #right-sidebar [data-slot='select-trigger'] [data-slot='select-value'],
+.react-mount-point #right-sidebar [data-slot='select-trigger'] [data-slot='select-value'] * {
+  min-width: min-content !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.react-mount-point
+  #right-sidebar
+  [data-slot='select-trigger']
+  [data-slot='select-value']
+  .truncate {
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+/* Right sidebar descriptions / helper text: show full text, allow wrap (e.g. Channel Selection) */
+.react-mount-point #right-sidebar p.text-muted-foreground {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+}
+.react-mount-point #right-sidebar .text-xs.whitespace-pre-wrap {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: pre-wrap !important;
 }
