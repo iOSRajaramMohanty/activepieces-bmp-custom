@@ -346,6 +346,7 @@ import { AddScimEnabled1769720000000 } from './migration/postgres/1769720000000-
 import { AddSecretManagersEntity1770717998442 } from './migration/postgres/1770717998442-AddSecretManagersEntity'
 import { AddSecretManagersFlag1771167183104 } from './migration/postgres/1771167183104-AddSecretManagersFlag'
 import { AddClientIdToUser1771241733000 } from './migration/postgres/1771241733000-AddClientIdToUser'
+import { AddSecretManagerConnectionEntity1772000000000 } from './migration/postgres/1772000000000-AddSecretManagerConnectionEntity'
 import { AddPreSelectForNewProjectsToAppConnection1772027509095 } from './migration/postgres/1772027509095-AddPreSelectForNewProjectsToAppConnection'
 import { AddEnabledToolsToMcpServer1772027509096 } from './migration/postgres/1772027509096-AddEnabledToolsToMcpServer'
 
@@ -710,6 +711,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddSecretManagersEntity1770717998442,
         AddSecretManagersFlag1771167183104,
         AddClientIdToUser1771241733000,
+        AddSecretManagerConnectionEntity1772000000000,
         AddPreSelectForNewProjectsToAppConnection1772027509095,
         AddEnabledToolsToMcpServer1772027509096,
     ]

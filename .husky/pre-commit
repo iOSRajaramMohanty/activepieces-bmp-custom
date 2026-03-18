@@ -3,3 +3,11 @@
 
 # License compliance validation - ensure changes are MIT only (no EE modifications)
 ./scripts/validate-license-compliance.sh
+# Prevent committing .env files
+ENV_FILES=$(git diff --cached --name-only | grep '\.env' || true)
+if [ -n "$ENV_FILES" ]; then
+  echo "Error: Attempting to commit .env files:"
+  echo "$ENV_FILES"
+  echo "Please unstage them with: git reset HEAD <file>"
+  exit 1
+fi

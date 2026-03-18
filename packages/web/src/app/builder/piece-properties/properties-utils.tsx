@@ -14,7 +14,6 @@ import { ApMarkdown } from '@/components/custom/markdown';
 import { MultiSelectPieceProperty } from '@/components/custom/multi-select-piece-property';
 import { SearchableSelect } from '@/components/custom/searchable-select';
 import { FormControl } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 
 import { ArrayPieceProperty } from './array-property';
@@ -270,7 +269,7 @@ export const selectGenericFormComponentForProperty = ({
               enableMarkdown={enableMarkdownForInputWithMention}
             ></TextInputWithMentions>
           ) : (
-            <Input
+            <SecretInput
               ref={field.ref}
               value={field.value}
               onChange={field.onChange}
@@ -278,7 +277,7 @@ export const selectGenericFormComponentForProperty = ({
               type={
                 property.type === PropertyType.SECRET_TEXT ? 'password' : 'text'
               }
-            ></Input>
+            ></SecretInput>
           )}
         </AutoFormFieldWrapper>
       );

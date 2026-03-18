@@ -6,6 +6,8 @@ import { ApId,
     ApplicationEventName,
     EnvironmentType,
     ErrorCode,
+    GetOAuth2AuthorizationUrlRequestBody,
+    GetOAuth2AuthorizationUrlResponse,
     ListAppConnectionOwnersRequestQuery,
     ListAppConnectionsRequestQuery,
     Permission,
@@ -26,6 +28,7 @@ import { applicationEvents } from '../helper/application-events'
 import { securityHelper } from '../helper/security-helper'
 import { userService } from '../user/user-service'
 import { appConnectionService } from './app-connection-service/app-connection-service'
+import { oauth2Util } from './app-connection-service/oauth2/oauth2-util'
 import { AppConnectionEntity } from './app-connection.entity'
 
 const isBmpPiece = (pieceName: string): boolean =>
@@ -182,7 +185,17 @@ export const appConnectionController: FastifyPluginCallbackZod = (app, _opts, do
         })
         await reply.status(StatusCodes.NO_CONTENT).send()
     })
-
+    app.post('/oauth2/authorization-url', GetOAuth2AuthorizationUrlRequest, async (request) => {
+        return oauth2Util(request.log).buildAuthorizationUrl({
+            platformId: request.principal.platform.id,
+            pieceName: request.body.pieceName,
+            pieceVersion: request.body.pieceVersion,
+            clientId: request.body.clientId,
+            redirectUrl: request.body.redirectUrl,
+            props: request.body.props,
+            projectId: request.projectId,
+        })
+    })
     done()
 }
 
@@ -314,6 +327,23 @@ const DeleteAppConnectionRequest = {
         }),
         response: {
             [StatusCodes.NO_CONTENT]: z.never(),
+        },
+    },
+}
+
+const GetOAuth2AuthorizationUrlRequest = {
+    config: {
+        security: securityAccess.publicPlatform(
+            [PrincipalType.USER],
+        ),
+    },
+    schema: {
+        tags: ['app-connections'],
+        security: [SERVICE_KEY_SECURITY_OPENAPI],
+        description: 'Get OAuth2 authorization URL',
+        body: GetOAuth2AuthorizationUrlRequestBody,
+        response: {
+            [StatusCodes.OK]: GetOAuth2AuthorizationUrlResponse,
         },
     },
 }
