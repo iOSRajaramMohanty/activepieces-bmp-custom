@@ -1,8 +1,28 @@
 # Customizing SDK styles from bmp-fe-web with bmp-overrides.css
 
-This guide explains how to customize CSS for the **Connections** page (and other SDK views) when the React UI SDK is embedded in **bmp-fe-web**, using **bmp-overrides.css** so your overrides take precedence over Bootstrap and the SDK’s inlined styles.
+This guide explains how to customize CSS for the **Connections** page (and other SDK views) when the React UI SDK is embedded in **bmp-fe-web**, using **bmp-overrides.css** so your overrides take precedence over Bootstrap and the SDK's inlined styles.
+
+## Built-in Style Isolation (v1.0+)
+
+**Starting with SDK v1.0+, Bootstrap style conflicts are handled automatically.** The SDK includes built-in CSS isolation that:
+
+- Uses CSS containment (`contain: layout paint style`) to create a style boundary
+- Resets Bootstrap's global element styles (tables, buttons, inputs, etc.) inside the SDK
+- Isolates Radix UI portals (dialogs, popovers, dropdowns) from host styles
+- Creates proper z-index stacking contexts
+
+**Most Bootstrap conflicts are now resolved out-of-the-box.** You only need `bmp-overrides.css` for:
+- Custom theming (changing colors, fonts, radius)
+- App-specific layout adjustments
+- Edge cases not covered by automatic isolation
+
+If you're using SDK v1.0+, you can likely simplify or remove your existing `bmp-overrides.css`.
+
+---
 
 ## 1. Where bmp-overrides.css lives and load order
+
+> **Note:** With built-in isolation, you may not need this file at all. Use it only for custom theming or edge cases.
 
 - **Location:** In the bmp-fe-web app (e.g. `src/styles/bmp-overrides.css` or next to your global styles).
 - **Load order:** Import or link **bmp-overrides.css after**:
@@ -53,13 +73,13 @@ Useful structure and classes:
 | Area | Selector / structure |
 |------|----------------------|
 | Page root | `[data-ap-view="connections"]` → `div.flex-col.w-full` |
-| Toolbar (filters + bulk actions) | `div.flex.items-center.justify-between.pb-4` (filters + “Replace”, “New Connection” buttons) |
+| Toolbar (filters + bulk actions) | `div.flex.items-center.justify-between.pb-4` (filters + "Replace", "New Connection" buttons) |
 | Table wrapper | `div.rounded-md.mt-0.overflow-hidden` |
 | Table | `table.table-fixed` inside `div.relative.w-full.overflow-auto` |
 | Header row | `thead [&_tr]:border-b` → `tr` → `th` (e.g. Piece, Name, Status, Connected At, Flows, actions) |
 | Body rows | `tbody tr` with `data-state="selected"` when selected, `border-b`, `hover:bg-muted/50` |
 | Cells | `td` with `px-2 py-3 align-middle` |
-| Buttons | “Replace” (outline), “New Connection” (primary), “Delete” (destructive) – they use shadcn `Button` with `variant="outline"`, `variant="default"`, `variant="destructive"` |
+| Buttons | "Replace" (outline), "New Connection" (primary), "Delete" (destructive) – they use shadcn `Button` with `variant="outline"`, `variant="default"`, `variant="destructive"` |
 
 So in **bmp-overrides.css** you can target:
 
@@ -71,44 +91,38 @@ So in **bmp-overrides.css** you can target:
 
 ## 4. Example overrides in bmp-overrides.css
 
+> **Note:** With built-in isolation (v1.0+), most of these overrides are no longer needed. Use them only for custom styling.
+
+### Custom theming (colors, fonts)
+
+```css
+/* Override SDK theme variables to match your app */
+.ap-sdk-root {
+  --primary: 220 90% 56%;  /* Your brand color in HSL */
+  --primary-foreground: 0 0% 100%;
+  --radius: 0.5rem;
+  --font-sans: 'Your Font', system-ui, sans-serif;
+}
+```
+
 ### Only affect the Connections view
 
 ```css
 /* Scope: Connections page only */
 [data-ap-view="connections"] {
-  /* Prevent Bootstrap from affecting the SDK container */
-  all: initial;
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-}
-[data-ap-view="connections"] * {
-  box-sizing: border-box;
+  /* Custom layout adjustments */
+  padding: 1rem;
 }
 ```
 
-Use `all: initial` with care (it resets inheritance); often you only need to override specific Bootstrap rules.
-
-### Override Bootstrap table styles on the Connections table
+### Override specific table styles
 
 ```css
-[data-ap-view="connections"] table.table-fixed {
-  /* Override Bootstrap .table if it leaks in */
-  border-collapse: collapse;
-  width: 100%;
-}
 [data-ap-view="connections"] thead th {
   font-weight: 600;
   padding: 0.5rem 0.75rem;
   text-align: left;
   border-bottom: 1px solid #e5e7eb;
-}
-[data-ap-view="connections"] tbody td {
-  padding: 0.75rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-[data-ap-view="connections"] tbody tr:hover {
-  background-color: #f9fafb;
 }
 ```
 
@@ -119,47 +133,14 @@ Use `all: initial` with care (it resets inheritance); often you only need to ove
   padding-bottom: 1rem;
   gap: 0.5rem;
 }
-[data-ap-view="connections"] button {
-  /* Override Bootstrap .btn if it affects SDK buttons */
-  font-family: inherit;
-  border-radius: 0.375rem;
-}
 ```
-
-### Isolate the SDK from Bootstrap’s global styles
-
-If Bootstrap’s base styles (e.g. on `table`, `button`, `input`) are affecting the Connections view, reset or re-define them only inside the SDK container:
-
-```css
-[data-ap-view="connections"] table {
-  margin-bottom: 0;
-  background-color: transparent;
-}
-[data-ap-view="connections"] .rounded-md {
-  border-radius: 0.375rem;
-}
-```
-
-### Connection dialog – remove unwanted scrollbar (“Select an Authentication Method”)
-
-The connection/auth method modal is rendered in a **portal** (outside the Connections container), so scope with `[data-ap-view="connections"]` does not apply. Target it by `role="dialog"` and the dialog’s class.
-
-If you are on an **older SDK build** where the dialog uses `overflow-y-auto` and shows a scrollbar even when content is short, add to **bmp-overrides.css**:
-
-```css
-/* Connection dialog: no scrollbar when content is short (e.g. "Select an Authentication Method") */
-[role="dialog"][class*="overflow-y-auto"] {
-  overflow-y: visible !important;
-}
-```
-
-**Newer SDK builds** fix this in the bundle (flex layout + inner scroll wrapper), so the outer dialog uses `overflow-hidden` and no longer shows a scrollbar for short content. After updating the SDK you can remove this override; if host/Bootstrap styles still force a scrollbar, keep it.
 
 ## 5. Summary
 
-1. **bmp-overrides.css** lives in bmp-fe-web and should load **after** Bootstrap and the SDK.
-2. Scope Connections-specific rules with **`[data-ap-view="connections"]`** so they don’t affect other SDK views.
-3. Use the **Connections page DOM structure** (table, thead, tbody, toolbar, buttons) to target the right elements.
-4. Override only what you need (tables, buttons, spacing) so the SDK’s Tailwind/shadcn layout and behavior stay intact.
+1. **SDK v1.0+ includes built-in Bootstrap isolation** – most conflicts are handled automatically.
+2. **bmp-overrides.css** is optional – use it only for custom theming or edge cases.
+3. Scope view-specific rules with **`[data-ap-view="connections"]`** so they don't affect other SDK views.
+4. Use the **Connections page DOM structure** (table, thead, tbody, toolbar, buttons) to target the right elements.
+5. Override only what you need (colors, fonts, spacing) so the SDK's Tailwind/shadcn layout and behavior stay intact.
 
 After changing the SDK bundle, when you copy built files into bmp-fe-web, **do not overwrite bmp-overrides.css** (see BUILD_GUIDE.md).

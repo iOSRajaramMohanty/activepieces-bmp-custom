@@ -176,7 +176,7 @@ To fulfill OAuth requirements in CE **without violating EE policy** (no use of c
 - **Use a new table and new CE-only module.** Do **not** reuse the existing `oauth_app` table or `ee/oauth-apps` module in CE, as those are EE features.
 - **New table:** `cloud_oauth_app` — created via a migration in the **core** migration folder (`database/migration/postgres/` and `database/migration/common/` for SQLite). Columns: `id`, `created`, `updated`, `pieceName`, `clientId`, `clientSecret` (jsonb, encrypted). Unique on `pieceName` (one cloud OAuth app per piece in CE).
 - **New module:** `packages/server/api/src/app/cloud-oauth/` — entity, service, controller, module live **outside** `ee/`. Use core `encryptUtils` from `app/helper/encryption.ts` for `clientSecret`. No imports from `ee/` or `@activepieces/ee-shared`.
-- **Registration:** Register `cloudOAuthAppModule` in [app.ts](packages/server/api/src/app/app.ts) **for `ApEdition.COMMUNITY**` (inside the `case ApEdition.COMMUNITY` block). Optionally register for CLOUD/ENTERPRISE if you want internal cloud there too.
+- **Registration:** Register `cloudOAuthAppModule` in [app.ts](packages/server/api/src/app/app.ts) **for `ApEdition.COMMUNITY`** (inside the `case ApEdition.COMMUNITY` block). Optionally register for CLOUD/ENTERPRISE if you want internal cloud there too.
 
 This keeps the feature fully in MIT-licensed core code and ensures all CLOUD_OAUTH2 piece connections (Slack, HubSpot, etc.) work in CE without external services or EE dependencies.
 
@@ -185,7 +185,7 @@ This keeps the feature fully in MIT-licensed core code and ensures all CLOUD_OAU
 Instead of calling external `secrets.activepieces.com`, we'll:
 
 1. Create internal backend endpoints `/v1/cloud-oauth/apps`, `/v1/cloud-oauth/claim`, `/v1/cloud-oauth/refresh`
-2. **For CE:** Store cloud OAuth app configs in the new `**cloud_oauth_app**` table only (no environment variables required).
+2. **For CE:** Store cloud OAuth app configs in the new `**cloud_oauth_app`** table only (no environment variables required).
 3. Update frontend to call `/v1/cloud-oauth/apps` when using internal cloud (e.g. CE or when internal cloud is enabled)
 4. Update backend `cloudOAuth2Service` to call internal `cloudOAuthAppService.claim()` / `refresh()` (direct service calls, no HTTP to external URLs)
 5. Reuse existing `credentialsOauth2Service` logic for token exchange (it already handles provider token URLs)
@@ -198,7 +198,7 @@ Verified before implementation:
   - Extracts `code` from query params
   - Posts code back to opener window via `postMessage` (lines 65-72)
   - No new route needed; just change CLOUD_OAUTH2 to use `thirdPartyUrl` instead of hardcoded external URL
-2. `**cloudAuthEnabled` defaults to `true**` — In [platform.service.ts](packages/server/api/src/app/platform/platform.service.ts) line 73, new platforms are created with `cloudAuthEnabled: true`. So CE platforms will fetch cloud OAuth apps by default; no extra configuration needed.
+2. `**cloudAuthEnabled` defaults to `true`** — In [platform.service.ts](packages/server/api/src/app/platform/platform.service.ts) line 73, new platforms are created with `cloudAuthEnabled: true`. So CE platforms will fetch cloud OAuth apps by default; no extra configuration needed.
 3. `**thirdPartyUrl` flag** — Resolves to `{AP_FRONTEND_URL}/redirect` via `getThirdPartyRedirectUrl()` in [federated-authn-service.ts](packages/server/api/src/app/ee/authentication/federated-authn/federated-authn-service.ts). This is the URL we'll use for CLOUD_OAUTH2 redirect instead of `secrets.activepieces.com/redirect`.
 
 ## Implementation
@@ -213,7 +213,7 @@ Verified before implementation:
 
 ### 1. Storage: Cloud OAuth App Configuration (CE)
 
-**Recommended for CE: New table `cloud_oauth_app**`
+**Recommended for CE: New table `cloud_oauth_app`**
 
 - **Schema:** `id` (varchar 21), `created`, `updated`, `pieceName` (varchar), `clientId` (varchar), `clientSecret` (jsonb, encrypted via `encryptUtils`). Unique constraint on `pieceName` so there is one cloud OAuth app per piece per instance.
 - **Migrations:** Add `AddCloudOAuthApp` in [packages/server/api/src/app/database/migration/postgres/](packages/server/api/src/app/database/migration/postgres/) and equivalent in [database/migration/common/](packages/server/api/src/app/database/migration/common/) if SQLite is supported. Do **not** place migrations under `ee/`.
@@ -227,20 +227,20 @@ Verified before implementation:
 - Register routes at `/v1/cloud-oauth` prefix
 - Implement three endpoints:
 
-**GET `/v1/cloud-oauth/apps**`
+**GET `/v1/cloud-oauth/apps`**
 
 - Read cloud OAuth apps from `cloud_oauth_app` table
 - Return `Record<string, { clientId: string }>` format (same as external service)
 - Include both short name (`"slack"`) and full piece name (`"@activepieces/piece-slack"`)
 
-**POST `/v1/cloud-oauth/claim**`
+**POST `/v1/cloud-oauth/claim`**
 
 - Accept same request body as external service: `{ pieceName, code, codeVerifier, authorizationMethod, clientId, tokenUrl, edition }`
 - Look up `clientSecret` for the given `pieceName` and `clientId`
 - Reuse `credentialsOauth2Service.claim()` logic to exchange code with provider
 - Return tokens in `CloudOAuth2ConnectionValue` format
 
-**POST `/v1/cloud-oauth/refresh**`
+**POST `/v1/cloud-oauth/refresh`**
 
 - Accept same request body: `{ refreshToken, pieceName, clientId, edition, authorizationMethod, tokenUrl }`
 - Look up `clientSecret`
@@ -249,7 +249,7 @@ Verified before implementation:
 
 **New File:** `packages/server/api/src/app/cloud-oauth/cloud-oauth-app.service.ts`
 
-- **No imports from `ee/` or `@activepieces/ee-shared**` (CE-only module). Use core `encryptUtils` from `app/helper/encryption.ts` for encrypting/decrypting `clientSecret`.
+- **No imports from `ee/` or `@activepieces/ee-shared`** (CE-only module). Use core `encryptUtils` from `app/helper/encryption.ts` for encrypting/decrypting `clientSecret`.
 - Service functions to:
   - `listApps()`: Read from `cloud_oauth_app` table, return `Record<string, { clientId: string }>`
   - `getWithSecret(pieceName, clientId)`: Look up row and return decrypted clientSecret for claim/refresh
@@ -400,7 +400,7 @@ Internal endpoints to implement:
 ### 8. Security Considerations
 
 - **Store client secrets securely** - Use encrypted database storage (`cloud_oauth_app.clientSecret` via `encryptUtils`)
-- **Validate `pieceName` and `clientId**` - Ensure they match configured apps before looking up secrets
+- **Validate `pieceName` and `clientId`** - Ensure they match configured apps before looking up secrets
 - **Error handling** - Return appropriate HTTP status codes (400 for invalid requests, 500 for server errors)
 - **Rate limiting** - Consider adding rate limits to prevent abuse (Fastify has rate limit plugins)
 - **HTTPS only** - Ensure your Activepieces backend uses HTTPS in production

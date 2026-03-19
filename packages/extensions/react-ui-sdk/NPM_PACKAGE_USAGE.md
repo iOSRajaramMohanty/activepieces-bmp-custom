@@ -239,9 +239,20 @@ Then configure `apiUrl` as your app origin so requests go to `/api/...` and get 
 
 ## Default stylesheet and customizing the UI
 
+### Built-in Style Isolation (v1.0+)
+
+The SDK includes **automatic style isolation** that prevents conflicts with host app CSS frameworks (Bootstrap, Foundation, Bulma, etc.). This works by:
+
+1. **CSS Containment**: The SDK root uses `contain: layout paint style` to create a style boundary
+2. **Element Resets**: Bootstrap's aggressive global styles (on tables, buttons, inputs, etc.) are reset inside the SDK
+3. **Portal Isolation**: Radix UI portals (dialogs, dropdowns, popovers) are also isolated from host styles
+4. **Z-Index Stacking**: Proper stacking contexts ensure SDK overlays appear above host content
+
+**No configuration required** – isolation works automatically when you load the SDK.
+
 ### How styles are loaded (style-loader)
 
-The SDK bundle uses **style-loader**: CSS is compiled (Tailwind, theme, fonts) at build time and **injected into the document** when the script runs. No separate `<link href="...">` is required. The styles are added as `<style>` tags to the page `<head>` and apply globally.
+The SDK bundle uses **style-loader**: CSS is compiled (Tailwind, theme, fonts, isolation resets) at build time and **injected into the document** when the script runs. No separate `<link href="...">` is required. The styles are added as `<style>` tags to the page `<head>` and apply globally.
 
 You **cannot** swap style-loader for another approach from the host app alone; the bundle is already built. To ship a separate stylesheet (e.g. for cache or CSP), the SDK would need a different build (e.g. MiniCssExtractPlugin) in the activepieces repo.
 
@@ -251,6 +262,7 @@ The inlined styles come from react-ui’s main styles and include:
 
 | Category | Details |
 |----------|--------|
+| **Style Isolation** | CSS containment and resets to prevent Bootstrap/Foundation conflicts |
 | **Tailwind** | Tailwind 4 utilities and components |
 | **Theme** | CSS custom properties for light/dark and components |
 | **Fonts** | Inter (400, 700, 800) via `@font-face` (woff2 from bundle) |
