@@ -53,7 +53,9 @@ function getCustomPiecesPath(platformId: string): string {
 }
 
 async function installPieces(rootWorkspace: string, pieces: PiecePackage[], includeFilters: boolean, log: Logger, apiClient: WorkerToApiContract): Promise<void> {
-    const { piecesToInstall } = await partitionPiecesToInstall(rootWorkspace, pieces)
+    const devPieces = workerSettings.getSettings().DEV_PIECES
+    const nonDevPieces = pieces.filter(piece => !devPieces.includes(getPieceNameFromAlias(piece.pieceName)))
+    const { piecesToInstall } = await partitionPiecesToInstall(rootWorkspace, nonDevPieces)
 
     if (isEmpty(piecesToInstall)) {
         log.debug({ rootWorkspace }, '[pieceInstaller] No new pieces to install (already installed)')

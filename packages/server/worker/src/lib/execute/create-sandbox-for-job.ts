@@ -72,7 +72,7 @@ function buildSandboxEnv(settings: ReturnType<typeof workerSettings.getSettings>
         NODE_PATH: '/usr/src/node_modules',
     }
     if (settings.DEV_PIECES.length > 0) {
-        env.AP_DEV_PIECES = settings.DEV_PIECES.join(',')
+        env['AP_DEV_PIECES'] = settings.DEV_PIECES.join(',')
     }
     for (const key of settings.SANDBOX_PROPAGATED_ENV_VARS) {
         if (process.env[key]) {

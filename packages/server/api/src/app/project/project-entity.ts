@@ -92,6 +92,11 @@ export const ProjectEntity = new EntitySchema<ProjectSchema>({
             where: 'deleted IS NULL',
             unique: true,
         },
+        {
+            name: 'idx_project_platform_id',
+            columns: ['platformId'],
+            unique: false,
+        },
     ],
     relations: {
         owner: {
