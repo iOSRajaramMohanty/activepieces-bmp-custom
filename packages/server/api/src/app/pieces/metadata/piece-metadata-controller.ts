@@ -181,7 +181,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
                 req.log.warn({ error }, '[Pieces Options] Failed to fetch organization environment metadata')
             }
             
-            const { response } = await userInteractionWatcher(req.log).submitAndWaitForResponse<EngineResponse<unknown>>({
+            const { response } = await userInteractionWatcher.submitAndWaitForResponse<EngineResponse<unknown>>({
                 jobType: WorkerJobType.EXECUTE_PROPERTY,
                 platformId: platform.id,
                 projectId,
@@ -193,7 +193,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
                 searchValue: req.body.searchValue,
                 piece: await getPiecePackageWithoutArchive(req.log, platform.id, req.body),
                 organizationEnvironmentMetadata,
-            })
+            }, req.log)
             return response
         },
     )

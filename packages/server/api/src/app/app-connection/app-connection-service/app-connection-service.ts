@@ -570,7 +570,7 @@ const engineValidateAuth = async (
         })
     }
 
-    const engineResponse = await userInteractionWatcher(log).submitAndWaitForResponse<EngineResponse<ExecuteValidateAuthResponse>>({
+    const engineResponse = await userInteractionWatcher.submitAndWaitForResponse<EngineResponse<ExecuteValidateAuthResponse>>({
         piece: await getPiecePackageWithoutArchive(log, platformId, {
             pieceName,
             pieceVersion: pieceMetadata.version,
@@ -580,7 +580,7 @@ const engineValidateAuth = async (
         connectionValue: auth,
         jobType: WorkerJobType.EXECUTE_VALIDATION,
         environmentMetadata,
-    })
+    }, log)
 
     if (engineResponse.status !== EngineResponseStatus.OK) {
         log.error(
