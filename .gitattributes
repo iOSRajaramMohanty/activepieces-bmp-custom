@@ -55,6 +55,15 @@ packages/web/src/lib/super-admin-api.ts merge=ours
 packages/web/src/features/platform-admin/api/organization-api.ts merge=ours
 packages/web/src/features/platform-admin/api/organization-hooks.ts merge=ours
 
+# Cloud OAuth
+packages/server/api/src/app/cloud-oauth/** merge=ours
+packages/server/api/src/app/app-connection/cloud-oauth-hooks.ts merge=ours
+packages/server/api/src/app/database/migration/postgres/*CloudOAuth* merge=ours
+packages/web/src/features/platform-admin/api/cloud-oauth-*.ts merge=ours
+
+# App Event Routing hooks
+packages/server/api/src/app/trigger/app-event-routing/app-event-routing.hooks.ts merge=ours
+
 # BMP authentication session modifications
 packages/web/src/lib/authentication-session.ts merge=ours
 
