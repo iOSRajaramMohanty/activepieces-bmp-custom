@@ -460,6 +460,7 @@ const validateConnectionValue = async (
                 pieceName,
                 clientId: value.client_id,
                 hasCode: !!value.code,
+                redirectUrl: value.redirect_url,
             }, '[AP OAuth] validateConnectionValue: CLOUD_OAUTH2 path, calling claim')
 
             const tokenUrl = await oauth2Util(log).getOAuth2TokenUrl({
@@ -479,6 +480,7 @@ const validateConnectionValue = async (
                     clientId: value.client_id,
                     authorizationMethod: value.authorization_method,
                     codeVerifier: value.code_challenge,
+                    redirectUrl: value.redirect_url,
                 },
             })
         }

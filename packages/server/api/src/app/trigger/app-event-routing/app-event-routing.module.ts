@@ -1,7 +1,3 @@
-import { adaBmp } from '@activepieces/piece-ada-bmp'
-import { facebookLeads } from '@activepieces/piece-facebook-leads'
-import { intercom } from '@activepieces/piece-intercom'
-import { square } from '@activepieces/piece-square'
 import { Piece, PieceAuthProperty } from '@activepieces/pieces-framework'
 import {
     ActivepiecesError,
@@ -27,19 +23,24 @@ import { jobQueue, JobType } from '../../workers/job-queue/job-queue'
 import { payloadOffloader } from '../../workers/payload-offloader'
 import { triggerSourceService } from '../trigger-source/trigger-source-service'
 import { appEventRoutingService } from './app-event-routing.service'
+import { appEventRoutingHooks } from './app-event-routing.hooks'
 
+// Lazy-initialized piece registry (populated from hooks on first access)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const appWebhooks: Record<string, Piece<any>> = {
-    'ada-bmp': adaBmp,
-    square,
-    'facebook-leads': facebookLeads,
-    intercom,
-}
-const pieceNames: Record<string, string> = {
-    'ada-bmp': '@activepieces/piece-ada-bmp',
-    square: '@activepieces/piece-square',
-    'facebook-leads': '@activepieces/piece-facebook-leads',
-    intercom: '@activepieces/piece-intercom',
+let appWebhooks: Record<string, Piece<any>> | null = null
+let pieceNames: Record<string, string> | null = null
+
+function getAppWebhooks() {
+    if (appWebhooks === null) {
+        appWebhooks = {}
+        pieceNames = {}
+        const registeredPieces = appEventRoutingHooks.getRegisteredPieces()
+        for (const { urlName, packageName, piece } of registeredPieces) {
+            appWebhooks[urlName] = piece
+            pieceNames![urlName] = packageName
+        }
+    }
+    return { appWebhooks, pieceNames: pieceNames! }
 }
 
 export const appEventRoutingModule: FastifyPluginAsyncZod = async (app) => {
@@ -74,7 +75,24 @@ export const appEventRoutingController: FastifyPluginAsyncZod = async (
                 method: request.method,
                 queryParams: request.query as Record<string, string>,
             }
-            const piece = appWebhooks[pieceUrl]
+            
+            // Log raw webhook payload for debugging
+            request.log.info(
+                {
+                    pieceUrl,
+                    method: request.method,
+                    body: request.body,
+                    headers: {
+                        'content-type': request.headers['content-type'],
+                        'x-slack-signature': request.headers['x-slack-signature'],
+                        'x-slack-request-timestamp': request.headers['x-slack-request-timestamp'],
+                    },
+                },
+                '[AppEventRoutingController#event] Raw webhook payload received',
+            )
+            
+            const registry = getAppWebhooks()
+            const piece = registry.appWebhooks[pieceUrl]
             if (isNil(piece)) {
                 throw new ActivepiecesError({
                     code: ErrorCode.ENTITY_NOT_FOUND,
@@ -85,7 +103,7 @@ export const appEventRoutingController: FastifyPluginAsyncZod = async (
                     },
                 })
             }
-            const appName = pieceNames[pieceUrl]
+            const appName = registry.pieceNames[pieceUrl]
             assertNotNullOrUndefined(piece.events, 'Event is possible in this piece')
             const { reply, event, identifierValue } = piece.events.parseAndReply({
                 payload,

@@ -158,6 +158,7 @@ export const newConnectionUtils = {
                 client_id: oauth2App.clientId,
                 code: '',
                 scope: auth.scope.join(' '),
+                redirect_url: redirectUrl,
                 authorization_method: auth.authorizationMethod,
                 props: formUtils.getDefaultValueForProperties({
                   props: auth.props ?? {},

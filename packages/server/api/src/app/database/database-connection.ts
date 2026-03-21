@@ -55,6 +55,7 @@ import { UserEntity } from '../user/user-entity'
 import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
 import { OrganizationEntity } from '../organization/organization.entity'
 import { OrganizationEnvironmentEntity } from '../organization/organization-environment.entity'
+import { CloudOAuthAppEntity } from '../cloud-oauth/cloud-oauth-app.entity'
 import { DatabaseType } from './database-type'
 import { createPGliteDataSource } from './pglite-connection'
 import { createPostgresDataSource } from './postgres-connection'
@@ -117,6 +118,8 @@ function getEntities(): EntitySchema<unknown>[] {
         AppCredentialEntity,
         PlatformPlanEntity,
         EventDestinationEntity,
+        // Cloud OAuth
+        CloudOAuthAppEntity,
 
     ]
 }

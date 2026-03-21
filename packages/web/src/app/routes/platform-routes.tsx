@@ -75,6 +75,9 @@ const SuperAdminDashboard = React.lazy(
       default: m.SuperAdminDashboard,
     })),
 );
+const CloudOAuthAppsPage = React.lazy(
+  () => import('./platform/super-admin/cloud-oauth-apps'),
+);
 const OwnerDashboard = React.lazy(
   () =>
     import('./platform/owner-dashboard').then((m) => ({
@@ -106,6 +109,18 @@ const allPlatformRoutes = [
         <PageTitle title="Super Admin Dashboard">
           <SuspenseWrapper>
             <SuperAdminDashboard />
+          </SuspenseWrapper>
+        </PageTitle>
+      </SuperAdminLayout>
+    ),
+  },
+  {
+    path: '/platform/cloud-oauth-apps',
+    element: (
+      <SuperAdminLayout>
+        <PageTitle title="Cloud OAuth Apps">
+          <SuspenseWrapper>
+            <CloudOAuthAppsPage />
           </SuspenseWrapper>
         </PageTitle>
       </SuperAdminLayout>

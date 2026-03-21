@@ -9,17 +9,22 @@ import {
 import { FastifyBaseLogger } from 'fastify'
 import { apAxios } from '../../../../helper/ap-axios'
 import { system } from '../../../../helper/system/system'
+import { AppSystemProp } from '../../../../helper/system/system-props'
 import {
     ClaimOAuth2Request,
     OAuth2Service,
     RefreshOAuth2Request,
 } from '../oauth2-service'
+import { cloudOAuthHooks } from '../../../cloud-oauth-hooks'
 
 export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudOAuth2ConnectionValue> => ({
-    refresh: async ({
-        pieceName,
-        connectionValue,
-    }: RefreshOAuth2Request<CloudOAuth2ConnectionValue>): Promise<CloudOAuth2ConnectionValue> => {
+    refresh: async (params: RefreshOAuth2Request<CloudOAuth2ConnectionValue>): Promise<CloudOAuth2ConnectionValue> => {
+        const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
+        if (bmpEnabled) {
+            return cloudOAuthHooks.get(log).refresh(params)
+        }
+
+        const { pieceName, connectionValue } = params
         const requestBody = {
             refreshToken: connectionValue.refresh_token,
             pieceName,
@@ -57,10 +62,13 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
             type: AppConnectionType.CLOUD_OAUTH2,
         }
     },
-    claim: async ({
-        request,
-        pieceName,
-    }: ClaimOAuth2Request): Promise<CloudOAuth2ConnectionValue> => {
+    claim: async (params: ClaimOAuth2Request): Promise<CloudOAuth2ConnectionValue> => {
+        const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
+        if (bmpEnabled) {
+            return cloudOAuthHooks.get(log).claim(params)
+        }
+
+        const { request, pieceName } = params
         try {
             const cloudRequest: ClaimWithCloudRequest = {
                 code: request.code,

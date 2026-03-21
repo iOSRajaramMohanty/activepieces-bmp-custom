@@ -65,6 +65,7 @@ export const UpsertCloudOAuth2Request = z.object({
         props: propsSchema.optional(),
         scope: z.string(),
         type: z.literal(AppConnectionType.CLOUD_OAUTH2),
+        redirect_url: z.string().min(1),
     }),
 }).describe('Cloud OAuth2')
 

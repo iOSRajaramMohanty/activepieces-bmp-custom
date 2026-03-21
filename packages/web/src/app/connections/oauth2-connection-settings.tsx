@@ -33,6 +33,7 @@ import { flagsHooks } from '@/hooks/flags-hooks';
 import { GenericPropertiesForm } from '../builder/piece-properties/generic-properties-form';
 
 import { SecretInput } from './secret-input';
+import { isBmpEnabled } from '@/app/routes/bmp-routes';
 
 function OAuth2ConnectionSettings({
   authProperty,
@@ -61,7 +62,9 @@ function OAuth2ConnectionSettings({
   );
   const redirectUrl =
     oauth2App.oauth2Type === AppConnectionType.CLOUD_OAUTH2
-      ? 'https://secrets.activepieces.com/redirect'
+      ? isBmpEnabled()
+        ? thirdPartyUrl ?? 'no_redirect_url_found'
+        : 'https://secrets.activepieces.com/redirect'
       : thirdPartyUrl ?? 'no_redirect_url_found';
 
   const hasCode = form.getValues().request.value.code;
@@ -138,6 +141,9 @@ function OAuth2ConnectionSettings({
             type="button"
             onClick={async () => {
               if (!hasCode) {
+                const formValues = form.getValues();
+                console.log('[OAuth2 Connect] Form values:', formValues);
+                console.log('[OAuth2 Connect] Props being sent:', formValues.request.value.props);
                 openPopup(
                   redirectUrl,
                   form.getValues().request.value.client_id,

@@ -127,9 +127,11 @@ export const selectGenericFormComponentForProperty = ({
       );
     case PropertyType.STATIC_DROPDOWN:
       // Special handling for ADA BMP environment dropdown to filter based on organization
-      const isAdaBmpEnvironment = 
-        propertyName === 'environment' && 
-        inputName.includes('props.environment');
+      // Only apply to ADA BMP piece, not other pieces like Salesforce that also have an 'environment' prop
+      const isAdaBmpEnvironment =
+        propertyName === 'environment' &&
+        inputName.includes('props.environment') &&
+        inputName.includes('ada-bmp');
       
       return (
         <AutoFormFieldWrapper

@@ -24,6 +24,7 @@ export const BMP_ROUTE_PATHS = {
     superAdmin: '/super-admin',
     ownerDashboard: '/owner-dashboard',
     organizations: '/platform/organizations',
+    cloudOAuthApps: '/platform/cloud-oauth-apps',
 } as const
 
 /**

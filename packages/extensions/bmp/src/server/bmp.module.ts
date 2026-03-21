@@ -31,6 +31,11 @@ export const BMP_SERVER_MODULES = {
         routePrefix: '/v1/super-admin',
         description: 'Super admin tenant management',
     },
+    cloudOAuth: {
+        path: './controllers/cloud-oauth.controller',
+        routePrefix: '/v1/cloud-oauth',
+        description: 'Cloud OAuth apps (internal endpoints)',
+    },
 } as const
 
 /**
@@ -64,6 +69,7 @@ export const BMP_MODULE_ROUTES = {
     superAdminTenants: '/v1/super-admin/tenants',
     superAdminUsers: '/v1/super-admin/users',
     accountSwitching: '/v1/super-admin/account-switching-activities',
+    cloudOAuth: '/v1/cloud-oauth',
 } as const
 
 export type BmpModuleRoute = typeof BMP_MODULE_ROUTES[keyof typeof BMP_MODULE_ROUTES]

@@ -123,8 +123,21 @@ export const oauth2Util = (log: FastifyBaseLogger) => ({
             throwOnFailure: true,
             projectIds: projectId ? [projectId] : undefined,
         })
+
+        log.info({
+            pieceName,
+            props,
+            authUrlTemplate: pieceAuth.authUrl,
+        }, '[buildAuthorizationUrl] RECEIVED props from frontend')
+
         const authUrl = resolveValueFromProps(props, pieceAuth.authUrl)
         const scope = resolveValueFromProps(props, pieceAuth.scope.join(' '))
+
+        log.info({
+            pieceName,
+            authUrl,
+            scope,
+        }, '[buildAuthorizationUrl] RESOLVED authUrl after props substitution')
 
         const queryParams: Record<string, string> = {
             response_type: 'code',

@@ -10,3 +10,6 @@ export type { AuthHooksInterface } from './bmp-auth-hooks'
 
 export { bmpConnectionHooks } from './bmp-connection-hooks'
 export type { ConnectionHooksInterface } from './bmp-connection-hooks'
+
+export { bmpCloudOAuthHooks } from './cloud-oauth.hooks'
+export type { CloudOAuthHooks } from './cloud-oauth.hooks'

@@ -68,5 +68,13 @@ export type {
 } from './account-switching'
 
 // Server-side BMP hooks (for app.ts registration)
-export { bmpAuthHooks, bmpConnectionHooks } from './hooks'
-export type { AuthHooksInterface, ConnectionHooksInterface } from './hooks'
+export {
+    bmpAuthHooks,
+    bmpConnectionHooks,
+    bmpCloudOAuthHooks,
+} from './hooks'
+export type {
+    AuthHooksInterface,
+    ConnectionHooksInterface,
+    CloudOAuthHooks,
+} from './hooks'

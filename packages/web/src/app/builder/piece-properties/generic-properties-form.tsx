@@ -38,6 +38,17 @@ export const GenericPropertiesForm = React.memo(
             const dynamicInputModeToggled =
               propertySettings?.[propertyName]?.type ===
               PropertyExecutionType.DYNAMIC;
+            
+            // Debug: Log property type for environment field
+            if (propertyName === 'environment') {
+              console.log('[GenericPropertiesForm] environment property:', {
+                propertyName,
+                propertyType: props[propertyName]?.type,
+                fullProperty: props[propertyName],
+                prefixValue,
+              });
+            }
+            
             return (
               <FormField
                 key={propertyName}

@@ -10,6 +10,7 @@ import { ServerIcon } from '@/components/icons/server';
 import { Settings2Icon } from '@/components/icons/settings2';
 import { SquareDashedBottomCodeIcon } from '@/components/icons/square-dashed-bottom-code';
 import { UsersIcon } from '@/components/icons/users';
+import { Key } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -51,6 +52,12 @@ export function SuperAdminSidebar() {
                     to="/super-admin"
                     label={t('Super Admin Dashboard')}
                     icon={SquareDashedBottomCodeIcon}
+                  />
+                  <ApSidebarItem
+                    type="link"
+                    to="/platform/cloud-oauth-apps"
+                    label={t('Cloud OAuth Apps')}
+                    icon={Key}
                   />
                 </SidebarMenu>
               </SidebarGroupContent>

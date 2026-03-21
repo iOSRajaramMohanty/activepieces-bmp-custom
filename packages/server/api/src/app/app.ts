@@ -82,6 +82,11 @@ import { organizationModule } from './organization/organization.module'
 import { superAdminModule } from './super-admin/super-admin.module'
 import { authHooks } from './authentication/auth-hooks'
 import { connectionHooks } from './app-connection/connection-hooks'
+import { cloudOAuthHooks } from './app-connection/cloud-oauth-hooks'
+import { cloudOAuthController } from '../../../../extensions/bmp/src/server/controllers/cloud-oauth.controller'
+import { bmpCloudOAuthHooks } from '../../../../extensions/bmp/src/server/hooks/cloud-oauth.hooks'
+import { bmpAppEventRoutingHooks } from '../../../../extensions/bmp/src/server/hooks/app-event-routing.hooks'
+import { appEventRoutingHooks } from './trigger/app-event-routing/app-event-routing.hooks'
 import { storeEntryModule } from './store-entry/store-entry.module'
 import { tablesModule } from './tables/tables.module'
 import { templateModule } from './template/template.module'
@@ -212,6 +217,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
         app.log.info('[BMP] BMP is enabled, registering organization and super-admin modules')
         await app.register(organizationModule)
         await app.register(superAdminModule)
+        await app.register(cloudOAuthController, { prefix: '/v1/cloud-oauth' })
         
         // Set BMP-specific hooks to override default behavior
         authHooks.set(_log => ({
@@ -228,6 +234,9 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
             canDeleteConnection: (conn) => !conn.externalId?.startsWith('bmp-auto-'),
             getEnvironmentMetadata: async () => undefined,
         }))
+
+        cloudOAuthHooks.set(bmpCloudOAuthHooks)
+        appEventRoutingHooks.set(bmpAppEventRoutingHooks)
         app.log.info('[BMP] BMP hooks registered')
     } else {
         app.log.info('[BMP] BMP is disabled, skipping organization and super-admin modules')

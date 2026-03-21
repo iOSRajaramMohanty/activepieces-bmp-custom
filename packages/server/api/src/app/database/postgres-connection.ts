@@ -350,6 +350,7 @@ import { AddSecretManagerConnectionEntity1772000000000 } from './migration/postg
 import { AddPreSelectForNewProjectsToAppConnection1772027509095 } from './migration/postgres/1772027509095-AddPreSelectForNewProjectsToAppConnection'
 import { AddEnabledToolsToMcpServer1772027509096 } from './migration/postgres/1772027509096-AddEnabledToolsToMcpServer'
 import { AddProjectPlatformIdIndex1773930744000 } from './migration/postgres/1773930744000-AddProjectPlatformIdIndex'
+import { AddCloudOAuthAppTable1773944336467 } from './migration/postgres/1773944336467-AddCloudOAuthAppTable'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -716,6 +717,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddPreSelectForNewProjectsToAppConnection1772027509095,
         AddEnabledToolsToMcpServer1772027509096,
         AddProjectPlatformIdIndex1773930744000,
+        AddCloudOAuthAppTable1773944336467,
     ]
     return migrations
 }
