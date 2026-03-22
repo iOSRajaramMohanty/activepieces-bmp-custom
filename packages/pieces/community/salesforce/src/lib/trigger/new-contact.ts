@@ -47,6 +47,12 @@ const polling: Polling<AppConnectionValueForAuthProperty<typeof salesforceAuth>,
     items: async ({ auth, lastFetchEpochMS }) => {
         const isoDate = dayjs(lastFetchEpochMS).toISOString();
 
+        console.log('[Salesforce Polling] Debug:', {
+            lastFetchEpochMS,
+            isoDate,
+            currentTime: new Date().toISOString(),
+        });
+
         const query = `
             SELECT FIELDS(ALL)
             FROM Contact
@@ -62,6 +68,8 @@ const polling: Polling<AppConnectionValueForAuthProperty<typeof salesforceAuth>,
         );
 
         const records = response.body?.['records'] || [];
+
+        console.log('[Salesforce Polling] Records found:', records.length);
 
         return records.map((record: { CreatedDate: string }) => ({
             epochMilliSeconds: dayjs(record.CreatedDate).valueOf(),

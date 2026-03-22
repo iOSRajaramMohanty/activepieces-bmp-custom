@@ -728,15 +728,30 @@ export async function callSalesforceApi<T extends HttpMessageBody>(
 	url: string,
 	body: Record<string, unknown> | undefined
 ): Promise<HttpResponse<T>> {
-	return await httpClient.sendRequest<T>({
+	const requestUrl = `${authentication.data['instance_url']}${url}`;
+
+	console.log('[Salesforce API] Request:', {
+		method,
+		url: requestUrl,
+		body: body ? JSON.stringify(body, null, 2) : undefined,
+	});
+
+	const response = await httpClient.sendRequest<T>({
 		method: method,
-		url: `${authentication.data['instance_url']}${url}`,
+		url: requestUrl,
 		body,
 		authentication: {
 			type: AuthenticationType.BEARER_TOKEN,
 			token: authentication['access_token'],
 		},
 	});
+
+	console.log('[Salesforce API] Response:', {
+		status: response.status,
+		body: JSON.stringify(response.body, null, 2),
+	});
+
+	return response;
 }
 
 export async function querySalesforceApi<T extends HttpMessageBody>(
@@ -744,9 +759,17 @@ export async function querySalesforceApi<T extends HttpMessageBody>(
 	authentication: OAuth2PropertyValue,
 	query: string
 ): Promise<HttpResponse<T>> {
-	return await httpClient.sendRequest<T>({
+	const requestUrl = `${authentication.data['instance_url']}/services/data/v56.0/query`;
+	
+	console.log('[Salesforce API] Request:', {
+		method,
+		url: requestUrl,
+		query,
+	});
+
+	const response = await httpClient.sendRequest<T>({
 		method: method,
-		url: `${authentication.data['instance_url']}/services/data/v56.0/query`,
+		url: requestUrl,
 		queryParams: {
 			q: query,
 		},
@@ -755,6 +778,13 @@ export async function querySalesforceApi<T extends HttpMessageBody>(
 			token: authentication['access_token'],
 		},
 	});
+
+	console.log('[Salesforce API] Response:', {
+		status: response.status,
+		body: JSON.stringify(response.body, null, 2),
+	});
+
+	return response;
 }
 
 export async function createBulkJob<T extends HttpMessageBody = any>(
