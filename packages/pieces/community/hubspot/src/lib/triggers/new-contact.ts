@@ -24,12 +24,18 @@ const polling: Polling<AppConnectionValueForAuthProperty<typeof hubspotAuth>, Pr
 		const defaultContactProperties = getDefaultPropertiesForObject(OBJECT_TYPE.CONTACT);
 		const propertiesToRetrieve = [...defaultContactProperties, ...additionalProperties];
 
+		console.log('[HubSpot Polling] Debug:', {
+			lastFetchEpochMS,
+			lastFetchDate: dayjs(lastFetchEpochMS).toISOString(),
+			currentTime: new Date().toISOString(),
+		});
+
 		const items = [];
 		let after: string | undefined;
 
 		do {
 			const isTest = lastFetchEpochMS === 0;
-			const response = await client.crm.contacts.searchApi.doSearch({
+			const searchRequest = {
 				limit: isTest ? 10 : MAX_SEARCH_PAGE_SIZE,
 				properties: propertiesToRetrieve,
 				sorts: ['-createdate'],
@@ -47,7 +53,21 @@ const polling: Polling<AppConnectionValueForAuthProperty<typeof hubspotAuth>, Pr
 								],
 							},
 					  ],
+			};
+
+			console.log('[HubSpot API] Request:', {
+				endpoint: 'crm.contacts.searchApi.doSearch',
+				filterGroups: JSON.stringify(searchRequest.filterGroups, null, 2),
 			});
+
+			const response = await client.crm.contacts.searchApi.doSearch(searchRequest);
+
+			console.log('[HubSpot API] Response:', {
+				total: response.total,
+				resultsCount: response.results.length,
+				results: JSON.stringify(response.results, null, 2),
+			});
+
 			after = response.paging?.next?.after;
 			items.push(...response.results);
 
@@ -62,6 +82,8 @@ const polling: Polling<AppConnectionValueForAuthProperty<typeof hubspotAuth>, Pr
 				break;
 			}
 		} while (after);
+
+		console.log('[HubSpot Polling] Total contacts found:', items.length);
 
 		return items.map((item) => ({
 			epochMilliSeconds: dayjs(item.properties['createdate']).valueOf(),
