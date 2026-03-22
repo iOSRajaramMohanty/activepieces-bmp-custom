@@ -44,11 +44,11 @@ export default function CloudOAuthAppsPage() {
         <DataTableColumnHeader column={column} title={t('Piece')} />
       ),
       cell: ({ row }) => (
-        <div className="flex flex-col">
+        <div className="flex flex-col min-w-[120px] max-w-[200px]">
           <span className="font-medium">
             {getPieceDisplayName(row.original.pieceName)}
           </span>
-          <code className="text-xs text-muted-foreground">
+          <code className="text-xs text-muted-foreground truncate">
             {row.original.pieceName}
           </code>
         </div>
@@ -60,9 +60,16 @@ export default function CloudOAuthAppsPage() {
         <DataTableColumnHeader column={column} title={t('Client ID')} />
       ),
       cell: ({ row }) => (
-        <code className="text-sm bg-muted px-2 py-1 rounded">
-          {row.original.clientId}
-        </code>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <code className="text-sm bg-muted px-2 py-1 rounded block max-w-[280px] truncate cursor-default">
+              {row.original.clientId}
+            </code>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[400px] break-all">
+            <code className="text-xs">{row.original.clientId}</code>
+          </TooltipContent>
+        </Tooltip>
       ),
     },
     {
@@ -71,7 +78,7 @@ export default function CloudOAuthAppsPage() {
         <DataTableColumnHeader column={column} title={t('Created')} />
       ),
       cell: ({ row }) => (
-        <div className="text-left">
+        <div className="text-left whitespace-nowrap">
           <FormattedDate date={new Date(row.original.created)} />
         </div>
       ),
