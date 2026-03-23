@@ -1,5 +1,13 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Load nvm/fnm/node if available (fixes PATH issues in git hooks)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$HOME/.fnm/fnm" ] && eval "$(fnm env)"
+
+# Add common node paths
+export PATH="$HOME/.nvm/versions/node/$(cat $HOME/.nvmrc 2>/dev/null || echo 'v20')/bin:$PATH"
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
 
 npx --no -- commitlint --edit ${1}
