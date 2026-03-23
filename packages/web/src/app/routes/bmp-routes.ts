@@ -11,10 +11,27 @@
 
 /**
  * Check if BMP features are enabled
- * This reads from Vite's environment variables at build time
+ * Checks SDK runtime config first (for embedded SDK usage), then Vite env (for web app)
  */
 export const isBmpEnabled = (): boolean => {
-    return import.meta.env.VITE_BMP_ENABLED === 'true'
+    // SDK mode: check runtime config first (set by SDKProviders)
+    if (typeof window !== 'undefined') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sdkConfig = (window as any).__AP_SDK_CONFIG__;
+        console.log('[isBmpEnabled] Checking SDK config:', { 
+            hasConfig: !!sdkConfig, 
+            bmpEnabled: sdkConfig?.bmpEnabled,
+            fullConfig: sdkConfig 
+        });
+        if (sdkConfig?.bmpEnabled !== undefined) {
+            console.log('[isBmpEnabled] Using SDK config, returning:', sdkConfig.bmpEnabled === true);
+            return sdkConfig.bmpEnabled === true;
+        }
+    }
+    // Standard web app: check Vite env at build time
+    const viteValue = import.meta.env.VITE_BMP_ENABLED === 'true';
+    console.log('[isBmpEnabled] Using Vite env, returning:', viteValue);
+    return viteValue;
 }
 
 /**

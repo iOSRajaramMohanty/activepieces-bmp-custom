@@ -17,6 +17,8 @@ export interface ReactUISDKConfig {
   projectId?: string;
   /** Optional flow ID for flow-specific views */
   flowId?: string;
+  /** Enable BMP Cloud OAuth endpoints (uses /v1/cloud-oauth/apps instead of secrets.activepieces.com) */
+  bmpEnabled?: boolean;
 }
 
 /**

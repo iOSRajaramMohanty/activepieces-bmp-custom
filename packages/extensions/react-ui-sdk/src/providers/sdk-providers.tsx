@@ -209,11 +209,18 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
   // (e.g. flags API) runs. useEffect runs after first paint, so the first /v1/flags
   // request would otherwise go without Authorization and get 401.
   if (typeof window !== 'undefined') {
+    // Preserve existing bmpEnabled from window config if not provided in props
+    // This allows Angular host to set bmpEnabled before SDK loads
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingConfig = (window as any).__AP_SDK_CONFIG__;
+    const bmpEnabled = config.bmpEnabled ?? existingConfig?.bmpEnabled ?? false;
+    
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__AP_SDK_CONFIG__ = {
       apiUrl: config.apiUrl,
       token: config.token,
       projectId: config.projectId,
+      bmpEnabled,
     };
     if (config.token) {
       try {

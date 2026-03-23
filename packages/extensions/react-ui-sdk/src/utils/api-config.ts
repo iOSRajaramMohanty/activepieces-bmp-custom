@@ -13,12 +13,19 @@ import { ReactUISDKConfig } from '../types';
 export function configureAPI(config: ReactUISDKConfig): void {
   // Set API URL in environment
   if (typeof window !== 'undefined') {
+    // Preserve existing config properties (like bmpEnabled set by Angular host)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const existingConfig = (window as any).__AP_SDK_CONFIG__ || {};
+    
     // Store config in window for react-ui to access
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).__AP_SDK_CONFIG__ = {
+      ...existingConfig,
       apiUrl: config.apiUrl,
       token: config.token,
       projectId: config.projectId,
+      flowId: config.flowId,
+      bmpEnabled: config.bmpEnabled ?? existingConfig.bmpEnabled ?? false,
     };
 
     // Set API URL in import.meta.env for Vite-based react-ui
