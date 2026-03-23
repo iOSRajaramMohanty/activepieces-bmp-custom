@@ -227,7 +227,8 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
                 if (role === 'OWNER') return '/platform/owner-dashboard'
                 return '/flows'
             },
-            shouldSkipProjectCheck: (role) => role === 'SUPER_ADMIN',
+            shouldSkipProjectCheck: (role) =>
+                role === 'SUPER_ADMIN' || role === 'OWNER',
         }))
         connectionHooks.set(_log => ({
             isBmpPiece: (name) => name === '@activepieces/piece-ada-bmp',

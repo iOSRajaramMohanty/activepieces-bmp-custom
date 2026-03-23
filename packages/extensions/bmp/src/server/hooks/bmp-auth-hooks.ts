@@ -4,7 +4,7 @@
  * These hooks override the default auth behavior to support:
  * - SUPER_ADMIN and OWNER privileged roles
  * - Role-specific default routes
- * - Project membership bypass for super admins
+ * - Project membership bypass for super admins and tenant owners
  * 
  * Usage in app.ts:
  * ```typescript
@@ -30,7 +30,7 @@ export interface AuthHooksInterface {
 }
 
 const PRIVILEGED_ROLES = ['SUPER_ADMIN', 'OWNER', 'ADMIN']
-const SUPER_ADMIN_ROLES = ['SUPER_ADMIN']
+const ROLES_THAT_SKIP_PROJECT_CHECK = ['SUPER_ADMIN', 'OWNER']
 
 /**
  * BMP Auth Hooks Creator
@@ -39,7 +39,7 @@ const SUPER_ADMIN_ROLES = ['SUPER_ADMIN']
  * - SUPER_ADMIN, OWNER, and ADMIN are privileged
  * - SUPER_ADMIN goes to /platform/super-admin
  * - OWNER goes to /platform/owner-dashboard  
- * - SUPER_ADMIN skips project checks
+ * - SUPER_ADMIN and OWNER skip project checks (tenant owners may have no default project)
  */
 export const bmpAuthHooks = (_log: Logger): AuthHooksInterface => ({
     isPrivilegedRole: (platformRole: string | undefined): boolean => {
@@ -59,6 +59,6 @@ export const bmpAuthHooks = (_log: Logger): AuthHooksInterface => ({
 
     shouldSkipProjectCheck: (platformRole: string | undefined): boolean => {
         if (!platformRole) return false
-        return SUPER_ADMIN_ROLES.includes(platformRole)
+        return ROLES_THAT_SKIP_PROJECT_CHECK.includes(platformRole)
     },
 })
