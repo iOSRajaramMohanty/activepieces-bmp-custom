@@ -18,8 +18,8 @@ done
 
 if [ "$CLAUDE_PUSH" = "yes" ]; then
   RUN_CHECKS="y"
-elif [ -e /dev/tty ]; then
-  printf "Run lint and tests before pushing? [Y/n] "
+elif (echo '' > /dev/tty) 2>/dev/null; then
+  printf "Run lint and tests before pushing? [Y/n] " > /dev/tty
   read RUN_CHECKS < /dev/tty
 else
   # No TTY and not Claude — skip checks (CI runs its own pipeline)
