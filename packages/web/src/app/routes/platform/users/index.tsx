@@ -74,10 +74,11 @@ export default function UsersPage() {
 
   const isLoading = usersLoading || invitationsLoading;
 
-  const { mutate: deleteUser, isPending: isDeleting } =
-    platformUserMutations.useDeleteUser({ onSuccess: refetch });
+  const { mutate: deleteUser } = platformUserMutations.useDeleteUser({
+    onSuccess: refetch,
+  });
 
-  const { mutate: deleteInvitation, isPending: isDeletingInvitation } =
+  const { mutate: deleteInvitation } =
     platformUserMutations.useDeleteInvitation({ onSuccess: refetch });
 
   const { mutate: updateUserStatus, isPending: isUpdatingStatus } =
@@ -144,7 +145,6 @@ export default function UsersPage() {
             (row) => (
               <UserActions
                 row={row}
-                isDeleting={isDeleting || isDeletingInvitation}
                 isUpdatingStatus={isUpdatingStatus}
                 onDelete={handleDelete}
                 onToggleStatus={handleToggleStatus}

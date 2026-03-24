@@ -352,6 +352,7 @@ import { AddEnabledToolsToMcpServer1772027509096 } from './migration/postgres/17
 import { AddFlowProjectIdStatusIndex1772027509097 } from './migration/postgres/1772027509097-AddFlowProjectIdStatusIndex'
 import { AddProjectPlatformIdIndex1773930744000 } from './migration/postgres/1773930744000-AddProjectPlatformIdIndex'
 import { AddCloudOAuthAppTable1773944336467 } from './migration/postgres/1773944336467-AddCloudOAuthAppTable'
+import { ReAddAgentsEnabledToPlatformPlan1774000000000 } from './migration/postgres/1774000000000-ReAddAgentsEnabledToPlatformPlan'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -720,6 +721,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddFlowProjectIdStatusIndex1772027509097,
         AddProjectPlatformIdIndex1773930744000,
         AddCloudOAuthAppTable1773944336467,
+        ReAddAgentsEnabledToPlatformPlan1774000000000,
     ]
     return migrations
 }
