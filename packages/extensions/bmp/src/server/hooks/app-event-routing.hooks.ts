@@ -1,5 +1,18 @@
-import { AppEventRoutingHooks, PieceRegistration } from '@activepieces/server-api/src/app/trigger/app-event-routing/app-event-routing.hooks'
+import { Piece } from '@activepieces/pieces-framework'
 import path from 'path'
+
+// Types copied from server-api app-event-routing.hooks.ts
+// to avoid circular dependencies and path resolution issues
+type PieceRegistration = {
+    urlName: string
+    packageName: string
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    piece: Piece<any>
+}
+
+type AppEventRoutingHooks = {
+    getRegisteredPieces(): PieceRegistration[]
+}
 
 // Get the workspace root directory by finding the root from process.cwd() or using a known marker
 function getWorkspaceRoot(): string {

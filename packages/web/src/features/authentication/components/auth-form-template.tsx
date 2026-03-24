@@ -3,7 +3,7 @@ import {
   ThirdPartyAuthnProvidersToShowMap,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { FullLogo } from '@/components/custom/full-logo';
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { authenticationSession } from '@/lib/authentication-session';
+import { formatUtils } from '@/lib/format-utils';
 import { useRedirectAfterLogin } from '@/lib/navigation-utils';
 
 import { HorizontalSeparatorWithText } from '../../../components/ui/separator';
@@ -62,7 +63,17 @@ const AuthSeparator = ({
 const AuthFormTemplate = React.memo(
   ({ form }: { form: 'signin' | 'signup' }) => {
     const isSignUp = form === 'signup';
+    const [searchParams] = useSearchParams();
+    const inviteEmail = searchParams.get('email')?.trim() ?? '';
+    const isInviteSignUp =
+      isSignUp &&
+      inviteEmail.length > 0 &&
+      formatUtils.emailRegex.test(inviteEmail);
+
+    /** After clearing another user's session for invitation sign-up, re-read token */
+    const [, setSessionVersion] = useState(0);
     const token = authenticationSession.getToken();
+
     const redirectAfterLogin = useRedirectAfterLogin();
     const [showCheckYourEmailNote, setShowCheckYourEmailNote] = useState(false);
     const { data: isEmailAuthEnabled } = flagsHooks.useFlag<boolean>(
@@ -82,13 +93,26 @@ const AuthFormTemplate = React.memo(
       },
     }[form];
 
+    useLayoutEffect(() => {
+      if (!isInviteSignUp) {
+        return;
+      }
+      if (authenticationSession.getToken()) {
+        authenticationSession.clearSession();
+        setSessionVersion((v) => v + 1);
+      }
+    }, [isInviteSignUp]);
+
     useEffect(() => {
+      if (isInviteSignUp) {
+        return;
+      }
       if (token) {
         redirectAfterLogin();
       }
-    }, [token, redirectAfterLogin]);
+    }, [token, redirectAfterLogin, isInviteSignUp]);
 
-    if (token) {
+    if (token && !isInviteSignUp) {
       return null;
     }
 

@@ -46,6 +46,8 @@ export const SendUserInvitationRequest = z.union([
         type: z.literal(InvitationType.PLATFORM),
         email: z.string(),
         platformRole: z.nativeEnum(PlatformRole),
+        /** BMP: create or attach org when owner invites an admin */
+        organizationName: z.string().optional(),
         organizationId: z.string().optional(),
         environment: z.string().optional(),
     }),

@@ -19,6 +19,12 @@ import { UserInvitationEntity } from './user-invitation.entity'
 
 const repo = repoFactory(UserInvitationEntity)
 
+/** Pending = link opened but no account yet; accepted = legacy or post-account-accept */
+const invitationStatusesEligibleForSignup = [
+    InvitationStatus.PENDING,
+    InvitationStatus.ACCEPTED,
+]
+
 export const userInvitationsService = (log: FastifyBaseLogger) => ({
     async getOneByInvitationTokenOrThrow(invitationToken: string): Promise<UserInvitation> {
         const decodedToken = await jwtUtils.decodeAndVerify<UserInvitationToken>({
@@ -43,8 +49,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         const invitations = await repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
             .andWhere('"user_invitation"."platformId" = :platformId', { platformId: user.platformId })
-            .andWhere({
-                status: InvitationStatus.ACCEPTED,
+            .andWhere('user_invitation.status IN (:...statuses)', {
+                statuses: invitationStatusesEligibleForSignup,
             })
             .getMany()
 
@@ -307,27 +313,31 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     },
     async accept({ invitationId, platformId }: AcceptParams): Promise<{ registered: boolean }> {
         const invitation = await this.getOneOrThrow({ id: invitationId, platformId })
+        const identity = await userIdentityService(log).getIdentityByEmail(invitation.email)
+        if (isNil(identity)) {
+            log.info({
+                invitationId,
+                platformId,
+                email: invitation.email,
+            }, '[accept] No account yet — keeping invitation PENDING; user row is created when they complete sign-up')
+            return {
+                registered: false,
+            }
+        }
+
         await repo().update(invitation.id, {
             status: InvitationStatus.ACCEPTED,
         })
-        
-        // Refresh the invitation to ensure status is updated
+
         const updatedInvitation = await this.getOneOrThrow({ id: invitationId, platformId })
-        log.info({ 
-            invitationId, 
-            platformId, 
+        log.info({
+            invitationId,
+            platformId,
             email: updatedInvitation.email,
             status: updatedInvitation.status,
             organizationId: updatedInvitation.organizationId,
             environment: updatedInvitation.environment,
         }, '[accept] Invitation status updated to ACCEPTED')
-        
-        const identity = await userIdentityService(log).getIdentityByEmail(invitation.email)
-        if (isNil(identity)) {
-            return {
-                registered: false,
-            }
-        }
         const isOrganizationAdminInvitation =
             invitation.type === InvitationType.PLATFORM &&
             invitation.platformRole === PlatformRole.ADMIN &&
@@ -365,12 +375,14 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         email,
         platformId,
     }: HasAnyAcceptedInvitationsParams): Promise<boolean> {
-        const invitations = await repo().createQueryBuilder().where({
-            platformId,
-            status: InvitationStatus.ACCEPTED,
-        }).andWhere('LOWER(user_invitation.email) = :email', { email: email.toLowerCase().trim() })
-            .getMany()
-        return invitations.length > 0
+        const count = await repo().createQueryBuilder('user_invitation')
+            .where('user_invitation."platformId" = :platformId', { platformId })
+            .andWhere('LOWER(user_invitation.email) = :email', { email: email.toLowerCase().trim() })
+            .andWhere('user_invitation.status IN (:...statuses)', {
+                statuses: invitationStatusesEligibleForSignup,
+            })
+            .getCount()
+        return count > 0
     },
     async getAcceptedInvitationsByEmail({
         email,
@@ -378,9 +390,9 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     }: HasAnyAcceptedInvitationsParams): Promise<UserInvitation[]> {
         return repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
-            .andWhere({
-                platformId,
-                status: InvitationStatus.ACCEPTED,
+            .andWhere('user_invitation."platformId" = :platformId', { platformId })
+            .andWhere('user_invitation.status IN (:...statuses)', {
+                statuses: invitationStatusesEligibleForSignup,
             })
             .getMany()
     },
@@ -389,8 +401,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     }: { email: string }): Promise<UserInvitation[]> {
         return repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
-            .andWhere({
-                status: InvitationStatus.ACCEPTED,
+            .andWhere('"user_invitation"."status" IN (:...statuses)', {
+                statuses: invitationStatusesEligibleForSignup,
             })
             .getMany()
     },

@@ -180,14 +180,18 @@ export const InviteUserDialog = ({
           : InvitationType.PLATFORM,
         platformRole: PlatformRole.MEMBER,
         projectRole: undefined,
+        organizationName: '',
       },
   });
 
   // Watch emails to update suggestions
   const currentEmails = form.watch('emails');
 
-  // Watch organization for ADMIN invitations
-  const watchedOrganization = form.watch('organizationName');
+  // Subscribe to these so conditional UI (e.g. Organization) updates when role/type change.
+  // `form.getValues()` does not trigger re-renders when nested fields update.
+  const watchedInvitationType = form.watch('type');
+  const watchedPlatformRole = form.watch('platformRole');
+  const watchedOrganizationName = form.watch('organizationName');
 
   const onSubmit = (data: FormSchema) => {
     if (data.emails.length === 0) {
@@ -271,6 +275,7 @@ export const InviteUserDialog = ({
                 : InvitationType.PLATFORM,
               platformRole: isOwner ? PlatformRole.ADMIN : PlatformRole.MEMBER,
               projectRole: defaultProjectRole,
+              organizationName: '',
             });
             setInvitationLink('');
             setInputValue('');
@@ -354,7 +359,7 @@ export const InviteUserDialog = ({
       <Label>{t('Invite To')}</Label>
       <Select
         onValueChange={field.onChange}
-        defaultValue={field.value}
+        value={field.value}
       >
         <SelectTrigger>
           <SelectValue placeholder={t('Invite To')} />
@@ -382,12 +387,12 @@ export const InviteUserDialog = ({
     </FormItem>
   )}
 />
-                  {form.getValues().type === InvitationType.PLATFORM && (
+                  {watchedInvitationType === InvitationType.PLATFORM && (
                     <>
                       <PlatformRoleSelect form={form} />
                       
                       {/* Show organization and environment selectors only for ADMIN role and OWNER users */}
-                      {isOwner && form.getValues().platformRole === PlatformRole.ADMIN && (
+                      {isOwner && watchedPlatformRole === PlatformRole.ADMIN && (
                         <>
                           <FormField
                             control={form.control}
@@ -431,7 +436,7 @@ export const InviteUserDialog = ({
                       )}
                     </>
                   )}
-                  {form.getValues().type === InvitationType.PROJECT && (
+                  {watchedInvitationType === InvitationType.PROJECT && (
                     <ProjectRoleSelect form={form} />
                   )}
 
@@ -452,8 +457,8 @@ export const InviteUserDialog = ({
                       disabled={
                         isPending ||
                         (isOwner &&
-                          form.getValues().platformRole === PlatformRole.ADMIN &&
-                          !form.getValues().organizationName)
+                          watchedPlatformRole === PlatformRole.ADMIN &&
+                          !watchedOrganizationName)
                       }
                     >
                       {isPlatformPage ? t('Invite') : t('Add')}
