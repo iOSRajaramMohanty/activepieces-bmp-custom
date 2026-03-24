@@ -99,6 +99,19 @@ div.react-mount-point {
    Root Container Isolation
    ========================================================================== */
 
+/* EmbeddingProvider wrapper: direct parent of .ap-sdk-root.
+   This bare <div> has no sizing by default, breaking the bounded flex chain
+   between react-mount-point and ap-sdk-root. */
+div:has(> .ap-sdk-root) {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
 .ap-sdk-root {
   /* Define CSS variables that Tailwind classes depend on */
   --background: #ffffff;
@@ -114,7 +127,7 @@ div.react-mount-point {
   box-sizing: border-box;
   
   /* Reset typography to SDK defaults */
-  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif) !important;
   font-size: 14px;
   line-height: 1.5;
   color: var(--foreground, #0a0a0a);
@@ -132,12 +145,16 @@ div.react-mount-point {
      -------------------------------------------------------------------------- */
   min-height: 0 !important;
   width: 100% !important;
-  height: calc(100% - 40px) !important;
-  max-height: calc(100vh) !important;
+  height: 100% !important;
+  max-height: 100% !important;
   padding: 0 !important;
   overflow: hidden !important;
   flex: 1 1 0% !important;
 }
+
+/* NOTE: Avoid broad typography inheritance here.
+   Global inherit rules can override Tailwind utilities with equal specificity
+   and break component-level layout (especially popovers/dialogs). */
 
 /* Remove padding from the outer flex container that wraps the sidebar layout */
 .ap-sdk-root > div.flex.flex-col.h-full.overflow-hidden,
@@ -190,13 +207,12 @@ div.react-mount-point {
   overflow: visible !important;
 }
 
-/* Direct wrapper from SDKProviders – must scroll; overrides inline overflow:hidden */
+/* Direct wrapper from SDKProviders — passes bounded height down.
+   Scroll must happen on the INNER div.flex-1.overflow-auto, not here. */
 .ap-sdk-root > div {
   flex: 1 1 0% !important;
   min-height: 0 !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden !important;
   background-color: var(--background, #ffffff) !important;
   border-radius: 12px !important;
   border: 1px solid var(--border, #e5e7eb) !important;
@@ -398,6 +414,64 @@ div.react-mount-point {
 .ap-sdk-root *::after {
   box-sizing: border-box;
 }
+
+/* ==========================================================================
+   Tailwind v4 Spacing Protection (targeted)
+   Keep this focused to proven Bootstrap collisions. Broad utility overrides
+   can change SDK component behavior (especially Radix popovers/dialogs).
+   ========================================================================== */
+
+/* --- Padding ------------------------------------------------------------- */
+.ap-sdk-root .p-3  { padding: 0.75rem !important; }
+.ap-sdk-root .p-4  { padding: 1rem !important; }
+.ap-sdk-root .p-5  { padding: 1.25rem !important; }
+.ap-sdk-root .p-6  { padding: 1.5rem !important; }
+
+.ap-sdk-root .py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+.ap-sdk-root .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+.ap-sdk-root .py-5 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+.ap-sdk-root .py-6 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+
+.ap-sdk-root .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+.ap-sdk-root .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+.ap-sdk-root .px-5 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+.ap-sdk-root .px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+
+.ap-sdk-root .pt-3 { padding-top: 0.75rem !important; }
+.ap-sdk-root .pt-4 { padding-top: 1rem !important; }
+.ap-sdk-root .pt-5 { padding-top: 1.25rem !important; }
+.ap-sdk-root .pt-6 { padding-top: 1.5rem !important; }
+.ap-sdk-root .pb-3 { padding-bottom: 0.75rem !important; }
+.ap-sdk-root .pb-4 { padding-bottom: 1rem !important; }
+.ap-sdk-root .pb-5 { padding-bottom: 1.25rem !important; }
+.ap-sdk-root .pb-6 { padding-bottom: 1.5rem !important; }
+
+/* --- Margin / gap (only conflict levels used by SDK screens) ------------ */
+.ap-sdk-root .m-3  { margin: 0.75rem !important; }
+.ap-sdk-root .m-4  { margin: 1rem !important; }
+.ap-sdk-root .m-5  { margin: 1.25rem !important; }
+.ap-sdk-root .m-6  { margin: 1.5rem !important; }
+.ap-sdk-root .mb-4 { margin-bottom: 1rem !important; }
+.ap-sdk-root .mb-5 { margin-bottom: 1.25rem !important; }
+.ap-sdk-root .mt-4 { margin-top: 1rem !important; }
+.ap-sdk-root .gap-3 { gap: 0.75rem !important; }
+.ap-sdk-root .gap-4 { gap: 1rem !important; }
+
+/* --- Height (Bootstrap .h-25/50/75/100 = percentage; Tailwind = rem) ----- */
+.ap-sdk-root .h-25 { height: 6.25rem !important; }
+.ap-sdk-root .h-50 { height: 12.5rem !important; }
+.ap-sdk-root .h-75 { height: 18.75rem !important; }
+.ap-sdk-root .h-100 { height: 25rem !important; }
+
+/* Same protection for Radix portals (render outside .ap-sdk-root at body) */
+[data-radix-popper-content-wrapper] .h-25 { height: 6.25rem !important; }
+[data-radix-popper-content-wrapper] .h-50 { height: 12.5rem !important; }
+[data-radix-popper-content-wrapper] .h-75 { height: 18.75rem !important; }
+[data-radix-popper-content-wrapper] .h-100 { height: 25rem !important; }
+[data-radix-portal] .h-25 { height: 6.25rem !important; }
+[data-radix-portal] .h-50 { height: 12.5rem !important; }
+[data-radix-portal] .h-75 { height: 18.75rem !important; }
+[data-radix-portal] .h-100 { height: 25rem !important; }
 
 /* ==========================================================================
    Bootstrap Table Reset
@@ -649,6 +723,63 @@ div.react-mount-point {
   margin: 0;
 }
 
+/* Protect Tailwind line-height utilities from host CSS overrides.
+   Without !important, inherited line-height: 1.5 from .ap-sdk-root (or Bootstrap)
+   can bleed into card titles, making 2-line text exactly 48px and clipping descenders. */
+.ap-sdk-root .leading-tight {
+  line-height: 1.25 !important;
+}
+.ap-sdk-root .leading-none {
+  line-height: 1 !important;
+}
+.ap-sdk-root .leading-snug {
+  line-height: 1.375 !important;
+}
+.ap-sdk-root .leading-normal {
+  line-height: 1.5 !important;
+}
+
+/* Ensure line-clamp utilities work (require -webkit-box display which host CSS can break) */
+.ap-sdk-root .line-clamp-2 {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+}
+.ap-sdk-root .line-clamp-3 {
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 3 !important;
+  overflow: hidden !important;
+}
+
+/* Template card title metrics:
+   keep 2-line title readable even if host font fallback metrics differ slightly. */
+.ap-sdk-root [data-slot="card-content"] > div.h-12.flex.flex-col.justify-start.flex-shrink-0 {
+  min-height: 3rem !important;
+  height: auto !important;
+}
+
+.ap-sdk-root [data-slot="card-content"] h3.font-medium.text-base.leading-tight.line-clamp-2 {
+  line-height: 1.25 !important;
+  font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, sans-serif) !important;
+  padding-bottom: 1px;
+}
+
+/* Typography utility shield (targeted):
+   restore Tailwind text scale/weights inside SDK without touching layout/popovers. */
+.ap-sdk-root .font-normal { font-weight: 400 !important; }
+.ap-sdk-root .font-medium { font-weight: 500 !important; }
+.ap-sdk-root .font-semibold { font-weight: 600 !important; }
+.ap-sdk-root .font-bold { font-weight: 700 !important; }
+
+.ap-sdk-root .text-xs { font-size: 0.75rem !important; line-height: 1rem !important; }
+.ap-sdk-root .text-sm { font-size: 0.875rem !important; line-height: 1.25rem !important; }
+.ap-sdk-root .text-base { font-size: 1rem !important; line-height: 1.5rem !important; }
+.ap-sdk-root .text-lg { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+.ap-sdk-root .text-xl { font-size: 1.25rem !important; line-height: 1.75rem !important; }
+.ap-sdk-root .text-2xl { font-size: 1.5rem !important; line-height: 2rem !important; }
+
 /* ==========================================================================
    Bootstrap Paragraph Reset
    ========================================================================== */
@@ -829,7 +960,6 @@ div.react-mount-point {
 
 /* Target popover that contains the Piece Selector tabs structure */
 [data-slot="popover-content"]:has(input[placeholder="Search"]),
-[data-slot="popover-content"]:has([data-state="active"][data-value]),
 [data-slot="popover-content"]:has(.flex.flex-row.max-h-\[300px\]) {
   width: 600px !important;
   min-width: 600px !important;
@@ -843,20 +973,26 @@ div.react-mount-point {
   max-width: 600px !important;
 }
 
-/* Override inline styles that Radix might apply - use attribute selector */
-[data-slot="popover-content"][style*="width"] {
-  width: 600px !important;
-  min-width: 600px !important;
-}
-
-/* Ensure wrapper doesn't constrain the popover */
-[data-radix-popper-content-wrapper] {
-  min-width: auto !important;
-}
+/* NOTE:
+   Do NOT use broad width overrides like [style*="width"] or global popper
+   wrapper width rules; they also affect date-range/calendar popovers. */
 
 [data-radix-popper-content-wrapper]:has([data-slot="popover-content"].p-0.shadow-lg) {
   width: auto !important;
   min-width: 600px !important;
+}
+
+/* DateTimePickerRange popover (Runs tab): keep intrinsic calendar size.
+   Use flat :has() — nested :has(:has()) is unreliable across browsers. */
+[data-slot="popover-content"]:has([data-slot="calendar"]) {
+  width: fit-content !important;
+  min-width: fit-content !important;
+  max-width: fit-content !important;
+}
+
+[data-radix-popper-content-wrapper]:has([data-slot="calendar"]) {
+  min-width: 0 !important;
+  width: 0 !important;
 }
 
 /* ==========================================================================
@@ -1651,7 +1787,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[data-slot="input"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Search"] {
   width: 100% !important;
-  padding: 0.375rem 0.5rem 0.375rem 2rem !important;
+  /* padding: 0.375rem 0.5rem 0.375rem 2rem !important; */
   border-radius: 0.375rem !important;
   font-size: 0.875rem !important;
   color: #0a0a0a !important;

@@ -21,6 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { useEmbedding } from '@/components/providers/embed-provider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
@@ -57,6 +58,7 @@ function SidebarProvider({
   onOpenChange?: (open: boolean) => void;
   hoverMode?: boolean;
 }) {
+  const { embedState } = useEmbedding();
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
@@ -201,7 +203,8 @@ function SidebarProvider({
             } as React.CSSProperties
           }
           className={cn(
-            'group/sidebar-wrapper flex h-svh w-full has-data-[variant=inset]:bg-sidebar',
+            'group/sidebar-wrapper relative flex w-full has-data-[variant=inset]:bg-sidebar',
+            embedState.isEmbedded ? 'h-full min-h-0 max-h-full' : 'h-svh',
             className,
           )}
           {...props}
@@ -225,6 +228,7 @@ function Sidebar({
   variant?: 'sidebar' | 'floating' | 'inset';
   collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
+  const { embedState } = useEmbedding();
   const {
     isMobile,
     state,
@@ -307,7 +311,9 @@ function Sidebar({
       <div
         data-slot="sidebar-container"
         className={cn(
-          'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
+            embedState.isEmbedded
+              ? 'absolute inset-y-0 z-10 hidden h-full w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex'
+              : 'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear md:flex',
           side === 'left'
             ? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
             : 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',

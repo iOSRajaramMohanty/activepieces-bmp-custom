@@ -125,7 +125,7 @@ import { ThemeProvider } from '../../../web/src/components/providers/theme-provi
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { TooltipProvider } from '../../../web/src/components/ui/tooltip.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
-import { EmbeddingProvider } from '../../../web/src/components/providers/embed-provider.tsx';
+import { EmbeddingProvider, useEmbedding } from '../../../web/src/components/providers/embed-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { SocketProvider } from '../../../web/src/components/providers/socket-provider.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
@@ -134,6 +134,31 @@ import { Toaster } from '../../../web/src/components/ui/sonner.tsx';
 // Initialize runtime EE checks
 if (typeof window !== 'undefined') {
   initializeRuntimeEEChecks();
+}
+
+/**
+ * Corrects the embed state at React render time.
+ * embed-provider.tsx evaluates isSDKMode as a module-level constant which can
+ * miss window.__AP_SDK_CONFIG__ if the module initialises before the host sets it.
+ * This component sits just below EmbeddingProvider and forces the correct state.
+ */
+function ForceEmbedMode() {
+  const { embedState, setEmbedState } = useEmbedding();
+
+  React.useEffect(() => {
+    const hasConfig =
+      typeof window !== 'undefined' &&
+      !!(window as any).__AP_SDK_CONFIG__;
+    if (hasConfig && !embedState.isEmbedded) {
+      setEmbedState({
+        ...embedState,
+        isEmbedded: true,
+        hideHomeButtonInBuilder: true,
+      });
+    }
+  }, []);
+
+  return null;
 }
 
 // Check if error is a 401 auth error
@@ -268,6 +293,7 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
   return (
     <QueryClientProvider client={queryClient}>
       <EmbeddingProvider>
+        <ForceEmbedMode />
         <SocketProvider>
           <Suspense fallback={<LoadingFallback />}>
             <ThemeProvider storageKey="ap-react-ui-sdk-theme">
@@ -278,6 +304,7 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
                     style={{
                       width: '100%',
                       height: '100%',
+                      maxHeight: '100%',
                       minHeight: 0,
                       display: 'flex',
                       flexDirection: 'column',
@@ -291,7 +318,6 @@ export const SDKProviders: React.FC<SDKProvidersProps> = ({
                         display: 'flex',
                         flexDirection: 'column',
                         width: '100%',
-                        overflow: 'hidden',
                       }}
                     >
                       {content}
