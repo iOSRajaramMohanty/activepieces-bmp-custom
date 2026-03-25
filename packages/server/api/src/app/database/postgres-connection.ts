@@ -354,6 +354,7 @@ import { AddProjectPlatformIdIndex1773930744000 } from './migration/postgres/177
 import { AddCloudOAuthAppTable1773944336467 } from './migration/postgres/1773944336467-AddCloudOAuthAppTable'
 import { ReAddAgentsEnabledToPlatformPlan1774000000000 } from './migration/postgres/1774000000000-ReAddAgentsEnabledToPlatformPlan'
 import { AddMissingCascadeDeleteIndices1774100000000 } from './migration/postgres/1774100000000-AddMissingCascadeDeleteIndices'
+import { AddUserIdentityIdIndex1774400000000 } from './migration/postgres/1774400000000-AddUserIdentityIdIndex'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -724,6 +725,7 @@ export const getMigrations = (): (new () => MigrationInterface)[] => {
         AddCloudOAuthAppTable1773944336467,
         ReAddAgentsEnabledToPlatformPlan1774000000000,
         AddMissingCascadeDeleteIndices1774100000000,
+        AddUserIdentityIdIndex1774400000000,
     ]
     return migrations
 }
