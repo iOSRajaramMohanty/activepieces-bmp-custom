@@ -340,6 +340,7 @@ div:has(> .ap-sdk-root) {
 }
 
 [data-radix-portal] [data-slot='dialog-title'] {
+  font-family: inherit !important;
   font-size: 1.125rem !important; /* matches Tailwind `text-lg` */
   line-height: 1.75rem !important;
   font-weight: 600 !important;
@@ -1398,10 +1399,24 @@ div:has(> .ap-sdk-root) {
 [data-radix-portal] :where(h1, h2, h3, h4, h5, h6) {
   margin: 0;
 }
+/* Force headings to inherit portal font instead of Bootstrap's heading font */
+[data-radix-portal] h1,
+[data-radix-portal] h2,
+[data-radix-portal] h3,
+[data-radix-portal] h4,
+[data-radix-portal] h5,
+[data-radix-portal] h6 {
+  font-family: inherit !important;
+}
 
 [data-radix-portal] p {
   margin: 0;
 }
+
+/* Protect Tailwind gap utilities from Bootstrap overrides inside portals */
+[data-radix-portal] .gap-3 { gap: 0.75rem !important; }
+[data-radix-portal] .gap-4 { gap: 1rem !important; }
+[data-radix-portal] .gap-2 { gap: 0.5rem !important; }
 
 /* ==========================================================================
    Z-Index Stacking for Radix Components
@@ -1458,6 +1473,7 @@ div:has(> .ap-sdk-root) {
 [data-slot="dialog-header"],
 [data-radix-dialog-content] > div:first-child:has(h2, [data-slot="dialog-title"]) {
   flex-shrink: 0 !important;
+  text-align: left !important;
 }
 
 /* Dialog body/content area - scrollable when content overflows */
@@ -1498,8 +1514,8 @@ div:has(> .ap-sdk-root) {
 [data-slot="dialog-content"].h-\[680px\],
 [data-slot="dialog-content"][class*="h-[680px]"],
 [data-slot="dialog-content"][class*="min-w-[700px]"][class*="max-w-[700px]"] {
-  /* Let the dialog's own p-6 padding work - don't override */
   padding: 1.5rem !important;
+  gap: 0 !important;
 }
 
 /* Don't add extra padding to the search row or scroll area in this dialog */
