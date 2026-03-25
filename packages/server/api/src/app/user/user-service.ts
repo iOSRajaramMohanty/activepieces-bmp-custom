@@ -220,6 +220,16 @@ export const userService = (log: FastifyBaseLogger) => ({
         }
     },
     async delete({ id, platformId }: DeleteParams): Promise<void> {
+        const platform = await platformService(log).getOneOrThrow(platformId)
+        if (platform.ownerId === id) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'Platform owner cannot be deleted',
+                },
+            })
+        }
+
         const userToDelete = await userRepo().findOne({
             where: { id, platformId },
         })
@@ -258,6 +268,12 @@ export const userService = (log: FastifyBaseLogger) => ({
         // IMPORTANT about what gets deleted:
         // - flows created by the user - flows belong to the project, not the user (already deleted with project)
         // - project_member entries are automatically CASCADE deleted by the database
+
+        await platformProjectService(log).deletePersonalProjectForUser({
+            userId: id,
+            platformId,
+        })
+
         await userRepo().delete({
             id,
             platformId,
