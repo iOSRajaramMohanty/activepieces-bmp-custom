@@ -94,6 +94,12 @@ export const API_ENDPOINTS = {
    * GET /account/{accountId}/template
    */
   getTemplates: (accountId: string, metadata?: AdaBmpMetadata, auth?: any) => `${getBaseUrl(metadata, auth)}/account/${accountId}/template`,
+
+  /**
+   * Upload contact parameters (CSV file)
+   * POST /contact/upload-parameters
+   */
+  uploadContactParameters: (metadata?: AdaBmpMetadata, auth?: unknown) => `${getBaseUrl(metadata, auth)}/contact/upload-parameters`,
 };
 
 /**

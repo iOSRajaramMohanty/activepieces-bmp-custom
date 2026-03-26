@@ -3,9 +3,10 @@ import { createPiece } from '@activepieces/pieces-framework';
 import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
 import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
+import { uploadContactParametersAction } from './lib/actions/upload-contact-parameters';
 import { receiveWebhook } from './lib/triggers/receive-webhook';
 import { newMessageCallbackTrigger } from './lib/triggers/new-message-callback';
-import { getBaseUrl, debugLog } from './lib/common/config';
+import { getBaseUrl, extractApiToken } from './lib/common/config';
 import { adaBmpAuth } from './lib/common/auth';
 
 // Re-export adaBmpAuth for external usage
@@ -83,29 +84,12 @@ export const adaBmp = createPiece({
   actions: [
     sendMessageAction,
     sendBulkMessageAction,
+    uploadContactParametersAction,
     createCustomApiCallAction({
-      baseUrl: (auth) => {
-        // auth is CustomAuth with apiToken, environment, and optional apiUrl
-        const customAuth = auth as any;
-        
-        if (customAuth.apiUrl) {
-          debugLog('Custom API Call - Using custom API URL:', customAuth.apiUrl);
-          return customAuth.apiUrl;
-        }
-        
-        // Fallback to environment variable or default
-        const envKey = `${customAuth.environment.toUpperCase().replace(/\s+/g, '_')}_ADA_BMP_API_URL`;
-        const url = process.env[envKey] || process.env.ADA_BMP_API_URL || getBaseUrl();
-        debugLog('Custom API Call - Using API URL:', url);
-        return url;
-      },
+      baseUrl: () => getBaseUrl(),
       auth: adaBmpAuth,
       authMapping: async (auth) => {
-        // auth is CustomAuth with apiToken, environment, and optional apiUrl
-        const customAuth = auth as any;
-        const token = customAuth.apiToken;
-        debugLog('Custom API Call - Using token for environment:', customAuth.environment);
-        
+        const token = extractApiToken(auth);
         return {
           Authorization: `Bearer ${token}`,
         };
