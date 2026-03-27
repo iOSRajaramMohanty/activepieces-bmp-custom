@@ -36,6 +36,7 @@ function TooltipContent({
   return (
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
+        data-radix-portal=""
         data-slot="tooltip-content"
         sideOffset={sideOffset}
         className={cn(

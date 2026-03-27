@@ -111,6 +111,7 @@ function DropdownMenuContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         ref={setContentRef}
+        data-radix-portal=""
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         collisionPadding={10}

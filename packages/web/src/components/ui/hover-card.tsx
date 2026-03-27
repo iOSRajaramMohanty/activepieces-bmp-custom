@@ -26,6 +26,7 @@ function HoverCardContent({
   return (
     <HoverCardPrimitive.Portal data-slot="hover-card-portal">
       <HoverCardPrimitive.Content
+        data-radix-portal=""
         data-slot="hover-card-content"
         align={align}
         sideOffset={sideOffset}

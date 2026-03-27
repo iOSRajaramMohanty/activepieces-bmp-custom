@@ -93,6 +93,7 @@ function PopoverContent({
     <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Content
         ref={setContentRef}
+        data-radix-portal=""
         data-slot="popover-content"
         align={align}
         side={side}

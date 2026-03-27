@@ -240,8 +240,8 @@ div:has(> .ap-sdk-root) {
 /* Search inputs inside SDK/popovers */
 .ap-sdk-root input[placeholder*='Search'],
 .ap-sdk-root input[placeholder*='search'],
-[data-radix-portal] [data-slot='popover-content'] input[placeholder*='Search'],
-[data-radix-portal] [data-slot='popover-content'] input[placeholder*='search'],
+[data-radix-portal][data-slot='popover-content'] input[placeholder*='Search'],
+[data-radix-portal][data-slot='popover-content'] input[placeholder*='search'],
 [data-radix-popper-content-wrapper] input[placeholder*='Search'],
 [data-radix-popper-content-wrapper] input[placeholder*='search'] {
   padding-left: 2.25rem !important;
@@ -273,8 +273,8 @@ div:has(> .ap-sdk-root) {
 /* Primary button variant (Create New, etc.) */
 .ap-sdk-root button[data-variant='default'],
 .ap-sdk-root [data-slot='button'][data-variant='default'],
-[data-radix-portal] [data-slot='dialog-content'] button[data-variant='default'],
-[data-radix-portal] [data-slot='dialog-content'] [data-slot='button'][data-variant='default'],
+[data-radix-portal][data-slot='dialog-content'] button[data-variant='default'],
+[data-radix-portal][data-slot='dialog-content'] [data-slot='button'][data-variant='default'],
 [data-radix-portal] button[data-slot='button'][data-variant='default'] {
   background-color: #7c3aed !important;
   color: #fff !important;
@@ -283,7 +283,7 @@ div:has(> .ap-sdk-root) {
 
 .ap-sdk-root button[data-variant='default']:hover,
 .ap-sdk-root [data-slot='button'][data-variant='default']:hover,
-[data-radix-portal] [data-slot='dialog-content'] button[data-variant='default']:hover,
+[data-radix-portal][data-slot='dialog-content'] button[data-variant='default']:hover,
 [data-radix-portal] button[data-slot='button'][data-variant='default']:hover {
   background-color: #6d28d9 !important;
 }
@@ -960,7 +960,7 @@ div:has(> .ap-sdk-root) {
 [data-slot="popover-content"][class*="w-[340px]"],
 [data-slot="popover-content"].w-\[340px\],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"][class*="w-[340px]"],
-[data-radix-portal] [data-slot="popover-content"][class*="w-[340px]"] {
+[data-radix-portal][data-slot="popover-content"][class*="w-[340px]"] {
   width: 600px !important;
   min-width: 600px !important;
   max-width: 600px !important;
@@ -969,7 +969,7 @@ div:has(> .ap-sdk-root) {
 /* Also target the popover content that contains the piece selector tabs */
 [data-slot="popover-content"]:has([class*="piece-selector"]),
 [data-slot="popover-content"]:has(input[placeholder*="Search"]),
-[data-radix-portal] [data-slot="popover-content"]:has(input[placeholder*="Search"]) {
+[data-radix-portal][data-slot="popover-content"]:has(input[placeholder*="Search"]) {
   width: 600px !important;
   min-width: 600px !important;
   max-width: 600px !important;
@@ -1413,10 +1413,61 @@ div:has(> .ap-sdk-root) {
   margin: 0;
 }
 
-/* Protect Tailwind gap utilities from Bootstrap overrides inside portals */
+/* Protect Tailwind utilities from Bootstrap overrides inside portals */
+[data-radix-portal] .gap-2 { gap: 0.5rem !important; }
 [data-radix-portal] .gap-3 { gap: 0.75rem !important; }
 [data-radix-portal] .gap-4 { gap: 1rem !important; }
-[data-radix-portal] .gap-2 { gap: 0.5rem !important; }
+[data-radix-portal] .grid { display: grid !important; }
+[data-radix-portal] .space-y-4 > * + * { margin-top: 1rem !important; }
+[data-radix-portal] .mt-5 { margin-top: 1.25rem !important; }
+[data-radix-portal] .px-5 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+[data-radix-portal] .p-4 { padding: 1rem !important; }
+[data-radix-portal] .mb-0 { margin-bottom: 0 !important; }
+[data-radix-portal] .mt-4 { margin-top: 1rem !important; }
+[data-radix-portal] .mb-2 { margin-bottom: 0.5rem !important; }
+
+/* Ensure RadioGroup and its card items size to content inside portals.
+   Force every possible property that could cause 0-height grid collapse. */
+[data-radix-portal] [data-slot="radio-group"],
+[data-radix-portal] .grid.gap-3[role="radiogroup"] {
+  display: grid !important;
+  grid-auto-rows: auto !important;
+  grid-template-rows: none !important;
+  grid-template-columns: 1fr !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  position: relative !important;
+  contain: none !important;
+  content-visibility: visible !important;
+  overflow: visible !important;
+  visibility: visible !important;
+}
+[data-radix-portal] [data-slot="radio-group"] > *,
+[data-radix-portal] .grid.gap-3[role="radiogroup"] > * {
+  position: static !important;
+  display: block !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  visibility: visible !important;
+  contain: none !important;
+  content-visibility: visible !important;
+  overflow: visible !important;
+}
+
+/* Radio button: keep perfect circle shape inside portals */
+[data-radix-portal] [data-slot="radio-group-item"] {
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 9999px !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
 
 /* ==========================================================================
    Z-Index Stacking for Radix Components
@@ -1439,17 +1490,27 @@ div:has(> .ap-sdk-root) {
   pointer-events: auto !important;
 }
 
-/* Dialog content - above overlay, white background with proper styling */
+/* Dialog content - above overlay, white background with proper styling.
+   Only z-index, max-height, and box-sizing here; display/overflow differ per dialog. */
 [data-slot="dialog-content"],
 [data-radix-dialog-content],
 [role="dialog"] {
   z-index: 9999 !important;
   max-height: calc(100vh - 4rem) !important;
-  /* height: auto !important; */
-  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* Auto-height dialogs (auth picker, connection form, delete, rename, etc.):
+   Keep the ORIGINAL Tailwind layout from DialogContent.
+   Do NOT force display:flex, overflow, padding, or min-height on these or
+   their children — that collapses height in BMP's CSS environment. */
+
+/* Piece-picker dialog (h-[680px]) needs flex column to manage header/scroll/footer. */
+[data-slot="dialog-content"][class*="h-[680px]"],
+[data-slot="dialog-content"][class*="min-w-[700px]"] {
   display: flex !important;
   flex-direction: column !important;
-  box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 /* For embedded contexts (inside .react-mount-point or similar containers) */
@@ -1457,13 +1518,13 @@ div:has(> .ap-sdk-root) {
 .react-mount-point [data-slot="dialog-content"],
 .react-mount-point [data-radix-dialog-content],
 .react-mount-point [role="dialog"],
-.activepieces-container [data-radix-portal] [data-slot="dialog-content"],
+.activepieces-container [data-radix-portal][data-slot="dialog-content"],
 .activepieces-container [data-radix-portal] [data-radix-dialog-content],
 .activepieces-container [data-radix-portal] [role="dialog"],
-.sdk-frame [data-radix-portal] [data-slot="dialog-content"],
+.sdk-frame [data-radix-portal][data-slot="dialog-content"],
 .sdk-frame [data-radix-portal] [data-radix-dialog-content],
 .sdk-frame [data-radix-portal] [role="dialog"],
-[data-radix-portal] [data-slot="dialog-content"],
+[data-radix-portal][data-slot="dialog-content"],
 [data-radix-portal] [data-radix-dialog-content],
 [data-radix-portal] [role="dialog"] {
   max-height: calc(100vh - 4rem) !important;
@@ -1476,23 +1537,9 @@ div:has(> .ap-sdk-root) {
   text-align: left !important;
 }
 
-/* Dialog body/content area - scrollable when content overflows */
-/* Target the main content wrapper between header and footer */
-/* IMPORTANT: Do NOT use bare [role="dialog"] — Radix PopoverContent also uses
-   role="dialog". Applying padding to its children breaks piece selector / trigger
-   picker (w-[340px] md:w-[600px] p-0). Only target actual modal dialogs.
-   
-   ALSO EXCLUDE: New Connection dialog (h-[680px]) which has its own layout. */
-[data-slot="dialog-body"],
-[data-slot="dialog-content"]:not([class*="h-[680px]"]):not([class*="min-w-[700px]"]) > div:not([data-slot]):not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]),
-[data-radix-dialog-content]:not([class*="h-[680px]"]) > div:not(:first-child):not(:last-child) {
-  flex: 1 1 0% !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  min-height: 0 !important;
-  padding: 0 1.5rem !important;
-  -webkit-overflow-scrolling: touch !important;
-}
+/* Dialog body/content area — no overrides for auto-height dialogs.
+   Their children use original Tailwind padding/spacing (e.g. px-5, mt-5).
+   Any SDK override here (min-height, padding) collapses child heights in BMP. */
 
 /* ==========================================================================
    New Connection Piece Picker Dialog (h-[680px], min-w-[700px])
@@ -1583,25 +1630,8 @@ div:has(> .ap-sdk-root) {
   background: var(--accent, #f5f5f5) !important;
 }
 
-/* Fallback: dialog without data-slot on root (some hosts) — still exclude popovers and New Connection dialog */
-[role="dialog"]:not([data-slot="popover-content"]):not([data-radix-popover-content]):not([class*="h-[680px]"]):not([class*="min-w-[700px]"]) > div:not([data-slot="dialog-header"]):not([data-slot="dialog-footer"]) {
-  flex: 1 1 0% !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  min-height: 0 !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-
-/* Specific override for form content inside dialogs (not popovers) */
-[data-slot="dialog-content"] form,
-[data-radix-dialog-content] form,
-[role="dialog"]:not([data-slot="popover-content"]) form {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 1 0% !important;
-  min-height: 0 !important;
-  overflow-y: auto !important;
-}
+/* Fallback for non-piece-picker dialogs: removed — no SDK overrides on children.
+   The original Tailwind classes handle layout correctly. */
 
 /* Dialog footer - fixed at bottom, no shrink */
 [data-slot="dialog-footer"],
@@ -1788,7 +1818,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
    ========================================================================== */
 
 /* Popover content - ensure proper background, border, and shadow */
-[data-radix-portal] [data-slot="popover-content"] {
+[data-radix-portal][data-slot="popover-content"] {
   background-color: var(--popover, #ffffff) !important;
   color: var(--foreground, hsl(0 0% 3.9%)) !important;
   border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
@@ -1802,7 +1832,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
    ========================================================================== */
 
 /* Filter popover container - match original styling */
-[data-radix-portal] [data-slot="popover-content"].w-56.p-0,
+[data-radix-portal][data-slot="popover-content"].w-56.p-0,
 [data-radix-portal] .w-56.p-0[data-slot="popover-content"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56.p-0,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].p-0 {
@@ -1817,8 +1847,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Search container inside filter popover (px-2 pt-2 pb-1 border-b) */
-[data-radix-portal] [data-slot="popover-content"] .px-2.pt-2.pb-1.border-b,
-[data-radix-portal] [data-slot="popover-content"] div[class*="px-2"][class*="pt-2"][class*="pb-1"][class*="border-b"],
+[data-radix-portal][data-slot="popover-content"] .px-2.pt-2.pb-1.border-b,
+[data-radix-portal][data-slot="popover-content"] div[class*="px-2"][class*="pt-2"][class*="pb-1"][class*="border-b"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] .px-2.pt-2.pb-1.border-b,
 [data-radix-popper-content-wrapper] .px-2.pt-2.pb-1.border-b {
   padding: 0.5rem !important;
@@ -1829,8 +1859,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Search input inside filter popover */
-[data-radix-portal] [data-slot="popover-content"] input[data-slot="input"],
-[data-radix-portal] [data-slot="popover-content"] input[placeholder*="Search"],
+[data-radix-portal][data-slot="popover-content"] input[data-slot="input"],
+[data-radix-portal][data-slot="popover-content"] input[placeholder*="Search"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[data-slot="input"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Search"] {
   width: 100% !important;
@@ -1841,8 +1871,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
   outline: none !important;
 }
 
-[data-radix-portal] [data-slot="popover-content"] input[data-slot="input"]:focus,
-[data-radix-portal] [data-slot="popover-content"] input[placeholder*="Search"]:focus,
+[data-radix-portal][data-slot="popover-content"] input[data-slot="input"]:focus,
+[data-radix-portal][data-slot="popover-content"] input[placeholder*="Search"]:focus,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[data-slot="input"]:focus,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] input[placeholder*="Search"]:focus {
   border-color: #7c3aed !important;
@@ -1850,8 +1880,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Filter popover scrollable content area (max-h-[300px] overflow-auto) */
-[data-radix-portal] [data-slot="popover-content"] .max-h-\[300px\].overflow-auto,
-[data-radix-portal] [data-slot="popover-content"] div[class*="max-h-"][class*="overflow-auto"],
+[data-radix-portal][data-slot="popover-content"] .max-h-\[300px\].overflow-auto,
+[data-radix-portal][data-slot="popover-content"] div[class*="max-h-"][class*="overflow-auto"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] .max-h-\[300px\].overflow-auto,
 [data-radix-popper-content-wrapper] .max-h-\[300px\].overflow-auto {
   padding: 0.25rem 0 !important;
@@ -1860,8 +1890,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Filter checkbox items container (space-y-1) */
-[data-radix-portal] [data-slot="popover-content"] .space-y-1,
-[data-radix-portal] [data-slot="popover-content"] [class*="space-y"],
+[data-radix-portal][data-slot="popover-content"] .space-y-1,
+[data-radix-portal][data-slot="popover-content"] [class*="space-y"],
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] .space-y-1,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"] [class*="space-y"] {
   padding: 0 !important;
@@ -1871,9 +1901,9 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 /* Individual filter checkbox items (Flows, Tables, etc.) 
    IMPORTANT: Only target filter popovers (w-56), NOT Piece Selector popovers (w-[340px], shadow-lg)
    to avoid affecting piece list item spacing */
-[data-radix-portal] [data-slot="popover-content"].w-56 label:has([role="checkbox"]),
-[data-radix-portal] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]),
-[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2,
+[data-radix-portal][data-slot="popover-content"].w-56 label:has([role="checkbox"]),
+[data-radix-portal][data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]),
+[data-radix-portal][data-slot="popover-content"].w-56 .flex.items-center.gap-2,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([role="checkbox"]),
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]),
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 {
@@ -1887,9 +1917,9 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
   border-radius: 0 !important;
 }
 
-[data-radix-portal] [data-slot="popover-content"].w-56 label:has([role="checkbox"]):hover,
-[data-radix-portal] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]):hover,
-[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2:hover,
+[data-radix-portal][data-slot="popover-content"].w-56 label:has([role="checkbox"]):hover,
+[data-radix-portal][data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]):hover,
+[data-radix-portal][data-slot="popover-content"].w-56 .flex.items-center.gap-2:hover,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([role="checkbox"]):hover,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label:has([data-slot="checkbox"]):hover,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2:hover {
@@ -1897,8 +1927,8 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Filter item text (Flows, Tables, Slack, ADA BMP, etc.) - only in filter popovers */
-[data-radix-portal] [data-slot="popover-content"].w-56 label span,
-[data-radix-portal] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 span,
+[data-radix-portal][data-slot="popover-content"].w-56 label span,
+[data-radix-portal][data-slot="popover-content"].w-56 .flex.items-center.gap-2 span,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 label span,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 .flex.items-center.gap-2 span {
   font-size: 0.875rem !important;
@@ -1911,13 +1941,13 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 
 /* Remove any yellow/highlight backgrounds from filter popover elements only
    Don't apply to Piece Selector popovers as it interferes with hover states */
-[data-radix-portal] [data-slot="popover-content"].w-56 *,
+[data-radix-portal][data-slot="popover-content"].w-56 *,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 * {
   background-color: transparent;
 }
 
 /* Ensure filter popover itself has white background */
-[data-radix-portal] [data-slot="popover-content"].w-56,
+[data-radix-portal][data-slot="popover-content"].w-56,
 [data-radix-popper-content-wrapper] [data-slot="popover-content"].w-56 {
   background-color: #ffffff !important;
 }
@@ -1949,7 +1979,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Dropdown menu content - ensure proper background and text color */
-[data-radix-portal] [data-slot="dropdown-menu-content"],
+[data-radix-portal][data-slot="dropdown-menu-content"],
 [data-radix-portal] [role="menu"] {
   background-color: var(--popover, #ffffff) !important;
   color: var(--foreground, hsl(0 0% 3.9%)) !important;
@@ -2001,7 +2031,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 
 /* Date range picker popover - needs full width for 2 calendars side by side */
 /* Override any host app min-width/max-width constraints on calendar popovers */
-[data-radix-portal] [data-slot="popover-content"].w-auto,
+[data-radix-portal][data-slot="popover-content"].w-auto,
 [data-radix-portal] .w-auto[data-slot="popover-content"],
 [data-slot="popover-content"].w-auto,
 .w-auto[data-slot="popover-content"] {
@@ -2011,7 +2041,7 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 }
 
 /* Calendar popover needs enough width for 2 months side by side */
-[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]),
+[data-radix-portal][data-slot="popover-content"]:has([data-slot="calendar"]),
 [data-slot="popover-content"]:has([data-slot="calendar"]) {
   width: auto !important;
   min-width: fit-content !important;
@@ -2051,9 +2081,9 @@ body:has([data-slot="dialog-overlay"][data-state="open"]) [data-radix-popper-con
 /* Calendar selected date range - START and END dates with purple/primary background */
 /* Uses data attributes: data-range-start, data-range-end, data-selected-single */
 /* HIGHEST SPECIFICITY to override host [data-slot='popover-content'] * rules */
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-start="true"],
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-end="true"],
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-selected-single="true"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-range-start="true"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-range-end="true"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-selected-single="true"],
 [data-slot="popover-content"] [data-slot="calendar"] button[data-range-start="true"],
 [data-slot="popover-content"] [data-slot="calendar"] button[data-range-end="true"],
 [data-slot="popover-content"] [data-slot="calendar"] button[data-selected-single="true"],
@@ -2067,7 +2097,7 @@ button[data-selected-single="true"] {
 
 /* Calendar range middle days - light purple/accent background */
 /* Uses data attribute: data-range-middle */
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-range-middle="true"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-range-middle="true"],
 [data-slot="popover-content"] [data-slot="calendar"] button[data-range-middle="true"],
 button[data-range-middle="true"] {
   background-color: hsl(262 83% 95%) !important;
@@ -2076,14 +2106,14 @@ button[data-range-middle="true"] {
 }
 
 /* Calendar day cell with selected state - parent td background for range */
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] td[data-selected="true"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] td[data-selected="true"],
 [data-slot="popover-content"] [data-slot="calendar"] td[data-selected="true"],
 td[data-selected="true"] {
   background-color: hsl(262 83% 95%) !important;
 }
 
 /* Calendar day buttons - ensure proper base styling (black text for non-selected) */
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-slot="button"],
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-slot="button"],
 [data-slot="popover-content"] [data-slot="calendar"] button[data-slot="button"] {
   color: hsl(0 0% 3.9%) !important;
   font-size: 0.875rem !important;
@@ -2091,7 +2121,7 @@ td[data-selected="true"] {
 }
 
 /* Calendar today indicator - subtle background (when not selected) */
-[data-radix-portal] [data-slot="popover-content"] [data-slot="calendar"] button[data-today="true"]:not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]),
+[data-radix-portal][data-slot="popover-content"] [data-slot="calendar"] button[data-today="true"]:not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]),
 [data-slot="popover-content"] [data-slot="calendar"] button[data-today="true"]:not([data-range-start="true"]):not([data-range-end="true"]):not([data-range-middle="true"]) {
   background-color: hsl(0 0% 96.1%) !important;
   color: hsl(0 0% 9%) !important;
@@ -2100,8 +2130,8 @@ td[data-selected="true"] {
 
 /* Clear button in date picker - primary/purple color */
 /* Target buttons with text-primary class */
-[data-radix-portal] [data-slot="popover-content"] button.text-primary,
-[data-radix-portal] [data-slot="popover-content"] .text-primary,
+[data-radix-portal][data-slot="popover-content"] button.text-primary,
+[data-radix-portal][data-slot="popover-content"] .text-primary,
 [data-slot="popover-content"] button.text-primary,
 [data-slot="popover-content"] .text-primary,
 .text-primary {
@@ -2109,16 +2139,16 @@ td[data-selected="true"] {
 }
 
 /* Link variant buttons - primary color (Clear button uses this) */
-[data-radix-portal] [data-slot="popover-content"] button[data-variant="link"],
+[data-radix-portal][data-slot="popover-content"] button[data-variant="link"],
 [data-slot="popover-content"] button[data-variant="link"],
 button[data-variant="link"] {
   color: hsl(262 83% 58%) !important;
 }
 
 /* Time picker input fields - proper border and styling */
-[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="text"],
-[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="number"],
-[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) input:not([type]),
+[data-radix-portal][data-slot="popover-content"]:has([data-slot="calendar"]) input[type="text"],
+[data-radix-portal][data-slot="popover-content"]:has([data-slot="calendar"]) input[type="number"],
+[data-radix-portal][data-slot="popover-content"]:has([data-slot="calendar"]) input:not([type]),
 [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="text"],
 [data-slot="popover-content"]:has([data-slot="calendar"]) input[type="number"],
 [data-slot="popover-content"]:has([data-slot="calendar"]) input:not([type]) {
@@ -2130,7 +2160,7 @@ button[data-variant="link"] {
 }
 
 /* Time picker select (AM/PM) - proper styling */
-[data-radix-portal] [data-slot="popover-content"]:has([data-slot="calendar"]) select,
+[data-radix-portal][data-slot="popover-content"]:has([data-slot="calendar"]) select,
 [data-slot="popover-content"]:has([data-slot="calendar"]) select {
   border: 1px solid var(--border, hsl(0 0% 89.8%)) !important;
   border-radius: 0.375rem !important;
