@@ -26,7 +26,7 @@ export const findRecord = createAction({
 
         const escapedSearchValue = search_value.replace(/'/g, "\\'");
 
-        const query = `SELECT FIELDS(ALL) FROM ${object} WHERE ${field} = '${escapedSearchValue}' LIMIT 2000`;
+        const query = `SELECT FIELDS(ALL) FROM ${object} WHERE ${field} = '${escapedSearchValue}' LIMIT 200`;
 
         const response = await querySalesforceApi(
             HttpMethod.GET,

@@ -9,7 +9,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog, fetchMetadata, AdaBmpMetadata, extractApiToken } from '../common/config';
+import { API_ENDPOINTS, bmpLogger, fetchMetadata, extractApiToken } from '../common/config';
 
 export const sendMessageAction: Action = createAction({
   auth: adaBmpAuth,
@@ -176,9 +176,8 @@ export const sendMessageAction: Action = createAction({
         throw new Error(`Invalid channel: ${channel}`);
       }
 
-      // Fetch account details to get the account number (from field)
-      debugLog('Fetching account details', { accountId: account }, metadata);
       const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, context.auth);
+      bmpLogger.request({ method: 'GET', url: accountsUrl });
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -187,6 +186,7 @@ export const sendMessageAction: Action = createAction({
           token,
         },
       });
+      bmpLogger.response({ status: accountsResponse.status, body: accountsResponse.body });
 
       const accountsBody = accountsResponse.body as {
         status: number;
@@ -206,14 +206,16 @@ export const sendMessageAction: Action = createAction({
       }
 
       const apiUrl = API_ENDPOINTS.sendMessage(metadata, context.auth);
-      debugLog('Sending message', { 
-        url: apiUrl,
-        channel,
-        platform: platformCode,
+      const requestBody = {
         from: selectedAccount.accountNo,
+        platform: platformCode,
+        text: message,
         to: recipientId,
-      }, metadata);
-      
+        type: 'text',
+        channel: 'LIVECHAT',
+      };
+      bmpLogger.request({ method: 'POST', url: apiUrl, body: requestBody });
+
       const response = await httpClient.sendRequest({
         method: HttpMethod.POST,
         url: apiUrl,
@@ -221,27 +223,20 @@ export const sendMessageAction: Action = createAction({
           type: AuthenticationType.BEARER_TOKEN,
           token,
         },
-        body: {
-          from: selectedAccount.accountNo,
-          platform: platformCode,
-          text: message,
-          to: recipientId,
-          type: 'text',
-          channel: 'LIVECHAT',
-        },
+        body: requestBody,
       });
-
-      debugLog('Message sent successfully', { status: response.status });
+      bmpLogger.response({ status: response.status, body: response.body });
       
       return {
         success: true,
         data: response.body,
       };
-    } catch (error: any) {
-      debugLog('Failed to send message', error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      bmpLogger.error('Error in send_message', err.message);
       return {
         success: false,
-        error: error.message || 'Failed to send message',
+        error: err.message || 'Failed to send message',
       };
     }
   },

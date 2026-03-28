@@ -54,92 +54,22 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         })
     })
 
-    // List organization environments - MUST be registered before /:id route
     app.get('/:id/environments', GetOrganizationEnvironmentsRequestParams, async (request) => {
         const { id } = request.params as { id: string }
-        
-        console.log('[organization.controller] GET /:id/environments', {
-            organizationId: id,
-            principalId: request.principal?.id,
-            params: request.params,
-        })
-        
+
         if (!id) {
             throw new ActivepiecesError({
                 code: ErrorCode.VALIDATION,
-                params: {
-                    message: 'Organization ID is required',
-                },
+                params: { message: 'Organization ID is required' },
             })
         }
 
-        // Get current user's organization info for access control
-        const { userService } = await import('../user/user-service')
-        if (!request.principal?.id) {
-            throw new ActivepiecesError({
-                code: ErrorCode.AUTHENTICATION,
-                params: {
-                    message: 'User ID is required',
-                },
-            })
+        const allEnvironments = await organizationEnvironmentService.listByOrganization(id)
+
+        if (request.principal.type === PrincipalType.ENGINE) {
+            return allEnvironments
         }
-        
-        try {
-            const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
-            console.log('[organization.controller] User found:', { userId: currentUser.id })
 
-            // Check if user has access to this organization
-            const organization = await organizationService.getById(
-                id,
-                request.principal.id,
-                currentUser.organizationId || undefined,
-                currentUser.platformRole
-            )
-            if (!organization) {
-                throw new ActivepiecesError({
-                    code: ErrorCode.ENTITY_NOT_FOUND,
-                    params: {
-                        entityId: id,
-                        entityType: 'organization',
-                    },
-                })
-            }
-
-            // Get all environments for this organization
-            const allEnvironments = await organizationEnvironmentService.listByOrganization(id)
-            
-            // Admins can see and configure Dev/Staging/Prod metadata for their org.
-            // Owners see all. Members/Operators see envs for their org (read-only; no configure).
-            let filteredEnvironments = allEnvironments
-            if (currentUser.platformRole !== PlatformRole.OWNER && currentUser.platformRole !== PlatformRole.SUPER_ADMIN) {
-                // Admin with this org: see all envs (can configure metadata)
-                // Member/Operator with this org: see all envs (read-only, Configure disabled)
-                if (currentUser.organizationId !== id) {
-                    filteredEnvironments = []
-                }
-            }
-            
-            console.log('[organization.controller] Environments found:', { 
-                count: filteredEnvironments.length,
-                sample: filteredEnvironments[0] ? {
-                    id: filteredEnvironments[0].id,
-                    environment: filteredEnvironments[0].environment,
-                    hasMetadata: !!filteredEnvironments[0].metadata,
-                    adminUserId: filteredEnvironments[0].adminUserId,
-                } : null,
-            })
-            return filteredEnvironments
-        } catch (error) {
-            console.error('[organization.controller] Error in GET /:id/environments:', error)
-            throw error
-        }
-    })
-
-    // Get organization by ID - MUST be registered after /:id/environments
-    app.get('/:id', GetOrganizationByIdRequestParams, async (request) => {
-        const { id } = request.params as { id: string }
-
-        // Get current user's organization info
         const { userService } = await import('../user/user-service')
         const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
@@ -152,10 +82,47 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         if (!organization) {
             throw new ActivepiecesError({
                 code: ErrorCode.ENTITY_NOT_FOUND,
-                params: {
-                    entityId: id,
-                    entityType: 'organization',
-                },
+                params: { entityId: id, entityType: 'organization' },
+            })
+        }
+
+        let filteredEnvironments = allEnvironments
+        if (currentUser.platformRole !== PlatformRole.OWNER && currentUser.platformRole !== PlatformRole.SUPER_ADMIN) {
+            if (currentUser.organizationId !== id) {
+                filteredEnvironments = []
+            }
+        }
+
+        return filteredEnvironments
+    })
+
+    app.get('/:id', GetOrganizationByIdRequestParams, async (request) => {
+        const { id } = request.params as { id: string }
+
+        if (request.principal.type === PrincipalType.ENGINE) {
+            const organization = await organizationService.getById(id)
+            if (!organization) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.ENTITY_NOT_FOUND,
+                    params: { entityId: id, entityType: 'organization' },
+                })
+            }
+            return organization
+        }
+
+        const { userService } = await import('../user/user-service')
+        const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
+
+        const organization = await organizationService.getById(
+            id,
+            request.principal.id,
+            currentUser.organizationId || undefined,
+            currentUser.platformRole
+        )
+        if (!organization) {
+            throw new ActivepiecesError({
+                code: ErrorCode.ENTITY_NOT_FOUND,
+                params: { entityId: id, entityType: 'organization' },
             })
         }
         return organization
@@ -418,7 +385,7 @@ const ListOrganizationsRequestParams = {
 
 const GetOrganizationEnvironmentsRequestParams = {
     config: {
-        security: securityAccess.publicPlatform([PrincipalType.USER]),
+        security: securityAccess.publicPlatform([PrincipalType.USER, PrincipalType.ENGINE]),
     },
     schema: {
         tags: ['organizations'],
@@ -426,13 +393,12 @@ const GetOrganizationEnvironmentsRequestParams = {
         params: z.object({
             id: z.string(),
         }),
-        // Response schema omitted due to TypeBox/Zod compatibility
     },
 }
 
 const GetOrganizationByIdRequestParams = {
     config: {
-        security: securityAccess.publicPlatform([PrincipalType.USER]),
+        security: securityAccess.publicPlatform([PrincipalType.USER, PrincipalType.ENGINE]),
     },
     schema: {
         tags: ['organizations'],
@@ -440,7 +406,6 @@ const GetOrganizationByIdRequestParams = {
         params: z.object({
             id: z.string(),
         }),
-        // Response schema omitted due to TypeBox/Zod compatibility
     },
 }
 

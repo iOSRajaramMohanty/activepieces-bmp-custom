@@ -1,7 +1,7 @@
 import { createAction, Property, type Action } from '@activepieces/pieces-framework';
 import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces-common';
 import { adaBmpAuth } from '../common/auth';
-import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from '../common/config';
+import { API_ENDPOINTS, bmpLogger, fetchMetadata, extractApiToken } from '../common/config';
 import FormData from 'form-data';
 
 export const uploadContactParametersAction: Action = createAction({
@@ -44,11 +44,7 @@ export const uploadContactParametersAction: Action = createAction({
       const apiUrl = API_ENDPOINTS.uploadContactParameters(metadata, context.auth);
       const effectiveFileName = fileName || 'contacts.csv';
 
-      debugLog('Uploading contact parameters', {
-        url: apiUrl,
-        fileName: effectiveFileName,
-        contentLength: csvContent.length,
-      }, metadata);
+      bmpLogger.request({ method: 'POST', url: apiUrl, fileName: effectiveFileName, contentLength: csvContent.length });
 
       const formData = new FormData();
       formData.append('file', Buffer.from(csvContent, 'utf-8'), {
@@ -65,8 +61,7 @@ export const uploadContactParametersAction: Action = createAction({
         },
         body: formData,
       });
-
-      debugLog('Contact parameters uploaded successfully', { status: response.status }, metadata);
+      bmpLogger.response({ status: response.status, body: response.body });
 
       return {
         success: true,
@@ -74,7 +69,7 @@ export const uploadContactParametersAction: Action = createAction({
       };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
-      debugLog('Failed to upload contact parameters', err, metadata);
+      bmpLogger.error('Error in upload_contact_parameters', err.message);
       return {
         success: false,
         error: err.message || 'Failed to upload contact parameters',

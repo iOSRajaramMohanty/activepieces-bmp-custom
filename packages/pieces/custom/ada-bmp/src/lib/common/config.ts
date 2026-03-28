@@ -126,9 +126,42 @@ export const getConfig = (metadata?: AdaBmpMetadata) => ({
 export const CONFIG = getConfig();
 
 /**
- * Helper function to log debug messages
+ * Centralized API logger for ADA BMP.
+ *
+ * Toggle via env var  ADA_BMP_LOGGING=true|false  (defaults to true).
+ * Or flip the constant below for a quick source-level override.
  */
-export const debugLog = (message: string, data?: any, metadata?: AdaBmpMetadata) => {
+const LOGGING_ENABLED_OVERRIDE: boolean | undefined = undefined; // set true/false to force, or undefined to use env var
+
+function isLoggingEnabled(): boolean {
+  if (LOGGING_ENABLED_OVERRIDE !== undefined) return LOGGING_ENABLED_OVERRIDE;
+  return process.env.ADA_BMP_LOGGING !== 'false';
+}
+
+export const bmpLogger = {
+  request(details: { method: string; url: string; body?: unknown; [k: string]: unknown }) {
+    if (!isLoggingEnabled()) return;
+    console.log('[ADA-BMP API] Request:', details);
+  },
+  response(details: { status: number; body?: unknown }) {
+    if (!isLoggingEnabled()) return;
+    console.log('[ADA-BMP API] Response:', details);
+  },
+  info(message: string, data?: unknown) {
+    if (!isLoggingEnabled()) return;
+    console.log(`[ADA-BMP] ${message}`, data ?? '');
+  },
+  warn(message: string, data?: unknown) {
+    if (!isLoggingEnabled()) return;
+    console.warn(`[ADA-BMP] ${message}`, data ?? '');
+  },
+  error(message: string, data?: unknown) {
+    if (!isLoggingEnabled()) return;
+    console.error(`[ADA-BMP] ${message}`, data ?? '');
+  },
+};
+
+export const debugLog = (message: string, data?: unknown, metadata?: AdaBmpMetadata) => {
   const config = getConfig(metadata);
   if (config.debug) {
     console.log(`[ADA-BMP] ${message}`, data || '');
@@ -138,32 +171,28 @@ export const debugLog = (message: string, data?: any, metadata?: AdaBmpMetadata)
 /**
  * Get server API URL from environment or infer from frontend URL
  */
+function stripTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url.slice(0, -1) : url;
+}
+
 function getServerApiUrl(server?: { apiUrl: string }): string | undefined {
-  // Priority 1: Use server.apiUrl if provided (normal execution context)
   if (server?.apiUrl) {
-    return server.apiUrl;
+    return stripTrailingSlash(server.apiUrl);
   }
-  
-  // Priority 2: Check for AP_API_URL environment variable
+
   if (process.env.AP_API_URL) {
-    return process.env.AP_API_URL;
+    return stripTrailingSlash(process.env.AP_API_URL);
   }
-  
-  // Priority 3: Infer from AP_FRONTEND_URL
-  // In Docker, AP_FRONTEND_URL is typically set to the ngrok URL
-  // The API is typically at the same host
+
   if (process.env.AP_FRONTEND_URL) {
     try {
-      const frontendUrl = new URL(process.env.AP_FRONTEND_URL);
-      // API is at same host, port 80 (inside container)
-      return `http://localhost:80/api`;
+      new URL(process.env.AP_FRONTEND_URL);
+      return 'http://localhost:80/api';
     } catch (e) {
       console.error('[ADA-BMP Config] Failed to parse AP_FRONTEND_URL:', e);
     }
   }
-  
-  // Priority 4: Default for Docker environment
-  // Inside Docker container, the API is on localhost:80
+
   return 'http://localhost:80/api';
 }
 
@@ -182,9 +211,7 @@ function getAuthToken(server?: { token: string }, auth?: any): string | undefine
   if (auth && typeof auth === 'object') {
     // Try to extract token from the secret_text field
     if ((auth as any).secret_text) {
-      // This is the piece's auth token, not the server token
-      // We need a different approach
-      console.log('[ADA-BMP Config] Auth context available but cannot extract server token from it');
+      bmpLogger.info('Config: Auth context available but cannot extract server token from it');
     }
   }
   
@@ -223,7 +250,7 @@ export function extractApiToken(auth: any): string {
     return auth;
   }
   
-  console.error('[ADA-BMP Config] Invalid auth structure:', auth);
+  bmpLogger.error('Config: Invalid auth structure', auth);
   throw new Error('Unable to extract API token from auth object');
 }
 
@@ -261,12 +288,11 @@ export async function fetchMetadata(
       // Check if auth has projectId embedded (for sandbox scenarios)
       if (auth.projectId) {
         effectiveProjectId = auth.projectId;
-        console.log('[ADA-BMP Config] Using projectId from auth context');
+        bmpLogger.info('Config: Using projectId from auth context');
       }
-      // Check if it's stored in metadata
       if (!effectiveProjectId && auth.metadata?.projectId) {
         effectiveProjectId = auth.metadata.projectId;
-        console.log('[ADA-BMP Config] Using projectId from auth.metadata');
+        bmpLogger.info('Config: Using projectId from auth.metadata');
       }
     }
     
@@ -275,30 +301,27 @@ export async function fetchMetadata(
     const apiUrl = getServerApiUrl(server);
     const token = getAuthToken(server, auth);
     
-    console.log('[ADA-BMP Config] Metadata fetch context:', {
+    bmpLogger.info('Config: Metadata fetch context', {
       hasProjectId: !!effectiveProjectId,
       hasServer: !!server,
-      apiUrl: apiUrl ? apiUrl.replace(/\/\/.*@/, '//*****@') : undefined, // Mask credentials
+      apiUrl: apiUrl ? apiUrl.replace(/\/\/.*@/, '//*****@') : undefined,
       hasToken: !!token,
       nodeEnv: process.env.NODE_ENV,
       isInSandbox: !server || !projectId,
       extractedFromAuth: effectiveProjectId !== projectId,
     });
-    
-    // If we're missing critical information, skip metadata fetch
+
     if (!effectiveProjectId || !apiUrl || !token) {
-      console.log('[ADA-BMP Config] Missing required context for metadata fetch, falling back to environment variables');
-      console.log('[ADA-BMP Config] NOTE: For environment-specific configuration, ensure connection stores projectId in metadata');
+      bmpLogger.info('Config: Missing required context for metadata fetch, falling back to environment variables');
       return undefined;
     }
     
     // Use effectiveProjectId for API call
     projectId = effectiveProjectId;
     
-    // First, get the project to find its organization
     const projectResponse = await httpClient.sendRequest({
       method: 'GET',
-      url: `${apiUrl}/v1/projects/${projectId}`,
+      url: `${apiUrl}/v1/worker/project`,
       authentication: {
         type: AuthenticationType.BEARER_TOKEN,
         token: token,
@@ -306,7 +329,7 @@ export async function fetchMetadata(
     });
 
     if (!projectResponse.body?.organizationId) {
-      console.log('[ADA-BMP Config] Project has no organizationId, skipping metadata fetch');
+      bmpLogger.info('Config: Project has no organizationId, skipping metadata fetch');
       return undefined;
     }
 
@@ -326,19 +349,17 @@ export async function fetchMetadata(
     });
 
     if (!environmentsResponse.body || !Array.isArray(environmentsResponse.body)) {
-      console.log('[ADA-BMP Config] No environments found for organization');
+      bmpLogger.info('Config: No environments found for organization');
       return undefined;
     }
 
-    // Find the environment that matches the project's environment
-    // Due to backend filtering, this will only find the user's own environment
-    console.log('[ADA-BMP Config] Looking for environment:', {
+    bmpLogger.info('Config: Looking for environment', {
       targetEnvironment: environment,
       availableEnvironments: environmentsResponse.body.map((e: any) => ({
         name: e.environment,
         hasMetadata: !!e.metadata,
-        apiUrl: e.metadata?.ADA_BMP_API_URL
-      }))
+        apiUrl: e.metadata?.ADA_BMP_API_URL,
+      })),
     });
     
     const matchingEnv = environmentsResponse.body.find(
@@ -346,15 +367,14 @@ export async function fetchMetadata(
     );
 
     if (matchingEnv?.metadata) {
-      console.log('[ADA-BMP Config] ✅ Found environment-specific metadata:', {
+      bmpLogger.info('Config: Found environment-specific metadata', {
         environment,
-        hasMetadata: !!matchingEnv.metadata,
         apiUrl: (matchingEnv.metadata as AdaBmpMetadata)?.ADA_BMP_API_URL,
       });
       return matchingEnv.metadata as AdaBmpMetadata;
     }
-    
-    console.log('[ADA-BMP Config] ⚠️ No environment-specific metadata found, falling back to organization metadata');
+
+    bmpLogger.warn('Config: No environment-specific metadata found, falling back to organization metadata');
 
     // Fallback to organization-level metadata
     const orgResponse = await httpClient.sendRequest({
@@ -367,15 +387,15 @@ export async function fetchMetadata(
     });
 
     if (orgResponse.body?.metadata) {
-      console.log('[ADA-BMP Config] Using organization-level metadata');
+      bmpLogger.info('Config: Using organization-level metadata');
       return orgResponse.body.metadata as AdaBmpMetadata;
     }
 
-    console.log('[ADA-BMP Config] No metadata found at organization or environment level');
+    bmpLogger.info('Config: No metadata found at organization or environment level');
     return undefined;
-  } catch (error: any) {
-    console.error('[ADA-BMP Config] Error fetching metadata:', error.message);
-    // Don't throw - fall back to environment variables
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    bmpLogger.error('Config: Error fetching metadata', err.message);
     return undefined;
   }
 }

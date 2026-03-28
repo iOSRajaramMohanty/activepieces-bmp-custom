@@ -11,7 +11,7 @@ import {
   channelInfo, 
   CHANNEL_TO_PLATFORM 
 } from '../common/props';
-import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from '../common/config';
+import { API_ENDPOINTS, bmpLogger, debugLog, fetchMetadata, extractApiToken } from '../common/config';
 
 export const sendBulkMessageAction: Action = createAction({
   auth: adaBmpAuth,
@@ -69,9 +69,8 @@ export const sendBulkMessageAction: Action = createAction({
         throw new Error(`Invalid channel: ${channel}`);
       }
 
-      // Fetch account details to get the account number (from field)
-      debugLog('Fetching account details', { accountId: account });
       const accountsUrl = API_ENDPOINTS.getAccounts(platformCode, metadata, context.auth);
+      bmpLogger.request({ method: 'GET', url: accountsUrl });
       const accountsResponse = await httpClient.sendRequest({
         method: HttpMethod.GET,
         url: accountsUrl,
@@ -80,6 +79,7 @@ export const sendBulkMessageAction: Action = createAction({
           token,
         },
       });
+      bmpLogger.response({ status: accountsResponse.status, body: accountsResponse.body });
 
       const accountsBody = accountsResponse.body as {
         status: number;
@@ -198,6 +198,7 @@ export const sendBulkMessageAction: Action = createAction({
         }
       }
 
+      bmpLogger.request({ method: 'POST', url: apiUrl, body: requestBody });
       const response = await httpClient.sendRequest({
         method: HttpMethod.POST,
         url: apiUrl,
@@ -207,18 +208,18 @@ export const sendBulkMessageAction: Action = createAction({
         },
         body: requestBody,
       });
-
-      debugLog('Bulk message sent successfully', { status: response.status });
+      bmpLogger.response({ status: response.status, body: response.body });
       
       return {
         success: true,
         data: response.body,
       };
-    } catch (error: any) {
-      debugLog('Failed to send bulk message', error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      bmpLogger.error('Error in send_bulk_message', err.message);
       return {
         success: false,
-        error: error.message || 'Failed to send bulk message',
+        error: err.message || 'Failed to send bulk message',
       };
     }
   },

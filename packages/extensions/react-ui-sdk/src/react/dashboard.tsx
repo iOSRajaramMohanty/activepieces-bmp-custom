@@ -25,6 +25,8 @@ import { ApTableStateProvider } from '../../../web/src/features/tables/component
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { FlowBuilderPage } from '../../../web/src/app/routes/flows/id/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
+import { FlowRunPage } from '../../../web/src/app/routes/runs/id/index.tsx';
+// @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { BuilderLayout } from '../../../web/src/app/components/builder-layout/index.tsx';
 // @ts-expect-error - TypeScript can't resolve these imports at compile time, but they work at runtime/build time
 import { ProjectDashboardLayout } from '../../../web/src/app/components/project-layout/index.tsx';
@@ -97,6 +99,14 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
       ),
     },
     {
+      path: `${projectPrefix}/runs/:runId`,
+      element: (
+        <BuilderLayout>
+          <FlowRunPage />
+        </BuilderLayout>
+      ),
+    },
+    {
       path: `${projectPrefix}/runs`,
       element: (
         <ProjectDashboardLayout>
@@ -143,6 +153,14 @@ export const Dashboard: React.FC<DashboardProps> = (props) => {
         <ProjectDashboardLayout>
           <AppConnectionsPage />
         </ProjectDashboardLayout>
+      ),
+    },
+    {
+      path: '/runs/:runId',
+      element: (
+        <BuilderLayout>
+          <FlowRunPage />
+        </BuilderLayout>
       ),
     },
     {
