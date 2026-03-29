@@ -7,8 +7,8 @@ pkill -f "nx serve" 2>/dev/null
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-# Use Node v20
-nvm use 20
+# Use Node v22 (matches Docker NODE_VERSION)
+nvm use 22
 
 cd /Users/rajarammohanty/Documents/POC/activepieces
 

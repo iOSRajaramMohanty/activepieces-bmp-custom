@@ -25,7 +25,7 @@ This caused:
 - ❌ Database connection failures
 
 ### **Additional Issues Fixed:**
-1. **Node.js v23** → **Node.js v20** (using nvm)
+1. **Node.js v23** → **Node.js v22** (using nvm)
 2. Missing **@tiptap/starter-kit** package for frontend
 3. TypeScript type casting errors in ada-bmp piece code
 
@@ -40,15 +40,15 @@ This caused:
 ```
 
 This script:
-- Switches to Node.js v20
+- Switches to Node.js v22
 - Sets correct environment variables
 - Starts all services (API, GUI, Engine)
 
 ### **Option 2: Manual Start**
 
 ```bash
-# Load Node v20
-nvm use 20
+# Load Node v22
+nvm use 22
 
 # Set environment variables
 export AP_EDITION=ce
@@ -133,7 +133,7 @@ npm run serve:frontend
 | `AP_EDITION` | `ce` | Use Community Edition |
 | `AP_ENVIRONMENT` | `test` | Enable embedded database |
 | `AP_DEV_PIECES` | `ada-bmp` | Load your custom piece |
-| `NODE_VERSION` | `v20.x.x` | Required Node.js version |
+| `NODE_VERSION` | `v22.x.x` | Required Node.js version |
 
 ---
 
@@ -164,7 +164,7 @@ Once connected to real API endpoints, test:
 ## **Why It Wasn't Running Before**
 
 1. **❌ Wrong enum values** (`COMMUNITY` vs `ce`, `testing` vs `test`)
-2. **❌ Wrong Node.js version** (v23 vs v20)
+2. **❌ Wrong Node.js version** (v23 vs v22)
 3. **❌ Missing frontend dependencies** (@tiptap packages)
 4. **❌ Build cache** not being cleared after env changes
 

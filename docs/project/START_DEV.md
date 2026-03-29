@@ -21,9 +21,9 @@ Open a **NEW terminal** and run:
 ```bash
 cd /Users/rajarammohanty/Documents/POC/activepieces
 
-# Load Node v20
+# Load Node v22 (matches Docker NODE_VERSION)
 source ~/.zshrc
-nvm use 20
+nvm use 22
 
 # Set required environment variables
 export AP_EDITION=COMMUNITY

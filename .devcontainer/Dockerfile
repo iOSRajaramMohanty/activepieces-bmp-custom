@@ -1,5 +1,5 @@
-# [Choice] Node.js version: 24, 22, 20
-ARG VARIANT=24-bullseye
+# [Choice] Node.js version: 22, 20, 18
+ARG VARIANT=22-bullseye
 FROM mcr.microsoft.com/devcontainers/javascript-node:${VARIANT}
 
 # [Optional] Uncomment this section to install additional OS packages.

@@ -11,7 +11,7 @@ cd /Users/rajarammohanty/Documents/POC/activepieces && ./start-ada-bmp.sh
 ## What Will Happen
 
 The script will:
-1. ✅ Load Node.js v20
+1. ✅ Load Node.js v22
 2. ✅ Set environment variables for ADA BMP piece
 3. ✅ Start three services:
    - **Frontend (GUI)**: http://localhost:4300
@@ -73,7 +73,7 @@ Wait 60 seconds for initial build, then check terminal for errors.
 Make sure you're in a **new terminal window** and run:
 ```bash
 source ~/.zshrc
-nvm use 20
+nvm use 22
 cd /Users/rajarammohanty/Documents/POC/activepieces
 ./start-ada-bmp.sh
 ```

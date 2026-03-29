@@ -75,9 +75,9 @@ Edit `START_CORRECTLY.sh`:
 
 cd /Users/rajarammohanty/Documents/POC/activepieces
 
-# Load Node v20
+# Load Node v22 (matches Docker NODE_VERSION)
 source ~/.zshrc
-nvm use 20
+nvm use 22
 
 # Activepieces Configuration
 export AP_EDITION=ce

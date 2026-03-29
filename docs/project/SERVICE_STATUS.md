@@ -189,7 +189,7 @@ Using embedded PGLite database in test environment
 
 ## ✨ What's Working
 
-- ✅ **Node.js v20** detected and activated
+- ✅ **Node.js v22** detected and activated
 - ✅ **Community Edition (ce)** running
 - ✅ **Test Environment** with embedded database
 - ✅ **Custom ada-bmp piece** loaded and built
@@ -208,7 +208,7 @@ Using embedded PGLite database in test environment
 AP_EDITION=ce                 # Community Edition
 AP_ENVIRONMENT=test           # Test mode (embedded DB)
 AP_DEV_PIECES=ada-bmp        # Your custom piece
-NODE_VERSION=v20.19.6        # Correct Node.js version
+NODE_VERSION=v22.15.0        # Correct Node.js version
 ```
 
 ---

@@ -1,5 +1,5 @@
 FROM ubuntu:22.04 AS base
-# FROM node:24.14.0-bullseye-slim AS base
+# FROM node:22.15.0-bullseye-slim AS base
 
 # Set environment variables early for better layer caching
 ENV LANG=en_US.UTF-8 \

@@ -99,7 +99,7 @@ Automatically syncs configuration from database metadata to environment variable
 ### **`run-dev.sh`** 🚀 Development Server
 Starts the local development server with proper environment:
 - Loads environment from `.env` file
-- Uses Node v20
+- Uses Node v22
 - Sets up PostgreSQL database mode
 - Enables custom pieces (ada-bmp)
 - Runs on http://localhost:4300
@@ -112,7 +112,7 @@ Starts the local development server with proper environment:
 **Prerequisites:**
 - `.env` file with your configuration
 - PostgreSQL and Redis running (Docker or local)
-- Node v20 via nvm
+- Node v22 via nvm
 
 
 ### **`restart-all.sh`** 🔄 Restart Services
@@ -246,7 +246,7 @@ Interactive script to create and manage super admin accounts:
 
 - **All scripts run from project root**: `./scripts/script-name.sh`
 - **Docker scripts require**: Docker & Docker Compose installed
-- **Local dev scripts require**: Node v20, nvm, PostgreSQL, Redis
+- **Local dev scripts require**: Node v22, nvm, PostgreSQL, Redis
 - **Environment config**: Use `.env` file for local development
 - **Database backups**: Automatically created in `~/activepieces_backup_*.sql`
 

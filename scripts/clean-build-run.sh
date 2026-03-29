@@ -243,12 +243,12 @@ if command -v bun >/dev/null 2>&1; then
     else
         echo -e "${YELLOW}⚠️ Local bun install failed. Falling back to Docker-based build (Linux toolchain)...${NC}"
         if command -v docker >/dev/null 2>&1; then
-            echo "Running build inside Docker (node:20-bullseye)..."
+            echo "Running build inside Docker (node:22-bullseye)..."
             docker run --rm \
                 --ulimit nofile=65535:65535 \
                 -v "$PROJECT_ROOT":/usr/src/app \
                 -w /usr/src/app \
-                node:20-bullseye \
+                node:22-bullseye \
                 bash -lc 'set -e
                     export DEBIAN_FRONTEND=noninteractive
                     apt-get update -qq
@@ -269,7 +269,7 @@ else
             --ulimit nofile=65535:65535 \
             -v "$PROJECT_ROOT":/usr/src/app \
             -w /usr/src/app \
-            node:20-bullseye \
+            node:22-bullseye \
             bash -lc 'set -e
                 export DEBIAN_FRONTEND=noninteractive
                 apt-get update -qq

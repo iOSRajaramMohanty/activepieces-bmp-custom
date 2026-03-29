@@ -40,7 +40,7 @@ The `run-dev.sh` script is the **primary development environment setup script**.
 
 2. **Development Server Startup**
    - Kills any existing development servers
-   - Loads Node.js version manager (nvm) and uses Node v20
+   - Loads Node.js version manager (nvm) and uses Node v22
    - Optionally builds community pieces before starting
    - Starts the development server using `npm run dev`
 
