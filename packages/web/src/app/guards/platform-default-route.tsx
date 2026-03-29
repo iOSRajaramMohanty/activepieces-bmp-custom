@@ -1,21 +1,21 @@
+import { PlatformRole } from '@activepieces/shared';
 import { Navigate } from 'react-router-dom';
 
-import { userHooks } from '@/hooks/user-hooks';
-import { PlatformRole } from '@activepieces/shared';
 import { getBmpDefaultRoute } from '@/app/routes/bmp-routes';
+import { userHooks } from '@/hooks/user-hooks';
 
 export const PlatformDefaultRoute = () => {
   const { data: currentUser } = userHooks.useCurrentUser();
   const isSuperAdmin = currentUser?.platformRole === PlatformRole.SUPER_ADMIN;
   const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
-  
+
   // Check BMP routes first (when BMP is enabled)
   const bmpRoute = getBmpDefaultRoute(currentUser?.platformRole);
   if (bmpRoute) {
     return <Navigate to={bmpRoute} replace />;
   }
-  
+
   // Route based on user role (when BMP is disabled or role not matched):
   // - SUPER_ADMIN: Goes to super admin dashboard (only if BMP enabled above)
   // - OWNER (tenant): Goes to owner dashboard (only if BMP enabled above)
@@ -31,6 +31,6 @@ export const PlatformDefaultRoute = () => {
   } else if (isAdmin) {
     defaultRoute = '/platform/users';
   }
-  
+
   return <Navigate to={defaultRoute} replace />;
 };

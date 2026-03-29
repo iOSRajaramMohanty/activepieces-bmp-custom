@@ -1,5 +1,4 @@
 FROM ubuntu:22.04 AS base
-# FROM node:22.15.0-bullseye-slim AS base
 
 # Set environment variables early for better layer caching
 ENV LANG=en_US.UTF-8 \
@@ -60,7 +59,7 @@ RUN unzip bun.zip \
 
 RUN bun --version
 
-# Install global npm packages in a single layer
+# Install global npm packages in a single layer (build stage only)
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g --no-fund --no-audit \
     node-gyp \
@@ -108,7 +107,7 @@ RUN if [ -d dist/packages/pieces/custom/ada-bmp ]; then \
 
 # Remove piece directories not needed at runtime (keeps community pieces api imports + ada-bmp)
 # packages/server/api lists @activepieces/piece-ada-bmp as workspace:* — do not delete ada-bmp
-# Then regenerate bun.lock so it matches the trimmed workspace
+# Then production install + prune dev-only stores + pino-pretty for AP_LOG_PRETTY (runtime copies node_modules from here)
 RUN rm -rf packages/pieces/core && \
     find packages/pieces/custom -mindepth 1 -maxdepth 1 -type d \
       ! -name ada-bmp \
@@ -119,18 +118,44 @@ RUN rm -rf packages/pieces/core && \
       ! -name facebook-leads \
       ! -name intercom \
       -exec rm -rf {} + && \
-    rm -f bun.lock && bun install
+    rm -f bun.lock && bun install && \
+    bun install --production && \
+    bun add pino-pretty@13.0.0 --no-save && \
+    find node_modules/.bun -mindepth 1 -maxdepth 1 -type d \( \
+      -name 'ace-builds@*' -o -name 'lucide-react@*' -o -name '@faker-js+faker@*' -o \
+      -name 'turbo-linux-*' -o -name 'turbo@*' -o -name '@nx+nx-linux-*' -o -name '@nx+nx-*' -o \
+      -name 'typescript@*' -o -name 'lottie-web@*' -o -name '@angular+core@*' -o \
+      -name '@angular+common@*' -o -name 'posthog-js@*' -o -name 'date-fns-jalali@*' \
+    \) -exec rm -rf {} + 2>/dev/null || true && \
+    find node_modules -name "*.d.ts" -type f -delete 2>/dev/null || true && \
+    find node_modules -name "*.map" -type f -delete 2>/dev/null || true && \
+    find node_modules -name "*.md" -type f -delete 2>/dev/null || true
 
-### STAGE 2: Run ###
-FROM base AS run
+### STAGE 2: Run (slim — no Bun, no build toolchain) ###
+FROM node:22-bookworm-slim AS run
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
+    NX_DAEMON=false \
+    NX_NO_CLOUD=true
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        poppler-utils \
+        poppler-data \
+        procps \
+        libcap2 \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g --no-fund --no-audit pm2@6.0.10
 
 WORKDIR /usr/src/app
 
-# Copy static configuration files first (better layer caching)
 COPY --from=build /usr/src/app/packages/server/api/src/assets/default.cf /usr/local/etc/isolate
 COPY docker-entrypoint.sh .
-
-# API/worker/shared compile into packages/*/dist (tsc), not dist/packages/{server,shared}
 RUN mkdir -p \
     /usr/src/app/dist/packages/engine \
     /usr/src/app/dist/packages/pieces/custom \
@@ -138,26 +163,17 @@ RUN mkdir -p \
     chmod +x docker-entrypoint.sh && \
     rm -f /usr/src/package.json || true
 
-# Copy built artifacts from build stage
 COPY --from=build /usr/src/app/package.json .
 COPY --from=build /usr/src/app/tsconfig.base.json .
 COPY --from=build /usr/src/app/nx.json .
 COPY --from=build /usr/src/app/LICENSE .
+COPY --from=build /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
-# Nx output for ada-bmp (scripts/validate-docker-build.sh checks this path)
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ ./dist/packages/pieces/custom/
-COPY --from=build /usr/src/app/packages ./packages
-# file-pieces-utils expects packages/pieces/custom/ada-bmp/dist/src/index.js;
-# the mirror step in the build stage may not survive COPY --from, so copy directly here.
+COPY --from=build /usr/src/app/packages/server ./packages/server
+COPY --from=build /usr/src/app/packages/shared ./packages/shared
+COPY --from=build /usr/src/app/packages/pieces ./packages/pieces
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ada-bmp/ ./packages/pieces/custom/ada-bmp/dist/
-
-# Regenerate lockfile and install production dependencies (pieces were trimmed from workspace)
-# pino-pretty is a devDep but AP_LOG_PRETTY=true (from docker-compose env) needs it at runtime
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --production && \
-    bun add pino-pretty@13.0.0 --no-save
-
-# Copy frontend files
 COPY --from=build /usr/src/app/dist/packages/web ./dist/packages/web/
 
 LABEL service=activepieces

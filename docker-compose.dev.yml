@@ -8,6 +8,7 @@ services:
     image: activepieces:dev
     container_name: activepieces-dev
     restart: unless-stopped
+    # Host:container — set AP_PORT in env_file to match the container port (e.g. AP_PORT=3001 for 8080:3001).
     ports:
       - '8080:3001'
     depends_on:
@@ -16,6 +17,9 @@ services:
       redis-dev:
         condition: service_started
     env_file: .env.dev.backup
+    environment:
+      # Keep in sync with ports "HOST:CONTAINER" (container side must match Fastify listen port).
+      AP_PORT: "3001"
     volumes:
       - ./cache:/usr/src/app/cache
       # Mount custom pieces source (for reference)
@@ -33,9 +37,9 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
-    # Development: Health check
+    # Development: Health check (must use same port as AP_PORT inside the container)
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/api/v1/health"]
+      test: ["CMD-SHELL", "curl -fsS \"http://127.0.0.1:$${AP_PORT:-80}/api/v1/health\" >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
