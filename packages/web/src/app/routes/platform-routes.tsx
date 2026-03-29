@@ -2,12 +2,13 @@ import React, { Suspense } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { PageTitle } from '@/app/components/page-title';
+import { PlatformDefaultRoute } from '@/app/guards/platform-default-route';
 import { LoadingScreen } from '@/components/custom/loading-screen';
 import { Error, Success } from '@/features/billing';
-import { PlatformDefaultRoute } from '@/app/guards/platform-default-route';
 
 import { PlatformLayout } from '../components/platform-layout';
 import { SuperAdminLayout } from '../components/super-admin-layout';
+
 import { filterBmpRoutes } from './bmp-routes';
 
 const SettingsBilling = React.lazy(() => import('./platform/billing'));
@@ -66,30 +67,26 @@ const PlatformTemplatesPage = React.lazy(() =>
   })),
 );
 const UsersPage = React.lazy(() => import('./platform/users'));
-const OrganizationsPage = React.lazy(
-  () => import('./platform/organizations'),
-);
-const SuperAdminDashboard = React.lazy(
-  () =>
-    import('./platform/super-admin').then((m) => ({
-      default: m.SuperAdminDashboard,
-    })),
+const OrganizationsPage = React.lazy(() => import('./platform/organizations'));
+const SuperAdminDashboard = React.lazy(() =>
+  import('./platform/super-admin').then((m) => ({
+    default: m.SuperAdminDashboard,
+  })),
 );
 const CloudOAuthAppsPage = React.lazy(
   () => import('./platform/super-admin/cloud-oauth-apps'),
 );
-const OwnerDashboard = React.lazy(
-  () =>
-    import('./platform/owner-dashboard').then((m) => ({
-      default: m.OwnerDashboard,
-    })),
+const OwnerDashboard = React.lazy(() =>
+  import('./platform/owner-dashboard').then((m) => ({
+    default: m.OwnerDashboard,
+  })),
 );
 
 function SuspenseWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<LoadingScreen />}>{children}</Suspense>;
 }
 
-// Note: BMP routes (/super-admin, /owner-dashboard, /platform/organizations) 
+// Note: BMP routes (/super-admin, /owner-dashboard, /platform/organizations)
 // are filtered by filterBmpRoutes based on VITE_BMP_ENABLED
 const allPlatformRoutes = [
   {

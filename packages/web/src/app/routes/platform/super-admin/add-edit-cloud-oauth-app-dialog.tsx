@@ -1,13 +1,13 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { t } from 'i18next'
-import type { ReactNode } from 'react'
-import { Eye, EyeOff } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { t } from 'i18next';
+import { Eye, EyeOff } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
 
-import { toast } from 'sonner'
-
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -16,9 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -26,23 +24,23 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form'
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-
-import { cloudOAuthHooks } from '@/features/platform-admin/api/cloud-oauth-hooks'
-import type { CloudOAuthApp } from '@/features/platform-admin/api/cloud-oauth-api'
-import { PieceIconWithPieceName } from '@/features/pieces'
+} from '@/components/ui/select';
+import { PieceIconWithPieceName } from '@/features/pieces';
+import type { CloudOAuthApp } from '@/features/platform-admin/api/cloud-oauth-api';
+import { cloudOAuthHooks } from '@/features/platform-admin/api/cloud-oauth-hooks';
 
 export type CloudOAuthEligiblePiece = {
-  name: string
-  displayName: string
-}
+  name: string;
+  displayName: string;
+};
 
 // Pieces that support CLOUD_OAUTH2 (these were derived from the existing cloud OAuth list)
 export const CLOUD_OAUTH2_ELIGIBLE_PIECES: CloudOAuthEligiblePiece[] = [
@@ -51,7 +49,10 @@ export const CLOUD_OAUTH2_ELIGIBLE_PIECES: CloudOAuthEligiblePiece[] = [
   { name: '@activepieces/piece-google-sheets', displayName: 'Google Sheets' },
   { name: '@activepieces/piece-gmail', displayName: 'Gmail' },
   { name: '@activepieces/piece-google-drive', displayName: 'Google Drive' },
-  { name: '@activepieces/piece-google-calendar', displayName: 'Google Calendar' },
+  {
+    name: '@activepieces/piece-google-calendar',
+    displayName: 'Google Calendar',
+  },
   { name: '@activepieces/piece-notion', displayName: 'Notion' },
   { name: '@activepieces/piece-github', displayName: 'GitHub' },
   { name: '@activepieces/piece-gitlab', displayName: 'GitLab' },
@@ -65,9 +66,18 @@ export const CLOUD_OAUTH2_ELIGIBLE_PIECES: CloudOAuthEligiblePiece[] = [
   { name: '@activepieces/piece-figma', displayName: 'Figma' },
   { name: '@activepieces/piece-quickbooks', displayName: 'QuickBooks' },
   { name: '@activepieces/piece-zoom', displayName: 'Zoom' },
-  { name: '@activepieces/piece-microsoft-outlook', displayName: 'Microsoft Outlook' },
-  { name: '@activepieces/piece-microsoft-teams', displayName: 'Microsoft Teams' },
-  { name: '@activepieces/piece-microsoft-onedrive', displayName: 'Microsoft OneDrive' },
+  {
+    name: '@activepieces/piece-microsoft-outlook',
+    displayName: 'Microsoft Outlook',
+  },
+  {
+    name: '@activepieces/piece-microsoft-teams',
+    displayName: 'Microsoft Teams',
+  },
+  {
+    name: '@activepieces/piece-microsoft-onedrive',
+    displayName: 'Microsoft OneDrive',
+  },
   { name: '@activepieces/piece-trello', displayName: 'Trello' },
   { name: '@activepieces/piece-jira', displayName: 'Jira' },
   { name: '@activepieces/piece-linear', displayName: 'Linear' },
@@ -76,30 +86,30 @@ export const CLOUD_OAUTH2_ELIGIBLE_PIECES: CloudOAuthEligiblePiece[] = [
   { name: '@activepieces/piece-mailchimp', displayName: 'Mailchimp' },
   { name: '@activepieces/piece-shopify', displayName: 'Shopify' },
   { name: '@activepieces/piece-stripe', displayName: 'Stripe' },
-].sort((a, b) => a.displayName.localeCompare(b.displayName))
+].sort((a, b) => a.displayName.localeCompare(b.displayName));
 
 const createFormSchema = z.object({
   pieceName: z.string().min(1, 'Please select a piece'),
   clientId: z.string().min(1, 'Client ID is required'),
   clientSecret: z.string().min(1, 'Client Secret is required'),
-})
+});
 
 const editFormSchema = z.object({
   clientId: z.string().min(1, 'Client ID is required'),
   clientSecret: z.string().optional(),
-})
+});
 
-type CreateFormValues = z.infer<typeof createFormSchema>
-type EditFormValues = z.infer<typeof editFormSchema>
+type CreateFormValues = z.infer<typeof createFormSchema>;
+type EditFormValues = z.infer<typeof editFormSchema>;
 
 type Props = {
-  app?: CloudOAuthApp
-  configuredPieceNames?: string[]
-  children?: ReactNode
-  onSuccess?: () => void
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-}
+  app?: CloudOAuthApp;
+  configuredPieceNames?: string[];
+  children?: ReactNode;
+  onSuccess?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
 
 export function AddEditCloudOAuthAppDialog({
   app,
@@ -109,80 +119,87 @@ export function AddEditCloudOAuthAppDialog({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
 }: Props) {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-  const [showSecret, setShowSecret] = useState(false)
-  const isEditMode = !!app
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const isEditMode = !!app;
 
-  const isControlled = controlledOpen !== undefined && controlledOnOpenChange !== undefined
-  const open = isControlled ? controlledOpen : uncontrolledOpen
-  const setOpen = isControlled ? controlledOnOpenChange : setUncontrolledOpen
+  const isControlled =
+    controlledOpen !== undefined && controlledOnOpenChange !== undefined;
+  const open = isControlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = isControlled ? controlledOnOpenChange : setUncontrolledOpen;
 
   const configuredSet = useMemo(
     () => new Set(configuredPieceNames),
     [configuredPieceNames],
-  )
+  );
 
   const availablePieces = useMemo(() => {
     if (isEditMode) {
-      return []
+      return [];
     }
-    return CLOUD_OAUTH2_ELIGIBLE_PIECES.filter((piece) => !configuredSet.has(piece.name))
-  }, [configuredSet, isEditMode])
+    return CLOUD_OAUTH2_ELIGIBLE_PIECES.filter(
+      (piece) => !configuredSet.has(piece.name),
+    );
+  }, [configuredSet, isEditMode]);
 
-  const createMutation = cloudOAuthHooks.useCreateCloudOAuthApp()
-  const updateMutation = cloudOAuthHooks.useUpdateCloudOAuthApp()
+  const createMutation = cloudOAuthHooks.useCreateCloudOAuthApp();
+  const updateMutation = cloudOAuthHooks.useUpdateCloudOAuthApp();
 
   const form = useForm<CreateFormValues | EditFormValues>({
     resolver: zodResolver(isEditMode ? editFormSchema : createFormSchema),
     defaultValues: isEditMode
       ? ({ clientId: app?.clientId ?? '', clientSecret: '' } as EditFormValues)
       : ({ pieceName: '', clientId: '', clientSecret: '' } as CreateFormValues),
-  })
+  });
 
   useEffect(() => {
     if (open && isEditMode && app) {
       form.reset({
         clientId: app.clientId,
         clientSecret: '',
-      })
+      });
     }
-  }, [open, isEditMode, app])
+  }, [open, isEditMode, app]);
 
   const onSubmit = async (values: CreateFormValues | EditFormValues) => {
     try {
       if (isEditMode) {
-        const editValues = values as EditFormValues
+        const editValues = values as EditFormValues;
         await updateMutation.mutateAsync({
           id: app!.id,
           request: {
             clientId: editValues.clientId,
-            ...(editValues.clientSecret ? { clientSecret: editValues.clientSecret } : {}),
+            ...(editValues.clientSecret
+              ? { clientSecret: editValues.clientSecret }
+              : {}),
           },
-        })
+        });
       } else {
-        const createValues = values as CreateFormValues
+        const createValues = values as CreateFormValues;
         await createMutation.mutateAsync({
           pieceName: createValues.pieceName,
           clientId: createValues.clientId,
           clientSecret: createValues.clientSecret,
-        })
+        });
       }
 
-      setOpen(false)
-      form.reset()
-      onSuccess?.()
+      setOpen(false);
+      form.reset();
+      onSuccess?.();
     } catch (error: any) {
       toast.error(t('Error'), {
         description: error?.response?.data?.message || error?.message,
-      })
+      });
     }
-  }
+  };
 
-  const isPending = createMutation.isPending || updateMutation.isPending
-  const selectedPieceName = form.watch('pieceName' as any) as string | undefined
+  const isPending = createMutation.isPending || updateMutation.isPending;
+  const selectedPieceName = form.watch('pieceName' as any) as
+    | string
+    | undefined;
   const selectedPiece = CLOUD_OAUTH2_ELIGIBLE_PIECES.find(
     (p) => p.name === (isEditMode ? app?.pieceName : selectedPieceName),
-  )
+  );
 
   const dialogContent = (
     <DialogContent className="sm:max-w-md">
@@ -194,8 +211,8 @@ export function AddEditCloudOAuthAppDialog({
           {isEditMode
             ? t('Update the OAuth credentials for this piece.')
             : t(
-              'Select a piece and add OAuth credentials to enable the simplified "Connect" button flow.',
-            )}
+                'Select a piece and add OAuth credentials to enable the simplified "Connect" button flow.',
+              )}
         </DialogDescription>
       </DialogHeader>
 
@@ -239,7 +256,11 @@ export function AddEditCloudOAuthAppDialog({
                               showTooltip={false}
                             />
                             <span>
-                              {CLOUD_OAUTH2_ELIGIBLE_PIECES.find(p => p.name === field.value)?.displayName}
+                              {
+                                CLOUD_OAUTH2_ELIGIBLE_PIECES.find(
+                                  (p) => p.name === field.value,
+                                )?.displayName
+                              }
                             </span>
                           </div>
                         ) : (
@@ -339,24 +360,20 @@ export function AddEditCloudOAuthAppDialog({
               {t('Cancel')}
             </Button>
             <Button type="submit" disabled={isPending}>
-              {isPending
-                ? t('Saving...')
-                : isEditMode
-                  ? t('Update')
-                  : t('Add')}
+              {isPending ? t('Saving...') : isEditMode ? t('Update') : t('Add')}
             </Button>
           </DialogFooter>
         </form>
       </Form>
     </DialogContent>
-  )
+  );
 
   if (isControlled) {
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         {dialogContent}
       </Dialog>
-    )
+    );
   }
 
   return (
@@ -364,5 +381,5 @@ export function AddEditCloudOAuthAppDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       {dialogContent}
     </Dialog>
-  )
+  );
 }

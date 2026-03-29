@@ -36,7 +36,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "packages/pieces/custom/ada-bmp",
-        "command": "bun install --no-save --silent"
+        "command": "bun install --no-save --silent --ignore-scripts"
       },
       "dependsOn": [
         "^build"

@@ -1,11 +1,11 @@
-import { devDataSeed } from './dev-seeds'
 import { rolesSeed } from './role-seed'
+import { superAdminSeed } from './super-admin-seed'
 
 export const databaseSeeds = {
     async run() {
         const seeds = [
             rolesSeed,
-            devDataSeed,
+            superAdminSeed,
         ]
         for (const seed of seeds) {
             await seed.run()

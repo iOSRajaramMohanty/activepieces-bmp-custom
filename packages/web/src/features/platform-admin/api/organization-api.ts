@@ -1,4 +1,3 @@
-import { api } from '@/lib/api';
 import {
   Organization,
   OrganizationEnvironment,
@@ -7,6 +6,8 @@ import {
   CheckAdminAvailabilityResponse,
   SeekPage,
 } from '@activepieces/shared';
+
+import { api } from '@/lib/api';
 
 export const organizationApi = {
   create(request: CreateOrganizationRequest) {
@@ -26,21 +27,21 @@ export const organizationApi = {
 
   getEnvironments(organizationId: string) {
     return api.get<OrganizationEnvironment[]>(
-      `/v1/organizations/${organizationId}/environments`
+      `/v1/organizations/${organizationId}/environments`,
     );
   },
 
   initializeEnvironments(organizationId: string) {
     return api.post<OrganizationEnvironment[]>(
       `/v1/organizations/${organizationId}/environments/initialize`,
-      {}
+      {},
     );
   },
 
   checkAdminAvailability(request: CheckAdminAvailabilityRequest) {
     return api.post<CheckAdminAvailabilityResponse>(
       '/v1/organizations/check-admin',
-      request
+      request,
     );
   },
 
@@ -59,17 +60,19 @@ export const organizationApi = {
   updateEnvironmentMetadata(
     organizationId: string,
     environmentId: string,
-    metadata: unknown
+    metadata: unknown,
   ) {
     return api.patch<OrganizationEnvironment>(
       `/v1/organizations/${organizationId}/environments/${environmentId}/metadata`,
-      { metadata }
+      { metadata },
     );
   },
 
   getAllowedEnvironmentsForCurrentUser() {
-    return api.get<{ environments: string[]; organizationId: string; userId: string }>(
-      '/v1/organizations/current-user/allowed-environments'
-    );
+    return api.get<{
+      environments: string[];
+      organizationId: string;
+      userId: string;
+    }>('/v1/organizations/current-user/allowed-environments');
   },
 };

@@ -1,14 +1,19 @@
+import { EnvironmentType, PlatformRole } from '@activepieces/shared';
 import { t } from 'i18next';
 import { Code, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { organizationHooks } from '@/features/platform-admin/api/organization-hooks';
 import { userHooks } from '@/hooks/user-hooks';
-import { OrganizationEnvironment, EnvironmentType, PlatformRole } from '@activepieces/shared';
+
 import { EnvironmentMetadataDialog } from './environment-metadata-dialog';
 
 type OrganizationEnvironmentsSectionProps = {
@@ -21,15 +26,22 @@ export const OrganizationEnvironmentsSection = ({
   organizationName,
 }: OrganizationEnvironmentsSectionProps) => {
   const [open, setOpen] = useState(false);
-  const { data: environments, isLoading, refetch, error } = organizationHooks.useOrganizationEnvironments(organizationId);
-  const { mutate: initializeEnvironments, isPending: isInitializing } = organizationHooks.useInitializeEnvironments();
+  const {
+    data: environments,
+    isLoading,
+    refetch,
+    error,
+  } = organizationHooks.useOrganizationEnvironments(organizationId);
+  const { mutate: initializeEnvironments, isPending: isInitializing } =
+    organizationHooks.useInitializeEnvironments();
   const { data: currentUser } = userHooks.useCurrentUser();
 
-  const canSetupEnvironments = currentUser && (
-    currentUser.platformRole === PlatformRole.OWNER ||
-    currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
-    (currentUser.platformRole === PlatformRole.ADMIN && currentUser.organizationId === organizationId)
-  );
+  const canSetupEnvironments =
+    currentUser &&
+    (currentUser.platformRole === PlatformRole.OWNER ||
+      currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
+      (currentUser.platformRole === PlatformRole.ADMIN &&
+        currentUser.organizationId === organizationId));
 
   const getEnvironmentBadgeVariant = (env: EnvironmentType) => {
     switch (env) {
@@ -63,12 +75,13 @@ export const OrganizationEnvironmentsSection = ({
   }
 
   if (error) {
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : (error as any)?.response?.data?.message 
-        ? (error as any).response.data.message 
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : (error as any)?.response?.data?.message
+        ? (error as any).response.data.message
         : String(error);
-    
+
     return (
       <Card className="mt-4">
         <CardHeader>
@@ -99,8 +112,12 @@ export const OrganizationEnvironmentsSection = ({
         <CardContent className="space-y-3">
           <div className="text-sm text-muted-foreground">
             {canSetupEnvironments
-              ? t('Setup Dev, Staging, and Prod metadata for BMP connections. Members use Dev/Staging; Operators use Production.')
-              : t('No environment metadata configured for this organization yet. Ask your admin to set up Dev, Staging, Prod.')}
+              ? t(
+                  'Setup Dev, Staging, and Prod metadata for BMP connections. Members use Dev/Staging; Operators use Production.',
+                )
+              : t(
+                  'No environment metadata configured for this organization yet. Ask your admin to set up Dev, Staging, Prod.',
+                )}
           </div>
           {canSetupEnvironments && (
             <Button
@@ -134,7 +151,9 @@ export const OrganizationEnvironmentsSection = ({
                 {t('My Environment Metadata')} - {organizationName}
               </CardTitle>
               <Badge variant="outline">
-                {environments.length === 1 ? t('Your Environment') : `${environments.length} ${t('environments')}`}
+                {environments.length === 1
+                  ? t('Your Environment')
+                  : `${environments.length} ${t('environments')}`}
               </Badge>
             </div>
           </CardHeader>
@@ -143,20 +162,22 @@ export const OrganizationEnvironmentsSection = ({
           <CardContent className="pt-0">
             <div className="space-y-4">
               {environments.map((env) => {
-                const metadata = (env.metadata as Record<string, unknown>) || {};
+                const metadata =
+                  (env.metadata as Record<string, unknown>) || {};
                 const apiUrl = metadata.ADA_BMP_API_URL as string;
                 const timeout = metadata.ADA_BMP_TIMEOUT as number;
                 const debug = metadata.ADA_BMP_DEBUG as boolean;
                 const hasMetadata = apiUrl || timeout || debug !== undefined;
 
                 return (
-                  <div
-                    key={env.id}
-                    className="border rounded-lg p-4 space-y-3"
-                  >
+                  <div key={env.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge variant={getEnvironmentBadgeVariant(env.environment) as any}>
+                        <Badge
+                          variant={
+                            getEnvironmentBadgeVariant(env.environment) as any
+                          }
+                        >
                           {env.environment}
                         </Badge>
                         {env.adminEmail && (
@@ -179,8 +200,13 @@ export const OrganizationEnvironmentsSection = ({
                             <span className="text-xs font-medium text-muted-foreground w-20">
                               API URL:
                             </span>
-                            <Badge variant="outline" className="text-xs font-mono">
-                              {apiUrl.length > 40 ? `${apiUrl.substring(0, 40)}...` : apiUrl}
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-mono"
+                            >
+                              {apiUrl.length > 40
+                                ? `${apiUrl.substring(0, 40)}...`
+                                : apiUrl}
                             </Badge>
                           </div>
                         )}
@@ -199,7 +225,10 @@ export const OrganizationEnvironmentsSection = ({
                             <span className="text-xs font-medium text-muted-foreground w-20">
                               Debug:
                             </span>
-                            <Badge variant={debug ? 'default' : 'outline'} className="text-xs">
+                            <Badge
+                              variant={debug ? 'default' : 'outline'}
+                              className="text-xs"
+                            >
                               {debug ? t('Enabled') : t('Disabled')}
                             </Badge>
                           </div>
@@ -207,7 +236,9 @@ export const OrganizationEnvironmentsSection = ({
                       </div>
                     ) : (
                       <div className="text-sm text-muted-foreground italic pl-2">
-                        {t('No environment-specific metadata configured. Using organization-level defaults or system defaults.')}
+                        {t(
+                          'No environment-specific metadata configured. Using organization-level defaults or system defaults.',
+                        )}
                       </div>
                     )}
                   </div>

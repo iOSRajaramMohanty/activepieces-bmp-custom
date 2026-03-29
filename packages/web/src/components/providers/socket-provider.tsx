@@ -47,7 +47,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const projectId = authenticationSession.getProjectId();
   const toastIdRef = useRef<string | null>(null);
   const isCleaningUpRef = useRef(false);
-  
+
   // Get the socket instance (will reuse existing or create new with current config)
   const socket = useMemo(() => getOrCreateSocket(), []);
 
@@ -59,52 +59,55 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
     console.log('connected to socket');
   }, []);
 
-  const handleDisconnect = useCallback((reason: string) => {
-    // Don't show toast if we're cleaning up (component unmounting)
-    if (isCleaningUpRef.current) {
-      return;
-    }
-    
-    if (!toastIdRef.current) {
-      const id = toast('Connection Lost', {
-        id: 'websocket-disconnected',
-        description: 'We are trying to reconnect...',
-        duration: Infinity,
-      });
-      toastIdRef.current = id?.toString() ?? null;
-    }
-    if (reason === 'io server disconnect') {
-      socket.connect();
-    }
-  }, [socket]);
+  const handleDisconnect = useCallback(
+    (reason: string) => {
+      // Don't show toast if we're cleaning up (component unmounting)
+      if (isCleaningUpRef.current) {
+        return;
+      }
+
+      if (!toastIdRef.current) {
+        const id = toast('Connection Lost', {
+          id: 'websocket-disconnected',
+          description: 'We are trying to reconnect...',
+          duration: Infinity,
+        });
+        toastIdRef.current = id?.toString() ?? null;
+      }
+      if (reason === 'io server disconnect') {
+        socket.connect();
+      }
+    },
+    [socket],
+  );
 
   useEffect(() => {
     isCleaningUpRef.current = false;
-    
+
     if (token) {
       socket.auth = { token, projectId };
-      
+
       // Remove old listeners before adding new ones
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      
+
       // Add listeners
       socket.on('connect', handleConnect);
       socket.on('disconnect', handleDisconnect);
-      
+
       // Track connection count to prevent reconnect on Strict Mode remount
       socketConnectionCount++;
       const currentCount = socketConnectionCount;
-      
+
       if (!socket.connected) {
         socket.connect();
       }
-      
+
       return () => {
         isCleaningUpRef.current = true;
         socket.off('connect', handleConnect);
         socket.off('disconnect', handleDisconnect);
-        
+
         // Only disconnect if this is the last component using the socket
         // This prevents disconnection during React Strict Mode double-invocation
         if (currentCount === socketConnectionCount) {

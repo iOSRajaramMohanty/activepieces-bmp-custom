@@ -57,7 +57,11 @@ export const testStepHooks = {
           testStrategy: TriggerTestStrategy.SIMULATION,
         });
         // Update trigger status if available in response
-        if (testResult && typeof testResult === 'object' && 'triggerEnabled' in testResult) {
+        if (
+          testResult &&
+          typeof testResult === 'object' &&
+          'triggerEnabled' in testResult
+        ) {
           onTriggerStatusChange?.(testResult.triggerEnabled as boolean);
         }
         let attempt = 0;

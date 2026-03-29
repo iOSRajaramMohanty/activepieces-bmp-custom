@@ -1,24 +1,24 @@
-import { t } from 'i18next';
+import { PlatformRole } from '@activepieces/shared';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect } from 'react';
+
 import { Button } from '@/components/ui/button';
-import { authenticationSession } from '@/lib/authentication-session';
 import { userHooks } from '@/hooks/user-hooks';
-import { PlatformRole } from '@activepieces/shared';
+import { authenticationSession } from '@/lib/authentication-session';
 
 export function SwitchBackButton() {
   const { data: currentUser } = userHooks.useCurrentUser();
-  
+
   // Validate and clean switch stack on mount/update
   useEffect(() => {
     if (currentUser) {
       authenticationSession.validateAndCleanSwitchStack(
         currentUser.platformRole,
-        authenticationSession.getCurrentUserId()
+        authenticationSession.getCurrentUserId(),
       );
     }
   }, [currentUser]);
-  
+
   const isSwitchedAccount = authenticationSession.isSwitchedAccount();
 
   // Only show switch back button if:
@@ -30,8 +30,10 @@ export function SwitchBackButton() {
   }
 
   // Hide for operators and members - they can't be in a switched account state
-  if (currentUser?.platformRole === PlatformRole.OPERATOR || 
-      currentUser?.platformRole === PlatformRole.MEMBER) {
+  if (
+    currentUser?.platformRole === PlatformRole.OPERATOR ||
+    currentUser?.platformRole === PlatformRole.MEMBER
+  ) {
     return null;
   }
 

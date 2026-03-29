@@ -192,15 +192,21 @@ export const appConnectionsMutations = {
       onError: (error: any) => {
         // Extract error message from Axios error response
         const responseData = error?.response?.data;
-        const errorMessage = responseData?.params?.message 
-          || responseData?.message
-          || error?.message;
+        const errorMessage =
+          responseData?.params?.message ||
+          responseData?.message ||
+          error?.message;
         const errorCode = responseData?.code;
-        
+
         // Check for BMP auto-connection deletion attempt
-        if (errorCode === ErrorCode.AUTHORIZATION && errorMessage?.includes('Auto-created BMP')) {
+        if (
+          errorCode === ErrorCode.AUTHORIZATION &&
+          errorMessage?.includes('Auto-created BMP')
+        ) {
           toast.error(t('Cannot Delete Connection'), {
-            description: t('This connection is managed by the system and cannot be deleted.'),
+            description: t(
+              'This connection is managed by the system and cannot be deleted.',
+            ),
             duration: 5000,
           });
         } else if (errorMessage) {
@@ -333,13 +339,13 @@ export const appConnectionsQueries = {
         const { data: owners } = await appConnectionsApi.getOwners({
           projectId,
         });
-        
+
         // Skip project-members API call when embedded (SDK mode)
         // The project-members endpoint may not be available in SDK context
         if (isEmbedding) {
           return owners;
         }
-        
+
         // Only fetch project members when not embedded
         // Handle 404 gracefully as endpoint may not be available in all environments
         try {

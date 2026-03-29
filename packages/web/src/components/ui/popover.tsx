@@ -26,16 +26,21 @@ function PopoverContent({
   container?: HTMLElement | null;
 }) {
   // Get reference to content for manual positioning if needed
-  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
-  
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(
+    null,
+  );
+
   // Fix positioning issue in SDK embed (e.g. Environment dropdown in Connect to ADA BMP)
   // Radix applies both left/top and transform, doubling the offset and pushing content off-screen.
   // Only applies when running in SDK context (detected by __AP_SDK_MODULE__ on window)
   React.useEffect(() => {
-    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    const isSDKEmbed =
+      typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
     if (!isSDKEmbed || !contentRef) return;
 
-    const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+    const wrapper = contentRef.closest(
+      '[data-radix-popper-content-wrapper]',
+    ) as HTMLElement;
     if (!wrapper) return;
 
     const applyPosition = () => {
@@ -43,14 +48,14 @@ function PopoverContent({
       let trigger = document.querySelector(
         '[data-slot="popover-trigger"][data-state="open"]',
       ) as HTMLElement;
-      
+
       // If not found, try to find the trigger via the popover's parent relationship
       if (!trigger) {
         trigger = document.querySelector(
           '[data-slot="popover-trigger"][aria-expanded="true"]',
         ) as HTMLElement;
       }
-      
+
       // Also try to find via Button with combobox role that's expanded
       if (!trigger) {
         trigger = document.querySelector(
@@ -63,12 +68,13 @@ function PopoverContent({
         wrapper.style.transform = 'none';
         wrapper.style.top = `${rect.bottom + sideOffset}px`;
         wrapper.style.left = `${rect.left}px`;
-        
+
         // For SearchableSelect/Combobox popovers (role="combobox"), match the trigger width
         // This ensures the dropdown has proper width even if inline styles had 0px initially
         // Don't apply to regular filter popovers (they use normal buttons without combobox role)
-        const isCombobox = trigger.getAttribute('role') === 'combobox' || 
-                           trigger.querySelector('[role="combobox"]') !== null;
+        const isCombobox =
+          trigger.getAttribute('role') === 'combobox' ||
+          trigger.querySelector('[role="combobox"]') !== null;
         if (isCombobox) {
           wrapper.style.width = `${rect.width}px`;
           wrapper.style.minWidth = `${rect.width}px`;
@@ -88,7 +94,7 @@ function PopoverContent({
     });
     return () => cancelAnimationFrame(id);
   }, [contentRef, sideOffset]);
-  
+
   return (
     <PopoverPrimitive.Portal container={container}>
       <PopoverPrimitive.Content

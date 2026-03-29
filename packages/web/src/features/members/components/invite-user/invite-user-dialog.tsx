@@ -1,6 +1,5 @@
 import {
   InvitationType,
-  isNil,
   Permission,
   PlatformRole,
   ProjectType,
@@ -9,8 +8,8 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
-import { CopyIcon, AlertCircle } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { CopyIcon } from 'lucide-react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -32,22 +31,6 @@ import { FormField, FormItem, Form, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { userInvitationApi } from '@/features/members/api/user-invitation';
-import { PlatformRoleSelect } from '@/features/members/components/platform-role-select';
-import { ProjectRoleSelect } from '@/features/members/components/project-role-select';
-import { projectCollectionUtils } from '@/features/projects/stores/project-collection';
-import { organizationHooks } from '@/features/platform-admin/api/organization-hooks';
-import { useAuthorization } from '@/hooks/authorization-hooks';
-import { platformHooks } from '@/hooks/platform-hooks';
-import { userHooks } from '@/hooks/user-hooks';
-import { HttpError } from '@/lib/api';
-import { authenticationSession } from '@/lib/authentication-session';
-import { formatUtils } from '@/lib/format-utils';
-import {
   Select,
   SelectContent,
   SelectGroup,
@@ -56,6 +39,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { userInvitationApi } from '@/features/members/api/user-invitation';
+import { PlatformRoleSelect } from '@/features/members/components/platform-role-select';
+import { ProjectRoleSelect } from '@/features/members/components/project-role-select';
+import { organizationHooks } from '@/features/platform-admin/api/organization-hooks';
+import { projectCollectionUtils } from '@/features/projects/stores/project-collection';
+import { useAuthorization } from '@/hooks/authorization-hooks';
+import { platformHooks } from '@/hooks/platform-hooks';
+import { userHooks } from '@/hooks/user-hooks';
+import { HttpError } from '@/lib/api';
+import { authenticationSession } from '@/lib/authentication-session';
+import { formatUtils } from '@/lib/format-utils';
 
 import { userInvitationsHooks } from '../../hooks/user-invitations-hooks';
 
@@ -90,7 +89,7 @@ export const InviteUserDialog = ({
   const { embedState } = useEmbedding();
   const [invitationLink, setInvitationLink] = useState('');
   const [selectedOrg, setSelectedOrg] = useState<string>('');
-  
+
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [tagInputKey, setTagInputKey] = useState(0);
@@ -100,14 +99,16 @@ export const InviteUserDialog = ({
   const { data: currentUser } = userHooks.useCurrentUser();
   const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   const projectId = authenticationSession.getProjectId();
-  
+
   // Fetch organizations for the platform
-  const { data: orgsData } = organizationHooks.useOrganizations(platform?.id || '');
+  const { data: orgsData } = organizationHooks.useOrganizations(
+    platform?.id || '',
+  );
   const organizations = orgsData?.data || [];
-  
+
   // Get current project (hook must be called unconditionally; owners may have no project)
   const projectQuery = projectCollectionUtils.useCurrentProject();
-  const project = !isOwner && projectId ? (projectQuery?.project ?? null) : null;
+  const project = !isOwner && projectId ? projectQuery?.project ?? null : null;
   const defaultProjectRole = undefined;
 
   const { checkAccess } = useAuthorization();
@@ -130,7 +131,9 @@ export const InviteUserDialog = ({
             email: email.trim().toLowerCase(),
             type: data.type,
             platformRole: data.platformRole,
-            ...(data.organizationName != null && { organizationName: data.organizationName }),
+            ...(data.organizationName != null && {
+              organizationName: data.organizationName,
+            }),
             ...(data.environment != null && { environment: data.environment }),
           } as Parameters<typeof userInvitationApi.invite>[0]);
         } else {
@@ -171,17 +174,18 @@ export const InviteUserDialog = ({
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(FormSchema),
-      defaultValues: {
-        emails: [],
-        type: isPlatformPage
-          ? InvitationType.PLATFORM
-          : platform.plan.projectRolesEnabled && project?.type === ProjectType.TEAM
-          ? InvitationType.PROJECT
-          : InvitationType.PLATFORM,
-        platformRole: PlatformRole.MEMBER,
-        projectRole: undefined,
-        organizationName: '',
-      },
+    defaultValues: {
+      emails: [],
+      type: isPlatformPage
+        ? InvitationType.PLATFORM
+        : platform.plan.projectRolesEnabled &&
+          project?.type === ProjectType.TEAM
+        ? InvitationType.PROJECT
+        : InvitationType.PLATFORM,
+      platformRole: PlatformRole.MEMBER,
+      projectRole: undefined,
+      organizationName: '',
+    },
   });
 
   // Watch emails to update suggestions
@@ -222,7 +226,11 @@ export const InviteUserDialog = ({
       return;
     }
 
-    if (isOwner && data.platformRole === PlatformRole.ADMIN && !data.organizationName) {
+    if (
+      isOwner &&
+      data.platformRole === PlatformRole.ADMIN &&
+      !data.organizationName
+    ) {
       form.setError('organizationName', {
         type: 'required',
         message: t('Please enter organization name'),
@@ -270,7 +278,8 @@ export const InviteUserDialog = ({
               emails: [],
               type: isPlatformPage
                 ? InvitationType.PLATFORM
-                : platform.plan.projectRolesEnabled && project?.type === ProjectType.TEAM
+                : platform.plan.projectRolesEnabled &&
+                  project?.type === ProjectType.TEAM
                 ? InvitationType.PROJECT
                 : InvitationType.PLATFORM,
               platformRole: isOwner ? PlatformRole.ADMIN : PlatformRole.MEMBER,
@@ -351,89 +360,100 @@ export const InviteUserDialog = ({
                     )}
                   />
 
-<FormField
-  control={form.control}
-  name="type"
-  render={({ field }) => (
-    <FormItem className="grid gap-2">
-      <Label>{t('Invite To')}</Label>
-      <Select
-        onValueChange={field.onChange}
-        value={field.value}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder={t('Invite To')} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectLabel>{t('Invite To')}</SelectLabel>
-            {(currentUser?.platformRole === PlatformRole.ADMIN ||
-              currentUser?.platformRole === PlatformRole.OWNER) && (
-              <SelectItem value={InvitationType.PLATFORM}>
-                {t('Entire Platform')}
-              </SelectItem>
-            )}
-            {platform.plan.projectRolesEnabled &&
-              currentUser?.platformRole !== PlatformRole.OWNER &&
-              project && (
-                <SelectItem value={InvitationType.PROJECT}>
-                  {project.displayName} (Current)
-                </SelectItem>
-              )}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem className="grid gap-2">
+                        <Label>{t('Invite To')}</Label>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('Invite To')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>{t('Invite To')}</SelectLabel>
+                              {(currentUser?.platformRole ===
+                                PlatformRole.ADMIN ||
+                                currentUser?.platformRole ===
+                                  PlatformRole.OWNER) && (
+                                <SelectItem value={InvitationType.PLATFORM}>
+                                  {t('Entire Platform')}
+                                </SelectItem>
+                              )}
+                              {platform.plan.projectRolesEnabled &&
+                                currentUser?.platformRole !==
+                                  PlatformRole.OWNER &&
+                                project && (
+                                  <SelectItem value={InvitationType.PROJECT}>
+                                    {project.displayName} (Current)
+                                  </SelectItem>
+                                )}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   {watchedInvitationType === InvitationType.PLATFORM && (
                     <>
                       <PlatformRoleSelect form={form} />
-                      
+
                       {/* Show organization and environment selectors only for ADMIN role and OWNER users */}
-                      {isOwner && watchedPlatformRole === PlatformRole.ADMIN && (
-                        <>
-                          <FormField
-                            control={form.control}
-                            name="organizationName"
-                            render={({ field }) => (
-                              <FormItem className="grid gap-2">
-                                <Label htmlFor="organizationName">
-                                  {t('Organization')} *
-                                </Label>
-                                <Input
-                                  {...field}
-                                  type="text"
-                                  placeholder={t('Type organization name (e.g., ABC)')}
-                                  list="organizations-list"
-                                  onChange={(e) => {
-                                    // Convert to uppercase and validate
-                                    const upperValue = e.target.value.toUpperCase();
-                                    // Only allow uppercase letters
-                                    if (/^[A-Z]*$/.test(upperValue)) {
-                                      field.onChange(upperValue);
-                                    }
-                                  }}
-                                  value={field.value || ''}
-                                />
-                                <datalist id="organizations-list">
-                                  {organizations.map((org) => (
-                                    <option key={org.id} value={org.name} />
-                                  ))}
-                                </datalist>
-                                <p className="text-xs text-muted-foreground">
-                                  {organizations.length > 0 
-                                    ? t('Type to search existing organizations or enter a new name (uppercase letters only)')
-                                    : t('Enter organization name (uppercase letters only)')}
-                                </p>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          {/* Environment selector hidden for ADMIN — multiple Admins per org, shared project */}
-                        </>
-                      )}
+                      {isOwner &&
+                        watchedPlatformRole === PlatformRole.ADMIN && (
+                          <>
+                            <FormField
+                              control={form.control}
+                              name="organizationName"
+                              render={({ field }) => (
+                                <FormItem className="grid gap-2">
+                                  <Label htmlFor="organizationName">
+                                    {t('Organization')} *
+                                  </Label>
+                                  <Input
+                                    {...field}
+                                    type="text"
+                                    placeholder={t(
+                                      'Type organization name (e.g., ABC)',
+                                    )}
+                                    list="organizations-list"
+                                    onChange={(e) => {
+                                      // Convert to uppercase and validate
+                                      const upperValue =
+                                        e.target.value.toUpperCase();
+                                      // Only allow uppercase letters
+                                      if (/^[A-Z]*$/.test(upperValue)) {
+                                        field.onChange(upperValue);
+                                      }
+                                    }}
+                                    value={field.value || ''}
+                                  />
+                                  <datalist id="organizations-list">
+                                    {organizations.map((org) => (
+                                      <option key={org.id} value={org.name} />
+                                    ))}
+                                  </datalist>
+                                  <p className="text-xs text-muted-foreground">
+                                    {organizations.length > 0
+                                      ? t(
+                                          'Type to search existing organizations or enter a new name (uppercase letters only)',
+                                        )
+                                      : t(
+                                          'Enter organization name (uppercase letters only)',
+                                        )}
+                                  </p>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            {/* Environment selector hidden for ADMIN — multiple Admins per org, shared project */}
+                          </>
+                        )}
                     </>
                   )}
                   {watchedInvitationType === InvitationType.PROJECT && (
@@ -451,8 +471,8 @@ export const InviteUserDialog = ({
                         {t('Cancel')}
                       </Button>
                     </DialogClose>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       loading={isPending}
                       disabled={
                         isPending ||

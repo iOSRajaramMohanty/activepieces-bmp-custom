@@ -143,7 +143,7 @@ export const authenticationSession = {
     const currentProjectId = this.getProjectId();
     const currentUserId = this.getCurrentUserId();
     const currentPlatformId = this.getPlatformId();
-    
+
     // Push current session to stack
     if (currentToken && currentUserId) {
       stack.push({
@@ -154,7 +154,7 @@ export const authenticationSession = {
         platformId: currentPlatformId,
       });
     }
-    
+
     ApStorage.getInstance().setItem(switchStackKey, JSON.stringify(stack));
   },
 
@@ -189,10 +189,10 @@ export const authenticationSession = {
     if (stack.length === 0) {
       return t('Switch Back');
     }
-    
+
     // Get the last switch type (most recent switch)
     const lastSwitch = stack[stack.length - 1];
-    
+
     if (lastSwitch.switchType === 'SUPER_ADMIN_TO_OWNER') {
       // We're in Owner account, going back to Super Admin
       return t('Back to Super Admin');
@@ -206,7 +206,7 @@ export const authenticationSession = {
         return t('Back to Owner Account');
       }
     }
-    
+
     return t('Switch Back');
   },
 
@@ -225,7 +225,7 @@ export const authenticationSession = {
     if (stack.length === 0) {
       return null;
     }
-    
+
     const previousSession = stack.pop()!;
     ApStorage.getInstance().setItem(switchStackKey, JSON.stringify(stack));
     return previousSession;
@@ -233,13 +233,13 @@ export const authenticationSession = {
 
   restorePreviousSession() {
     const previousSession = this.popSwitchSession();
-    
+
     if (!previousSession) {
       // No more switches, clear everything
       this.clearSwitchStack();
       return;
     }
-    
+
     // Restore previous session
     ApStorage.getInstance().setItem(tokenKey, previousSession.token);
     if (previousSession.projectId) {
@@ -247,7 +247,7 @@ export const authenticationSession = {
     } else {
       ApStorage.getInstance().removeItem(projectIdKey);
     }
-    
+
     window.location.href = '/';
   },
 
@@ -256,40 +256,47 @@ export const authenticationSession = {
     if (stack.length === 0) {
       return false;
     }
-    
+
     // Validate that the switch stack is valid
     // If the current user ID matches any entry in the stack, it means we're back to original
     // and the stack is stale
     const currentUserId = this.getCurrentUserId();
     if (currentUserId) {
       // Check if current user matches any entry in the stack (means we're back to original)
-      const isBackToOriginal = stack.some(entry => entry.userId === currentUserId);
+      const isBackToOriginal = stack.some(
+        (entry) => entry.userId === currentUserId,
+      );
       if (isBackToOriginal) {
         // We're back to original account, clear stale stack
         this.clearSwitchStack();
         return false;
       }
     }
-    
+
     return true;
   },
 
-  validateAndCleanSwitchStack(currentUserRole: string | undefined, currentUserId: string | null): void {
+  validateAndCleanSwitchStack(
+    currentUserRole: string | undefined,
+    currentUserId: string | null,
+  ): void {
     const stack = this.getSwitchStack();
     if (stack.length === 0) {
       return;
     }
-    
+
     // If current user is Operator or Member, clear the stack (they can't be switched)
     if (currentUserRole === 'OPERATOR' || currentUserRole === 'MEMBER') {
       this.clearSwitchStack();
       return;
     }
-    
+
     // If current user ID matches any entry in the stack, we're back to original account
     // This means the stack is stale and should be cleared
     if (currentUserId) {
-      const isBackToOriginal = stack.some(entry => entry.userId === currentUserId);
+      const isBackToOriginal = stack.some(
+        (entry) => entry.userId === currentUserId,
+      );
       if (isBackToOriginal) {
         this.clearSwitchStack();
         return;

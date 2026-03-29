@@ -7,7 +7,7 @@ import {
   UserStatus,
 } from '@activepieces/shared';
 import { t } from 'i18next';
-import { UsersRound, Lock } from 'lucide-react';
+import { UsersRound } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -16,12 +16,6 @@ import { PageHeader } from '@/components/custom/page-header';
 import { SettingsIcon } from '@/components/icons/settings';
 import { UserRoundPlusIcon } from '@/components/icons/user-round-plus';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { InviteUserDialog, projectMembersHooks } from '@/features/members';
 import { getProjectName, projectCollectionUtils } from '@/features/projects';
 import { ApProjectDisplay } from '@/features/projects/components/ap-project-display';

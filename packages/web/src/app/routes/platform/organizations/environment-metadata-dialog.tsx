@@ -1,3 +1,8 @@
+import {
+  OrganizationEnvironment,
+  PlatformRole,
+  EnvironmentType,
+} from '@activepieces/shared';
 import { typeboxResolver } from '@hookform/resolvers/typebox';
 import { Static, Type } from '@sinclair/typebox';
 import { t } from 'i18next';
@@ -5,6 +10,8 @@ import { Settings, Info, Code } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,11 +31,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { organizationHooks } from '@/features/platform-admin/api/organization-hooks';
 import { userHooks } from '@/hooks/user-hooks';
-import { OrganizationEnvironment, PlatformRole, EnvironmentType } from '@activepieces/shared';
 
 const EnvironmentMetadataFormValues = Type.Object({
   adaBmpApiUrl: Type.String({
@@ -45,7 +49,9 @@ const EnvironmentMetadataFormValues = Type.Object({
   }),
 });
 
-type EnvironmentMetadataFormValuesType = Static<typeof EnvironmentMetadataFormValues>;
+type EnvironmentMetadataFormValuesType = Static<
+  typeof EnvironmentMetadataFormValues
+>;
 
 type EnvironmentMetadataDialogProps = {
   organizationId: string;
@@ -53,14 +59,14 @@ type EnvironmentMetadataDialogProps = {
   onUpdate?: () => void;
 };
 
-
 export const EnvironmentMetadataDialog = ({
   organizationId,
   environment,
   onUpdate,
 }: EnvironmentMetadataDialogProps) => {
   const [open, setOpen] = useState(false);
-  const { mutate: updateEnvironmentMetadata, isPending } = organizationHooks.useUpdateEnvironmentMetadata();
+  const { mutate: updateEnvironmentMetadata, isPending } =
+    organizationHooks.useUpdateEnvironmentMetadata();
   const { data: currentUser } = userHooks.useCurrentUser();
 
   // Extract metadata values with defaults
@@ -70,12 +76,12 @@ export const EnvironmentMetadataDialog = ({
   const defaultDebug = (metadata.ADA_BMP_DEBUG as boolean) || false;
 
   // Check if user has access
-  const hasAccess = currentUser && (
-    currentUser.platformRole === PlatformRole.OWNER ||
-    currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
-    currentUser.organizationId === organizationId ||
-    currentUser.id === environment.adminUserId
-  );
+  const hasAccess =
+    currentUser &&
+    (currentUser.platformRole === PlatformRole.OWNER ||
+      currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
+      currentUser.organizationId === organizationId ||
+      currentUser.id === environment.adminUserId);
 
   const form = useForm<EnvironmentMetadataFormValuesType>({
     defaultValues: {
@@ -118,15 +124,16 @@ export const EnvironmentMetadataDialog = ({
           setOpen(false);
           onUpdate?.();
         },
-      }
+      },
     );
   };
 
-  const environmentBadgeColor = {
-    [EnvironmentType.DEVELOPMENT]: 'default',
-    [EnvironmentType.STAGING]: 'outline',
-    [EnvironmentType.PRODUCTION]: 'destructive',
-  }[environment.environment] || 'outline';
+  const environmentBadgeColor =
+    {
+      [EnvironmentType.DEVELOPMENT]: 'default',
+      [EnvironmentType.STAGING]: 'outline',
+      [EnvironmentType.PRODUCTION]: 'destructive',
+    }[environment.environment] || 'outline';
 
   return (
     <Dialog
@@ -172,19 +179,26 @@ export const EnvironmentMetadataDialog = ({
           <Alert className="mb-4" variant="destructive">
             <Info className="w-4 h-4" />
             <AlertDescription>
-              {t('You do not have access to configure metadata for this environment.')}
+              {t(
+                'You do not have access to configure metadata for this environment.',
+              )}
             </AlertDescription>
           </Alert>
         ) : (
           <Alert className="mb-4">
             <Info className="w-4 h-4" />
             <AlertDescription>
-              {t('Configure environment-specific metadata for {{environment}} environment.', {
-                environment: environment.environment,
-              })}
+              {t(
+                'Configure environment-specific metadata for {{environment}} environment.',
+                {
+                  environment: environment.environment,
+                },
+              )}
               <br />
               <span className="text-xs text-muted-foreground mt-1 block">
-                {t('These settings apply only to this environment and override organization-level metadata.')}
+                {t(
+                  'These settings apply only to this environment and override organization-level metadata.',
+                )}
               </span>
             </AlertDescription>
           </Alert>
@@ -202,9 +216,12 @@ export const EnvironmentMetadataDialog = ({
                 <FormItem>
                   <FormLabel>{t('ADA BMP API URL')}</FormLabel>
                   <FormDescription>
-                    {t('The base URL for the ADA BMP API endpoint for {{environment}} environment', {
-                      environment: environment.environment,
-                    })}
+                    {t(
+                      'The base URL for the ADA BMP API endpoint for {{environment}} environment',
+                      {
+                        environment: environment.environment,
+                      },
+                    )}
                   </FormDescription>
                   <Input
                     {...field}
@@ -224,7 +241,9 @@ export const EnvironmentMetadataDialog = ({
                 <FormItem>
                   <FormLabel>{t('Request Timeout (ms)')}</FormLabel>
                   <FormDescription>
-                    {t('Timeout for API requests in milliseconds (1000-300000)')}
+                    {t(
+                      'Timeout for API requests in milliseconds (1000-300000)',
+                    )}
                   </FormDescription>
                   <Input
                     {...field}
@@ -232,7 +251,9 @@ export const EnvironmentMetadataDialog = ({
                     min={1000}
                     max={300000}
                     step={1000}
-                    onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
+                    onChange={(e) =>
+                      field.onChange(parseInt(e.target.value, 10))
+                    }
                     className="rounded-sm"
                     disabled={!hasAccess}
                   />
@@ -251,7 +272,9 @@ export const EnvironmentMetadataDialog = ({
                       {t('Enable Debug Logging')}
                     </FormLabel>
                     <FormDescription>
-                      {t('Enable detailed debug logging for ADA BMP operations')}
+                      {t(
+                        'Enable detailed debug logging for ADA BMP operations',
+                      )}
                     </FormDescription>
                   </div>
                   <Switch

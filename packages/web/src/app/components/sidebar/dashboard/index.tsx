@@ -85,7 +85,10 @@ export function ProjectDashboardSidebar({
     }
     // Environment-specific admins (with organizationId) should NOT be able to create new projects
     // They should only have ONE project per environment
-    if (currentUser?.platformRole === PlatformRole.ADMIN && (currentUser as any)?.organizationId) {
+    if (
+      currentUser?.platformRole === PlatformRole.ADMIN &&
+      (currentUser as any)?.organizationId
+    ) {
       return false;
     }
     return currentUser?.platformRole === PlatformRole.ADMIN;

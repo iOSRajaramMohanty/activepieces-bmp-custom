@@ -9,7 +9,7 @@ services:
     container_name: activepieces-dev
     restart: unless-stopped
     ports:
-      - '8080:80'
+      - '8080:3001'
     depends_on:
       postgres-dev:
         condition: service_healthy

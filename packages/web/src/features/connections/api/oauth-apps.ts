@@ -6,17 +6,20 @@ import {
   SeekPage,
 } from '@activepieces/shared';
 
-import { api } from '@/lib/api';
 import { isBmpEnabled } from '@/app/routes/bmp-routes';
+import { api } from '@/lib/api';
 
 export const oauthAppsApi = {
   listCloudOAuth2Apps(
     edition: ApEdition,
   ): Promise<Record<string, { clientId: string }>> {
     if (isBmpEnabled()) {
-      return api.get<Record<string, { clientId: string }>>('/v1/cloud-oauth/apps', {
-        edition,
-      });
+      return api.get<Record<string, { clientId: string }>>(
+        '/v1/cloud-oauth/apps',
+        {
+          edition,
+        },
+      );
     }
 
     return api.get<Record<string, { clientId: string }>>(

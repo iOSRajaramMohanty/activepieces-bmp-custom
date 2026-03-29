@@ -31,7 +31,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar-shadcn';
 import { InviteUserDialog } from '@/features/members';
-import { useAuthorization, useIsPlatformAdmin } from '@/hooks/authorization-hooks';
+import {
+  useAuthorization,
+  useIsPlatformAdmin,
+} from '@/hooks/authorization-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { authenticationSession } from '@/lib/authentication-session';
 import { cn } from '@/lib/utils';
@@ -53,21 +56,22 @@ export function SidebarUser() {
   const isOwner = user?.platformRole === PlatformRole.OWNER;
   const isOperator = user?.platformRole === PlatformRole.OPERATOR;
   const isMember = user?.platformRole === PlatformRole.MEMBER;
-  const canShowInviteUser = canInviteUsers && !isSuperAdmin && !isOperator && !isMember;
+  const canShowInviteUser =
+    canInviteUsers && !isSuperAdmin && !isOperator && !isMember;
   const location = useLocation();
   const isInPlatformAdmin = location.pathname.startsWith('/platform');
   const isCollapsed = state === 'collapsed';
-  
+
   // Validate and clean switch stack on mount/update
   useEffect(() => {
     if (user) {
       authenticationSession.validateAndCleanSwitchStack(
         user.platformRole,
-        authenticationSession.getCurrentUserId()
+        authenticationSession.getCurrentUserId(),
       );
     }
   }, [user]);
-  
+
   const isSwitchedAccount = authenticationSession.isSwitchedAccount();
 
   if (!user || embedState.isEmbedded) {
@@ -137,7 +141,9 @@ export function SidebarUser() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {!isInPlatformAdmin && !isOwner && !isSuperAdmin && <SidebarPlatformAdminButton />}
+            {!isInPlatformAdmin && !isOwner && !isSuperAdmin && (
+              <SidebarPlatformAdminButton />
+            )}
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setAccountSettingsOpen(true)}>
                 <UserCogIcon className="w-4 h-4 mr-2" />
@@ -151,21 +157,21 @@ export function SidebarUser() {
               )}
               <HelpAndFeedback />
             </DropdownMenuGroup>
-            {isSwitchedAccount && 
-             user?.platformRole !== PlatformRole.OPERATOR && 
-             user?.platformRole !== PlatformRole.MEMBER && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    authenticationSession.restorePreviousSession();
-                  }}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {authenticationSession.getSwitchBackText()}
-                </DropdownMenuItem>
-              </>
-            )}
+            {isSwitchedAccount &&
+              user?.platformRole !== PlatformRole.OPERATOR &&
+              user?.platformRole !== PlatformRole.MEMBER && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      authenticationSession.restorePreviousSession();
+                    }}
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    {authenticationSession.getSwitchBackText()}
+                  </DropdownMenuItem>
+                </>
+              )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
@@ -194,9 +200,10 @@ function SidebarPlatformAdminButton() {
     return null;
   }
 
-  const defaultPlatformRoute = user?.platformRole === PlatformRole.ADMIN
-    ? '/platform/users'
-    : '/platform/projects';
+  const defaultPlatformRoute =
+    user?.platformRole === PlatformRole.ADMIN
+      ? '/platform/users'
+      : '/platform/projects';
 
   return (
     <DropdownMenuGroup>

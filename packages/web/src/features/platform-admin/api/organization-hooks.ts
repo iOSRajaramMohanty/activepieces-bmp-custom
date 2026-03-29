@@ -1,12 +1,12 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { organizationApi } from './organization-api';
 import {
   CreateOrganizationRequest,
   CheckAdminAvailabilityRequest,
-  EnvironmentType,
 } from '@activepieces/shared';
-import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
+import { toast } from 'sonner';
+
+import { organizationApi } from './organization-api';
 
 export const organizationHooks = {
   useOrganizations(platformId: string) {
@@ -80,8 +80,13 @@ export const organizationHooks = {
     const queryClient = useQueryClient();
 
     return useMutation({
-      mutationFn: ({ id, updates }: { id: string; updates: Partial<{ name: string; metadata: unknown }> }) =>
-        organizationApi.update(id, updates),
+      mutationFn: ({
+        id,
+        updates,
+      }: {
+        id: string;
+        updates: Partial<{ name: string; metadata: unknown }>;
+      }) => organizationApi.update(id, updates),
       onSuccess: (data) => {
         queryClient.invalidateQueries({
           queryKey: ['organizations'],
@@ -114,13 +119,16 @@ export const organizationHooks = {
         queryClient.invalidateQueries({
           queryKey: ['organizations'],
         });
-        toast.success(t('Dev, Staging, Prod environments created. You can now configure metadata.'));
+        toast.success(
+          t(
+            'Dev, Staging, Prod environments created. You can now configure metadata.',
+          ),
+        );
       },
       onError: (error: any) => {
         toast.error(t('Error'), {
           description:
-            error?.response?.data?.message ||
-            t('Failed to setup environments'),
+            error?.response?.data?.message || t('Failed to setup environments'),
         });
       },
     });
@@ -138,7 +146,12 @@ export const organizationHooks = {
         organizationId: string;
         environmentId: string;
         metadata: unknown;
-      }) => organizationApi.updateEnvironmentMetadata(organizationId, environmentId, metadata),
+      }) =>
+        organizationApi.updateEnvironmentMetadata(
+          organizationId,
+          environmentId,
+          metadata,
+        ),
       onSuccess: (data, variables) => {
         queryClient.invalidateQueries({
           queryKey: ['organization-environments', variables.organizationId],

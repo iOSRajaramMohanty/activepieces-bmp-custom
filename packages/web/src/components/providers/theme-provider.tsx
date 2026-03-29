@@ -5,7 +5,8 @@ import { flagsHooks } from '@/hooks/flags-hooks';
 import { colorsUtils } from '@/lib/color-utils';
 
 // Check if we're in SDK mode - don't modify host app's title/favicon
-const isSDKMode = typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
+const isSDKMode =
+  typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
 
 type Theme = 'dark' | 'light' | 'system';
 
@@ -57,13 +58,13 @@ export function ThemeProvider({
 
     const resolvedTheme = theme === 'system' ? 'light' : theme;
     root.classList.remove('light', 'dark');
-    
+
     // Don't modify document title or favicon in SDK mode - let host app control these
     if (!isSDKMode) {
       document.title = branding.websiteName;
       setFavicon(branding.logos.favIconUrl);
     }
-    
+
     document.documentElement.style.setProperty(
       '--primary',
       colorsUtils.hexToHslString(branding.colors.primary.default),

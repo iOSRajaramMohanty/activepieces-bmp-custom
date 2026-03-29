@@ -17,6 +17,7 @@ import { t } from 'i18next';
 import { Dispatch, SetStateAction, useState } from 'react';
 import { useFormContext, UseFormReturn } from 'react-hook-form';
 
+import { isBmpEnabled } from '@/app/routes/bmp-routes';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -33,7 +34,6 @@ import { flagsHooks } from '@/hooks/flags-hooks';
 import { GenericPropertiesForm } from '../builder/piece-properties/generic-properties-form';
 
 import { SecretInput } from './secret-input';
-import { isBmpEnabled } from '@/app/routes/bmp-routes';
 
 function OAuth2ConnectionSettings({
   authProperty,
@@ -128,7 +128,13 @@ function OAuth2ConnectionSettings({
       {grantType !== OAuth2GrantType.CLIENT_CREDENTIALS && (
         <div className="border border-solid p-2 rounded-lg gap-2 flex text-center items-center justify-center h-full">
           <div className="rounded-full border border-solid p-1 flex items-center justify-center">
-            <img src={piece.logoUrl} className="w-5 h-5" loading="lazy" decoding="async" alt={piece.displayName}></img>
+            <img
+              src={piece.logoUrl}
+              className="w-5 h-5"
+              loading="lazy"
+              decoding="async"
+              alt={piece.displayName}
+            ></img>
           </div>
           <div className="text-sm">{piece.displayName}</div>
           <div className="grow"></div>
@@ -143,7 +149,10 @@ function OAuth2ConnectionSettings({
               if (!hasCode) {
                 const formValues = form.getValues();
                 console.log('[OAuth2 Connect] Form values:', formValues);
-                console.log('[OAuth2 Connect] Props being sent:', formValues.request.value.props);
+                console.log(
+                  '[OAuth2 Connect] Props being sent:',
+                  formValues.request.value.props,
+                );
                 openPopup(
                   redirectUrl,
                   form.getValues().request.value.client_id,

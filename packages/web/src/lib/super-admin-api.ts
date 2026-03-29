@@ -1,5 +1,6 @@
-import { api } from './api';
 import { AuthenticationResponse } from '@activepieces/shared';
+
+import { api } from './api';
 
 export interface SuperAdminPlatform {
   id: string;
@@ -169,16 +170,19 @@ export const superAdminApi = {
   },
 
   updateSuperAdmin(userId: string, data: UpdateSuperAdminRequest) {
-    return api.patch<{ success: boolean; message: string; platformRole: string }>(
-      `/v1/super-admin/super-admins/${userId}`,
-      data,
-    );
+    return api.patch<{
+      success: boolean;
+      message: string;
+      platformRole: string;
+    }>(`/v1/super-admin/super-admins/${userId}`, data);
   },
 
   promoteToSuperAdmin(userId: string) {
-    return api.post<{ success: boolean; message: string; platformRole: string }>(
-      `/v1/super-admin/super-admins/promote/${userId}`,
-    );
+    return api.post<{
+      success: boolean;
+      message: string;
+      platformRole: string;
+    }>(`/v1/super-admin/super-admins/promote/${userId}`);
   },
 
   switchToTenant(platformId: string) {

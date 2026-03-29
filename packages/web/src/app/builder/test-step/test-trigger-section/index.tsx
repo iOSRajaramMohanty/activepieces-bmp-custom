@@ -1,10 +1,10 @@
+import { FlowTrigger, isNil } from '@activepieces/shared';
 import dayjs from 'dayjs';
 import { t } from 'i18next';
 import React, { useRef, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { ChatDrawerSource } from '@/app/builder/types';
-import { FlowTrigger, isNil } from '@activepieces/shared';
 import { triggerEventHooks } from '@/features/flows';
 import { piecesHooks } from '@/features/pieces';
 
@@ -60,10 +60,7 @@ const TestTriggerSection = React.memo(
       });
 
     const onTestSuccess = async () => {
-      form.setValue(
-        `settings.sampleData.lastTestDate`,
-        dayjs().toISOString(),
-      );
+      form.setValue(`settings.sampleData.lastTestDate`, dayjs().toISOString());
       await refetch();
     };
 

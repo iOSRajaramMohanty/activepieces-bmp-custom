@@ -26,6 +26,7 @@ fi
 # Build PM2 ecosystem config
 APPS=""
 
+# api tsc inherits rootDir from tsconfig.base (workspace root); emit path is dist/packages/server/api/src/ under packages/server/api
 if [ "$AP_CONTAINER_TYPE" = "APP" ] || [ "$AP_CONTAINER_TYPE" = "WORKER_AND_APP" ]; then
     if [ "$AP_PM2_INSTANCES" -gt 1 ] 2>/dev/null; then
         APP_INSTANCES=$AP_PM2_INSTANCES
@@ -37,7 +38,7 @@ if [ "$AP_CONTAINER_TYPE" = "APP" ] || [ "$AP_CONTAINER_TYPE" = "WORKER_AND_APP"
     APPS="${APPS}
     {
         name: 'activepieces-app',
-        script: 'packages/server/api/dist/src/bootstrap.js',
+        script: 'packages/server/api/dist/packages/server/api/src/bootstrap.js',
         node_args: '--enable-source-maps',
         instances: ${APP_INSTANCES},
         exec_mode: '${APP_EXEC_MODE}',

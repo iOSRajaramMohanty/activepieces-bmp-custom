@@ -1,4 +1,8 @@
-import { isCloudPlanButNotEnterprise, isNil, PlatformRole } from '@activepieces/shared';
+import {
+  isCloudPlanButNotEnterprise,
+  isNil,
+  PlatformRole,
+} from '@activepieces/shared';
 import { t } from 'i18next';
 import { Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -52,12 +56,15 @@ export const DeleteAccount = () => {
   if (isNil(userEmail)) {
     return null;
   }
-  
+
   // Disable account deletion for Super Admins and Owners
-  if (user?.platformRole === PlatformRole.SUPER_ADMIN || user?.platformRole === PlatformRole.OWNER) {
+  if (
+    user?.platformRole === PlatformRole.SUPER_ADMIN ||
+    user?.platformRole === PlatformRole.OWNER
+  ) {
     return null;
   }
-  
+
   // Only show delete account for cloud plans (not enterprise)
   if (!isCloudPlanButNotEnterprise(platform.plan.plan)) {
     return null;

@@ -8,20 +8,16 @@ ENV LANG=en_US.UTF-8 \
     NX_DAEMON=false \
     NX_NO_CLOUD=true \
     DEBIAN_FRONTEND=noninteractive \
-    NODE_VERSION=20.19.1
+    NODE_VERSION=22.15.0
 
-# Install Node.js and system dependencies in a single layer
+# System dependencies (Node from official tarball — not NodeSource node_20.x, which can jump past this patch)
+# isolated-vm: on linux/arm64 there are often no prebuilds; isolated-vm@6.x fails from-source (v8::SourceLocation).
+# Use 5.0.4 for Docker — engine code only uses Isolate/Context/ExternalCopy (compatible with 5.x).
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        nodejs \
+        xz-utils \
         openssh-client \
         python3 \
         g++ \
@@ -35,10 +31,20 @@ RUN apt-get update && \
         libcap-dev && \
     sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen en_US.UTF-8 && \
-    npm install -g yarn && \
-    yarn config set python /usr/bin/python3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Pinned Node.js (must match NODE_VERSION)
+RUN export ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then NODE_ARCH=x64; \
+    elif [ "$ARCH" = "aarch64" ]; then NODE_ARCH=arm64; \
+    else echo "Unsupported arch: $ARCH" && exit 1; fi && \
+    curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" -o /tmp/node.tar.xz && \
+    tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 && \
+    rm /tmp/node.tar.xz && \
+    node -v && \
+    npm install -g yarn && \
+    yarn config set python /usr/bin/python3
 
 RUN export ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
@@ -62,9 +68,9 @@ RUN --mount=type=cache,target=/root/.npm \
     pm2@6.0.10 \
     typescript@4.9.4
 
-# Install isolated-vm globally (needed for sandboxes)
+# Prebuild isolated-vm@5.0.4 into Bun install cache (arm64 Docker has no usable 6.x prebuilds)
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@6.0.2 && rm -rf /tmp/bun-install
+    mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@5.0.4 && rm -rf /tmp/bun-install
 
 ### STAGE 1: Build ###
 FROM base AS build
@@ -86,11 +92,27 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 COPY . .
 
 # Build frontend, engine, server API, and worker
-RUN npx turbo run build --filter=web --filter=@activepieces/engine --filter=api --filter=worker
+# vite.config.mts reads AP_BMP_ENABLED from a root .env file (loadRootEnv) and process.env.
+# .dockerignore excludes .env files from the build context, so we create one here.
+RUN echo "AP_BMP_ENABLED=true" > .env && \
+    AP_BMP_ENABLED=true npx turbo run build --filter=web --filter=@activepieces/engine --filter=api --filter=worker
 
-# Remove piece directories not needed at runtime (keeps only the 4 pieces api imports)
+# BMP piece: use Nx (prebuild + outputPath dist/packages/pieces/custom/ada-bmp), same as clean-build-run.sh
+RUN npx nx build pieces-ada-bmp --skip-nx-cache
+
+# file-pieces-utils loads from packages/pieces/**/*/dist — mirror nx output next to package.json
+RUN if [ -d dist/packages/pieces/custom/ada-bmp ]; then \
+      mkdir -p packages/pieces/custom/ada-bmp/dist && \
+      cp -a dist/packages/pieces/custom/ada-bmp/. packages/pieces/custom/ada-bmp/dist/; \
+    fi
+
+# Remove piece directories not needed at runtime (keeps community pieces api imports + ada-bmp)
+# packages/server/api lists @activepieces/piece-ada-bmp as workspace:* — do not delete ada-bmp
 # Then regenerate bun.lock so it matches the trimmed workspace
-RUN rm -rf packages/pieces/core packages/pieces/custom && \
+RUN rm -rf packages/pieces/core && \
+    find packages/pieces/custom -mindepth 1 -maxdepth 1 -type d \
+      ! -name ada-bmp \
+      -exec rm -rf {} + && \
     find packages/pieces/community -mindepth 1 -maxdepth 1 -type d \
       ! -name slack \
       ! -name square \
@@ -108,14 +130,11 @@ WORKDIR /usr/src/app
 COPY --from=build /usr/src/app/packages/server/api/src/assets/default.cf /usr/local/etc/isolate
 COPY docker-entrypoint.sh .
 
-# Create all necessary directories in one layer
+# API/worker/shared compile into packages/*/dist (tsc), not dist/packages/{server,shared}
 RUN mkdir -p \
-    /usr/src/app/dist/packages/server \
     /usr/src/app/dist/packages/engine \
-    /usr/src/app/dist/packages/shared \
     /usr/src/app/dist/packages/pieces/custom \
-    /usr/src/app/dist/packages/pieces/community/framework \
-    /usr/src/app/dist/packages/pieces/community/common && \
+    /usr/src/app/dist/packages/web && \
     chmod +x docker-entrypoint.sh && \
     rm -f /usr/src/package.json || true
 
@@ -125,19 +144,18 @@ COPY --from=build /usr/src/app/tsconfig.base.json .
 COPY --from=build /usr/src/app/nx.json .
 COPY --from=build /usr/src/app/LICENSE .
 COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
-COPY --from=build /usr/src/app/dist/packages/server/ ./dist/packages/server/
-COPY --from=build /usr/src/app/dist/packages/shared/ ./dist/packages/shared/
-# Ensure built pieces (community + custom) are available at runtime for linking
-COPY --from=build /usr/src/app/dist/packages/pieces/community/ ./dist/packages/pieces/community/
+# Nx output for ada-bmp (scripts/validate-docker-build.sh checks this path)
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ ./dist/packages/pieces/custom/
 COPY --from=build /usr/src/app/packages ./packages
-
-# Copy built engine
-COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
+# file-pieces-utils expects packages/pieces/custom/ada-bmp/dist/src/index.js;
+# the mirror step in the build stage may not survive COPY --from, so copy directly here.
+COPY --from=build /usr/src/app/dist/packages/pieces/custom/ada-bmp/ ./packages/pieces/custom/ada-bmp/dist/
 
 # Regenerate lockfile and install production dependencies (pieces were trimmed from workspace)
+# pino-pretty is a devDep but AP_LOG_PRETTY=true (from docker-compose env) needs it at runtime
 RUN --mount=type=cache,target=/root/.bun/install/cache \
-    bun install --production
+    bun install --production && \
+    bun add pino-pretty@13.0.0 --no-save
 
 # Copy frontend files
 COPY --from=build /usr/src/app/dist/packages/web ./dist/packages/web/

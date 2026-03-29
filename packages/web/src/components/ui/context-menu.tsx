@@ -98,15 +98,20 @@ function ContextMenuContent({
   className,
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content>) {
-  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(
+    null,
+  );
 
   // Fix positioning issue in SDK embed - context menu appears at wrong position
   // Only applies when running in SDK context (detected by __AP_SDK_MODULE__ on window)
   React.useEffect(() => {
-    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    const isSDKEmbed =
+      typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
     if (!isSDKEmbed || !contentRef) return;
 
-    const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+    const wrapper = contentRef.closest(
+      '[data-radix-popper-content-wrapper]',
+    ) as HTMLElement;
     if (!wrapper) return;
 
     const applyPosition = () => {

@@ -12,7 +12,7 @@ import { useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { useEffect, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
-import { Link, Navigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 
 import { authenticationApi } from '@/api/authentication-api';
@@ -39,8 +39,9 @@ const SignInForm: React.FC = () => {
   const [showCheckYourEmailNote, setShowCheckYourEmailNote] = useState(false);
   const [searchParams] = useSearchParams();
   const emailFromQuery = searchParams.get('email') || '';
-  const showInvitationOnlyNote = searchParams.get('message') === 'invitation-required';
-  
+  const showInvitationOnlyNote =
+    searchParams.get('message') === 'invitation-required';
+
   const form = useForm<SignInSchema>({
     resolver: zodResolver(SignInSchema),
     defaultValues: {
@@ -116,7 +117,9 @@ const SignInForm: React.FC = () => {
           }
           case ErrorCode.SESSION_EXPIRED: {
             form.setError('root.serverError', {
-              message: t('Your account is no longer associated with a valid platform. Please contact your administrator.'),
+              message: t(
+                'Your account is no longer associated with a valid platform. Please contact your administrator.',
+              ),
             });
             break;
           }
@@ -141,7 +144,9 @@ const SignInForm: React.FC = () => {
     <>
       {(!userCreated || showInvitationOnlyNote) && (
         <p className="mb-4 text-center text-sm text-muted-foreground">
-          {t('Sign up is only available via invitation. Please use the link from your invitation email.')}
+          {t(
+            'Sign up is only available via invitation. Please use the link from your invitation email.',
+          )}
         </p>
       )}
       <Form {...form}>

@@ -78,12 +78,12 @@ export const RoleSelector = ({
     ? (isOwner
         ? PLATFORM_ROLES.filter((r) => r.value === PlatformRole.ADMIN)
         : isAdmin
-          ? PLATFORM_ROLES.filter(
-              (r) =>
-                r.value === PlatformRole.OPERATOR ||
-                r.value === PlatformRole.MEMBER,
-            )
-          : PLATFORM_ROLES
+        ? PLATFORM_ROLES.filter(
+            (r) =>
+              r.value === PlatformRole.OPERATOR ||
+              r.value === PlatformRole.MEMBER,
+          )
+        : PLATFORM_ROLES
       ).map((role) => ({
         value: role.value,
         label: role.label,

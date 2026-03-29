@@ -23,7 +23,8 @@ type EmbeddingState = {
 };
 
 // Check if we're in SDK mode (embedded via react-ui-sdk)
-const isSDKMode = typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
+const isSDKMode =
+  typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
 
 const defaultState: EmbeddingState = {
   isEmbedded: isSDKMode, // SDK mode = embedded (hides left sidebar)

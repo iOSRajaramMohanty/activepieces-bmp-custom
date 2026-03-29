@@ -32,12 +32,7 @@ import { McpServerSettings } from './mcp-server';
 import { MembersSettings } from './members';
 import { PiecesSettings } from './pieces';
 
-type TabId =
-  | 'general'
-  | 'members'
-  | 'alerts'
-  | 'pieces'
-  | 'mcp';
+type TabId = 'general' | 'members' | 'alerts' | 'pieces' | 'mcp';
 
 interface ProjectSettingsDialogProps {
   open: boolean;

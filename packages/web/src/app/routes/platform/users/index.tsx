@@ -1,6 +1,4 @@
 import {
-  InvitationType,
-  PlatformRole,
   UserInvitation,
   UserStatus,
   UserWithMetaInformation,
@@ -162,4 +160,3 @@ export default function UsersPage() {
     </LockedFeatureGuard>
   );
 }
-

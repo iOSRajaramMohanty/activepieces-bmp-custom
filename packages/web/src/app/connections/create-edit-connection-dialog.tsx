@@ -452,8 +452,8 @@ function getInitiallySelectedAuthListItem(
         ? predefinedApp.oauth2Type === AppConnectionType.CLOUD_OAUTH2
           ? 'simplified (Connect only, cloud app)'
           : predefinedApp.oauth2Type === AppConnectionType.PLATFORM_OAUTH2
-            ? 'simplified (Connect only, platform app)'
-            : 'form (Client ID/Secret)'
+          ? 'simplified (Connect only, platform app)'
+          : 'form (Client ID/Secret)'
         : 'form (Client ID/Secret, manual OAUTH2)',
     });
     return {

@@ -1,5 +1,6 @@
 import { PlatformRole } from '@activepieces/shared';
 import { t } from 'i18next';
+import { Key } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 import { isBmpEnabled } from '@/app/routes/bmp-routes';
@@ -10,7 +11,6 @@ import { ServerIcon } from '@/components/icons/server';
 import { Settings2Icon } from '@/components/icons/settings2';
 import { SquareDashedBottomCodeIcon } from '@/components/icons/square-dashed-bottom-code';
 import { UsersIcon } from '@/components/icons/users';
-import { Key } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -28,7 +28,7 @@ import { SidebarUser } from '../sidebar-user';
 
 export function SuperAdminSidebar() {
   const { data: currentUser } = userHooks.useCurrentUser();
-  
+
   // Super Admin sidebar only shows when BMP is enabled
   // If BMP is disabled, redirect to platform users
   if (!isBmpEnabled()) {

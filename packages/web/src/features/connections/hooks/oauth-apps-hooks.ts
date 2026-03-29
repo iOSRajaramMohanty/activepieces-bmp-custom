@@ -93,7 +93,9 @@ export const oauthAppsQueries = {
               });
 
         if (edition === ApEdition.COMMUNITY) {
-          console.log('[AP OAuth] Platform apps: skipped (COMMUNITY edition, using empty list)');
+          console.log(
+            '[AP OAuth] Platform apps: skipped (COMMUNITY edition, using empty list)',
+          );
         } else {
           console.log('[AP OAuth] Platform apps: GET /v1/oauth-apps', {
             count: apps.data.length,
@@ -106,12 +108,17 @@ export const oauthAppsQueries = {
           : await oauthAppsApi.listCloudOAuth2Apps(edition!);
 
         if (!platform.cloudAuthEnabled) {
-          console.log('[AP OAuth] Cloud apps: skipped (cloudAuthEnabled is false)');
+          console.log(
+            '[AP OAuth] Cloud apps: skipped (cloudAuthEnabled is false)',
+          );
         } else {
-          console.log('[AP OAuth] Cloud apps: GET https://secrets.activepieces.com/apps', {
-            pieceNames: Object.keys(cloudApps),
-            count: Object.keys(cloudApps).length,
-          });
+          console.log(
+            '[AP OAuth] Cloud apps: GET https://secrets.activepieces.com/apps',
+            {
+              pieceNames: Object.keys(cloudApps),
+              count: Object.keys(cloudApps).length,
+            },
+          );
         }
 
         const appsMap: PiecesOAuth2AppsMap = {};

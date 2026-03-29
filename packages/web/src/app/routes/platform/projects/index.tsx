@@ -77,39 +77,43 @@ export default function ProjectsPage() {
   // Group projects by organization (from organization table via API)
   const projectGroups = useMemo(() => {
     if (!allProjects) return {};
-    
+
     const groups: Record<string, typeof allProjects> = {};
-    
+
     allProjects.forEach((project) => {
       // Use organizationName from API (from organization table)
       // This is the primary source - dynamically fetched from database
       let orgName = (project as any).organizationName;
-      
+
       // Only fallback to extraction if organizationName is not available
       if (!orgName) {
         const displayName = project.displayName;
         const orgMatch = displayName.match(/^([A-Z]+)\s/);
         orgName = orgMatch ? orgMatch[1] : 'Other';
       }
-      
+
       // Final fallback to "Other" if still no organization
       if (!orgName) {
         orgName = 'Other';
       }
-      
+
       if (!groups[orgName]) {
         groups[orgName] = [];
       }
       groups[orgName].push(project);
     });
-    
+
     // Sort projects within each group by environment
     Object.keys(groups).forEach((orgName) => {
       groups[orgName].sort((a, b) => {
-        const envOrder: Record<string, number> = { 'Dev': 1, 'Staging': 2, 'Production': 3 };
+        const envOrder: Record<string, number> = {
+          Dev: 1,
+          Staging: 2,
+          Production: 3,
+        };
         const aEnv = a.displayName.match(/\s(Dev|Staging|Production)/i)?.[1];
         const bEnv = b.displayName.match(/\s(Dev|Staging|Production)/i)?.[1];
-        
+
         if (aEnv && bEnv) {
           const aOrder = envOrder[aEnv] || 99;
           const bOrder = envOrder[bEnv] || 99;
@@ -118,12 +122,14 @@ export default function ProjectsPage() {
         return a.displayName.localeCompare(b.displayName);
       });
     });
-    
+
     return groups;
   }, [allProjects]);
 
   // Expand/collapse state for project groups
-  const [expandedProjectGroups, setExpandedProjectGroups] = useState<Record<string, boolean>>(() => {
+  const [expandedProjectGroups, setExpandedProjectGroups] = useState<
+    Record<string, boolean>
+  >(() => {
     const initial: Record<string, boolean> = {};
     if (allProjects) {
       Object.keys(projectGroups).forEach((org) => {
@@ -132,7 +138,7 @@ export default function ProjectsPage() {
     }
     return initial;
   });
-  
+
   const toggleProjectGroup = (orgName: string) => {
     setExpandedProjectGroups((prev) => ({
       ...prev,

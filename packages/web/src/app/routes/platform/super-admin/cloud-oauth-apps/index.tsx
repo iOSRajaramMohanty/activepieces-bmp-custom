@@ -1,41 +1,46 @@
-import React, { useMemo, useState } from 'react'
-import { t } from 'i18next'
-import { ColumnDef } from '@tanstack/react-table'
-import { Plus, Pencil, Trash2, Key } from 'lucide-react'
+import { ColumnDef } from '@tanstack/react-table';
+import { t } from 'i18next';
+import { Plus, Pencil, Trash2, Key } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
-import { DashboardPageHeader } from '@/app/components/dashboard-page-header'
-import { DataTable, RowDataWithActions } from '@/components/custom/data-table'
-import { DataTableColumnHeader } from '@/components/custom/data-table/data-table-column-header'
-import { ConfirmationDeleteDialog } from '@/components/custom/delete-dialog'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { FormattedDate } from '@/components/custom/formatted-date'
-
-import { cloudOAuthHooks } from '@/features/platform-admin/api/cloud-oauth-hooks'
-import type { CloudOAuthApp } from '@/features/platform-admin/api/cloud-oauth-api'
+import { DashboardPageHeader } from '@/app/components/dashboard-page-header';
+import { DataTable, RowDataWithActions } from '@/components/custom/data-table';
+import { DataTableColumnHeader } from '@/components/custom/data-table/data-table-column-header';
+import { ConfirmationDeleteDialog } from '@/components/custom/delete-dialog';
+import { FormattedDate } from '@/components/custom/formatted-date';
+import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import type { CloudOAuthApp } from '@/features/platform-admin/api/cloud-oauth-api';
+import { cloudOAuthHooks } from '@/features/platform-admin/api/cloud-oauth-hooks';
 
 import {
   AddEditCloudOAuthAppDialog,
   CLOUD_OAUTH2_ELIGIBLE_PIECES,
-} from '../add-edit-cloud-oauth-app-dialog'
+} from '../add-edit-cloud-oauth-app-dialog';
 
 const getPieceDisplayName = (pieceName: string): string => {
-  const piece = CLOUD_OAUTH2_ELIGIBLE_PIECES.find((p) => p.name === pieceName)
-  return (
-    piece?.displayName ?? pieceName.replace('@activepieces/piece-', '')
-  )
-}
+  const piece = CLOUD_OAUTH2_ELIGIBLE_PIECES.find((p) => p.name === pieceName);
+  return piece?.displayName ?? pieceName.replace('@activepieces/piece-', '');
+};
 
 export default function CloudOAuthAppsPage() {
-  const { data: apps, isLoading, refetch } = cloudOAuthHooks.useCloudOAuthApps()
-  const deleteMutation = cloudOAuthHooks.useDeleteCloudOAuthApp()
-  const [editApp, setEditApp] = useState<CloudOAuthApp | null>(null)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const {
+    data: apps,
+    isLoading,
+    refetch,
+  } = cloudOAuthHooks.useCloudOAuthApps();
+  const deleteMutation = cloudOAuthHooks.useDeleteCloudOAuthApp();
+  const [editApp, setEditApp] = useState<CloudOAuthApp | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   const configuredPieceNames = useMemo(
     () => apps?.map((app) => app.pieceName) ?? [],
     [apps],
-  )
+  );
 
   const columns: ColumnDef<RowDataWithActions<CloudOAuthApp>, unknown>[] = [
     {
@@ -86,7 +91,7 @@ export default function CloudOAuthAppsPage() {
     {
       id: 'actions',
       cell: ({ row }) => {
-        const app = row.original
+        const app = row.original;
         return (
           <div className="flex items-center gap-1 justify-end">
             <Tooltip>
@@ -95,9 +100,9 @@ export default function CloudOAuthAppsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setEditApp(app)
-                    setEditDialogOpen(true)
+                    e.stopPropagation();
+                    setEditApp(app);
+                    setEditDialogOpen(true);
                   }}
                 >
                   <Pencil className="size-4" />
@@ -113,7 +118,7 @@ export default function CloudOAuthAppsPage() {
               )}
               entityName={getPieceDisplayName(app.pieceName)}
               mutationFn={async () => {
-                await deleteMutation.mutateAsync(app.id)
+                await deleteMutation.mutateAsync(app.id);
               }}
             >
               <div>
@@ -128,10 +133,10 @@ export default function CloudOAuthAppsPage() {
               </div>
             </ConfirmationDeleteDialog>
           </div>
-        )
+        );
       },
     },
-  ]
+  ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -168,17 +173,17 @@ export default function CloudOAuthAppsPage() {
         <AddEditCloudOAuthAppDialog
           app={editApp}
           onSuccess={() => {
-            refetch()
-            setEditDialogOpen(false)
-            setEditApp(null)
+            refetch();
+            setEditDialogOpen(false);
+            setEditApp(null);
           }}
           open={editDialogOpen}
           onOpenChange={(open) => {
-            setEditDialogOpen(open)
-            if (!open) setEditApp(null)
+            setEditDialogOpen(open);
+            if (!open) setEditApp(null);
           }}
         />
       )}
     </div>
-  )
+  );
 }

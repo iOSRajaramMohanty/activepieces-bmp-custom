@@ -3,7 +3,8 @@ import { useEffect } from 'react';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
 // Check if we're in SDK mode - don't modify host app's title
-const isSDKMode = typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
+const isSDKMode =
+  typeof window !== 'undefined' && !!(window as any).__AP_SDK_CONFIG__;
 
 type PageTitleProps = {
   title: string;

@@ -23,7 +23,13 @@ const TooltipTrigger = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Trigger>,
   React.ComponentProps<typeof TooltipPrimitive.Trigger>
 >(({ ...props }, ref) => {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" ref={ref} {...props} />;
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      ref={ref}
+      {...props}
+    />
+  );
 });
 TooltipTrigger.displayName = 'TooltipTrigger';
 

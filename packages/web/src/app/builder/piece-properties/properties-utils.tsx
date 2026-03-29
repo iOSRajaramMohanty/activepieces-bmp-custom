@@ -7,6 +7,7 @@ import { isNil, PropertySettings } from '@activepieces/shared';
 import { t } from 'i18next';
 import { ControllerRenderProps, UseFormReturn } from 'react-hook-form';
 
+import { AdaBmpEnvironmentSelect } from '@/app/connections/ada-bmp-environment-select';
 import { SecretInput } from '@/app/connections/secret-input';
 import { ColorPicker } from '@/components/custom/color-picker';
 import { DictionaryInput } from '@/components/custom/dictionary-input';
@@ -24,7 +25,6 @@ import CustomProperty from './custom-property';
 import { DynamicDropdownPieceProperty } from './dynamic-dropdown-piece-property';
 import { DynamicProperties } from './dynamic-piece-property';
 import { TextInputWithMentions } from './text-input-with-mentions';
-import { AdaBmpEnvironmentSelect } from '@/app/connections/ada-bmp-environment-select';
 
 export const selectGenericFormComponentForProperty = ({
   field,
@@ -132,7 +132,7 @@ export const selectGenericFormComponentForProperty = ({
         propertyName === 'environment' &&
         inputName.includes('props.environment') &&
         inputName.includes('ada-bmp');
-      
+
       return (
         <AutoFormFieldWrapper
           property={property}
@@ -150,7 +150,9 @@ export const selectGenericFormComponentForProperty = ({
               onChange={field.onChange}
               value={field.value}
               disabled={disabled}
-              placeholder={property.options.placeholder ?? t('Select an option')}
+              placeholder={
+                property.options.placeholder ?? t('Select an option')
+              }
               showDeselect={!property.required}
             />
           ) : (
@@ -159,7 +161,9 @@ export const selectGenericFormComponentForProperty = ({
               onChange={field.onChange}
               value={field.value}
               disabled={disabled}
-              placeholder={property.options.placeholder ?? t('Select an option')}
+              placeholder={
+                property.options.placeholder ?? t('Select an option')
+              }
               showDeselect={!property.required}
             />
           )}

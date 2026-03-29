@@ -64,15 +64,20 @@ function SelectContent({
   align = 'center',
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
-  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(null);
+  const [contentRef, setContentRef] = React.useState<HTMLDivElement | null>(
+    null,
+  );
 
   // Fix positioning issue in SDK embed (e.g. Environment dropdown in connection modal)
   // Only applies when running in SDK context - position dropdown snug below trigger like reference
   React.useEffect(() => {
-    const isSDKEmbed = typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
+    const isSDKEmbed =
+      typeof window !== 'undefined' && (window as any).__AP_SDK_MODULE__;
     if (!isSDKEmbed || !contentRef) return;
 
-    const wrapper = contentRef.closest('[data-radix-popper-content-wrapper]') as HTMLElement;
+    const wrapper = contentRef.closest(
+      '[data-radix-popper-content-wrapper]',
+    ) as HTMLElement;
     if (!wrapper) return;
 
     const applyPosition = () => {

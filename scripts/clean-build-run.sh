@@ -52,13 +52,31 @@ fi
 
 echo ""
 
-# Ensure correct Node version and clean local artifacts before Docker build
+# Project root first so cleanup and version hints use the correct directory
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Match package.json "engines.node": >=18.19.0 <23 || >=24.0.0 (Node 23.x is excluded)
 echo "Verifying Node.js version..."
-REQUIRED_NODE_VERSION="v18.19.0"
 CURRENT_NODE_VERSION=$(node -v 2>/dev/null || echo "none")
-if [ "$CURRENT_NODE_VERSION" != "$REQUIRED_NODE_VERSION" ]; then
-    echo -e "${RED}❌ Node version must be $REQUIRED_NODE_VERSION, found $CURRENT_NODE_VERSION${NC}"
-    echo "Please install or switch to $REQUIRED_NODE_VERSION (nvm, asdf, brew, etc.) and re-run."
+if [ "$CURRENT_NODE_VERSION" = "none" ]; then
+    echo -e "${RED}❌ Node.js is not installed or not on PATH.${NC}"
+    exit 1
+fi
+if ! node -e '
+  const p = process.version.slice(1).split(".").map(Number);
+  const [maj, min, pat] = p;
+  const ok =
+    (maj === 18 && (min > 19 || (min === 19 && pat >= 0))) ||
+    (maj > 18 && maj < 23) ||
+    (maj >= 24);
+  process.exit(ok ? 0 : 1);
+'; then
+    echo -e "${RED}❌ Node version is not supported: $CURRENT_NODE_VERSION${NC}"
+    echo "Required (see package.json engines): >=18.19.0 and <23, or >=24.0.0"
+    if [ -f .nvmrc ]; then
+        echo "Recommended for this repo: nvm use (see .nvmrc)"
+    fi
     exit 1
 fi
 echo -e "${GREEN}✅ Node version is $CURRENT_NODE_VERSION${NC}"
@@ -68,10 +86,6 @@ rm -rf node_modules bun.lock dist cache .nx tmp || true
 echo -e "${GREEN}✅ Cleaned local artifacts${NC}"
 echo ""
 sleep 2
-
-# Change to project directory (use script-relative path so this works for forks/clones)
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-cd "$PROJECT_ROOT"
 
 #─────────────────────────────────────────────────────────
 # PHASE 1: BACKUP DATABASE
@@ -216,10 +230,13 @@ echo "Ensuring project dependencies are installed..."
 # Install bun if needed
 node tools/scripts/install-bun.js || true
 
+# Skip lifecycle scripts: isolated-vm native build breaks on macOS+Node24 without C++20 toolchain; not needed to compile TS pieces.
+PIECE_BUN_INSTALL="bun install --ignore-scripts"
+
 # Try local bun install + build; on failure, run the build inside Docker (Linux toolchain)
 if command -v bun >/dev/null 2>&1; then
-    echo "Attempting local bun install..."
-    if bun install; then
+    echo "Attempting local bun install (ignore-scripts — skips native addons like isolated-vm)..."
+    if $PIECE_BUN_INSTALL; then
         echo -e "${GREEN}✅ Local bun install succeeded.${NC}"
         echo "Building ada-bmp piece locally..."
         npx nx build pieces-ada-bmp || { echo -e "${RED}❌ Local build failed after successful install.${NC}"; exit 1; }
@@ -227,7 +244,19 @@ if command -v bun >/dev/null 2>&1; then
         echo -e "${YELLOW}⚠️ Local bun install failed. Falling back to Docker-based build (Linux toolchain)...${NC}"
         if command -v docker >/dev/null 2>&1; then
             echo "Running build inside Docker (node:20-bullseye)..."
-            docker run --rm -v "$PROJECT_ROOT":/usr/src/app -w /usr/src/app node:20-bullseye bash -lc "apt-get update && apt-get install -y python3 g++ build-essential git curl unzip && npm install -g bun && bun install && npx nx build pieces-ada-bmp" || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
+            docker run --rm \
+                --ulimit nofile=65535:65535 \
+                -v "$PROJECT_ROOT":/usr/src/app \
+                -w /usr/src/app \
+                node:20-bullseye \
+                bash -lc 'set -e
+                    export DEBIAN_FRONTEND=noninteractive
+                    apt-get update -qq
+                    apt-get install -y -qq python3 g++ build-essential git curl unzip
+                    npm install -g bun
+                    rm -rf node_modules
+                    bun install --ignore-scripts
+                    npx nx build pieces-ada-bmp' || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
         else
             echo -e "${RED}❌ Docker not available to perform fallback build. Aborting.${NC}"
             exit 1
@@ -236,7 +265,19 @@ if command -v bun >/dev/null 2>&1; then
 else
     echo -e "${YELLOW}⚠️ Bun not found locally. Attempting Docker-based install/build...${NC}"
     if command -v docker >/dev/null 2>&1; then
-        docker run --rm -v "$PROJECT_ROOT":/usr/src/app -w /usr/src/app node:20-bullseye bash -lc "apt-get update && apt-get install -y python3 g++ build-essential git curl unzip && npm install -g bun && bun install && npx nx build pieces-ada-bmp" || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
+        docker run --rm \
+            --ulimit nofile=65535:65535 \
+            -v "$PROJECT_ROOT":/usr/src/app \
+            -w /usr/src/app \
+            node:20-bullseye \
+            bash -lc 'set -e
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get update -qq
+                apt-get install -y -qq python3 g++ build-essential git curl unzip
+                npm install -g bun
+                rm -rf node_modules
+                bun install --ignore-scripts
+                npx nx build pieces-ada-bmp' || { echo -e "${RED}❌ Docker-based build failed.${NC}"; exit 1; }
     else
         echo -e "${RED}❌ Neither bun nor docker available. Aborting.${NC}"
         exit 1

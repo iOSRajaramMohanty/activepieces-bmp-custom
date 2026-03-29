@@ -16,11 +16,11 @@ function SuperAdminLayoutContent({ children }: { children: React.ReactNode }) {
   const { data: edition } = flagsHooks.useFlag<ApEdition>(ApFlagId.EDITION);
   const { data: currentUser } = userHooks.useCurrentUser();
 
-  const showPlatformAdminDashboard = currentUser && (
-    currentUser.platformRole === PlatformRole.ADMIN || 
-    currentUser.platformRole === PlatformRole.SUPER_ADMIN || 
-    currentUser.platformRole === PlatformRole.OWNER
-  );
+  const showPlatformAdminDashboard =
+    currentUser &&
+    (currentUser.platformRole === PlatformRole.ADMIN ||
+      currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
+      currentUser.platformRole === PlatformRole.OWNER);
 
   // If currentUser is null but we're in this layout, show loading
   // This prevents redirect loops when user data is still being fetched

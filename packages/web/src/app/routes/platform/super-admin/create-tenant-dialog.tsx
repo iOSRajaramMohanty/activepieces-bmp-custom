@@ -45,18 +45,21 @@ export function CreateTenantDialog({
         description: `Platform "${response.name}" has been created with admin user ${response.ownerEmail}`,
         duration: 5000,
       });
-      
+
       // Invalidate queries to refresh the data
       queryClient.invalidateQueries({ queryKey: ['super-admin-platforms'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-stats'] });
-      
+
       setOpen(false);
       reset();
       onSuccess?.();
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.params?.message || error?.message || 'Failed to create tenant';
+      const message =
+        error?.response?.data?.params?.message ||
+        error?.message ||
+        'Failed to create tenant';
       toast.error(t('Failed to create tenant'), {
         description: message,
         duration: 5000,

@@ -1,11 +1,14 @@
-import { ApEdition, ApFlagId, PlatformRole, TeamProjectsLimit } from '@activepieces/shared';
+import {
+  ApEdition,
+  ApFlagId,
+  PlatformRole,
+  TeamProjectsLimit,
+} from '@activepieces/shared';
 import { t } from 'i18next';
 import { ComponentType, useRef } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useAuthorization } from '@/hooks/authorization-hooks';
 import { isBmpEnabled, isBmpRoute } from '@/app/routes/bmp-routes';
-
 import { BotIcon } from '@/components/icons/bot';
 import {
   ChevronLeftIcon,
@@ -39,6 +42,7 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
 } from '@/components/ui/sidebar-shadcn';
+import { useAuthorization } from '@/hooks/authorization-hooks';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { platformHooks } from '@/hooks/platform-hooks';
 import { userHooks } from '@/hooks/user-hooks';
@@ -121,7 +125,13 @@ export function PlatformSidebar() {
     {
       label: t('General'),
       items: [
-        { to: '/owner-dashboard' as const, label: t('Owner Dashboard'), icon: SquareDashedBottomCodeIcon as ComponentType<{ className?: string }> },
+        {
+          to: '/owner-dashboard' as const,
+          label: t('Owner Dashboard'),
+          icon: SquareDashedBottomCodeIcon as ComponentType<{
+            className?: string;
+          }>,
+        },
         {
           to: '/platform/users',
           label: t('Users'),
@@ -180,7 +190,15 @@ export function PlatformSidebar() {
       label: t('General'),
       items: [
         ...(isSuperAdmin
-          ? [{ to: '/super-admin' as const, label: t('Super Admin Dashboard'), icon: SquareDashedBottomCodeIcon as ComponentType<{ className?: string }> }]
+          ? [
+              {
+                to: '/super-admin' as const,
+                label: t('Super Admin Dashboard'),
+                icon: SquareDashedBottomCodeIcon as ComponentType<{
+                  className?: string;
+                }>,
+              },
+            ]
           : []),
         {
           to: '/platform/projects',
@@ -234,34 +252,36 @@ export function PlatformSidebar() {
         },
       ],
     },
-    ...(isSuperAdmin ? [] : [
-      {
-        label: t('Infrastructure'),
-        items: [
+    ...(isSuperAdmin
+      ? []
+      : [
           {
-            to: '/platform/infrastructure/workers',
-            label: t('Workers'),
-            icon: ServerIcon,
+            label: t('Infrastructure'),
+            items: [
+              {
+                to: '/platform/infrastructure/workers',
+                label: t('Workers'),
+                icon: ServerIcon,
+              },
+              {
+                to: '/platform/infrastructure/health',
+                label: t('Health'),
+                icon: FileHeartIcon,
+              },
+              {
+                to: '/platform/infrastructure/triggers',
+                label: t('Triggers'),
+                icon: MousePointerClickIcon,
+              },
+              {
+                to: '/platform/infrastructure/event-destinations',
+                label: t('Event Streaming'),
+                icon: WebhookIcon,
+                locked: !platform.plan.eventStreamingEnabled,
+              },
+            ],
           },
-          {
-            to: '/platform/infrastructure/health',
-            label: t('Health'),
-            icon: FileHeartIcon,
-          },
-          {
-            to: '/platform/infrastructure/triggers',
-            label: t('Triggers'),
-            icon: MousePointerClickIcon,
-          },
-          {
-            to: '/platform/infrastructure/event-destinations',
-            label: t('Event Streaming'),
-            icon: WebhookIcon,
-            locked: !platform.plan.eventStreamingEnabled,
-          },
-        ],
-      },
-    ]),
+        ]),
   ];
 
   // Filter out locked items, BMP routes (when BMP disabled), and empty groups
@@ -314,7 +334,12 @@ export function PlatformSidebar() {
           </Link>
         </SidebarHeader>
       )}
-      <div className={cn("flex-1 overflow-y-auto scrollbar-hover", !showBackToApp && "pt-4")}>
+      <div
+        className={cn(
+          'flex-1 overflow-y-auto scrollbar-hover',
+          !showBackToApp && 'pt-4',
+        )}
+      >
         <SidebarContent className="gap-0">
           {groups.map((group, idx) => (
             <SidebarGroup key={group.label} className="cursor-default shrink-0">

@@ -361,14 +361,17 @@ function AppConnectionsPage() {
                     console.error('[Delete Connection Error]', error);
                     // Extract error message from Axios error response
                     const responseData = error?.response?.data;
-                    const errorMessage = responseData?.params?.message 
-                      || responseData?.message
-                      || error?.message;
-                    
+                    const errorMessage =
+                      responseData?.params?.message ||
+                      responseData?.message ||
+                      error?.message;
+
                     // Check for BMP auto-connection deletion attempt
                     if (errorMessage?.includes('Auto-created BMP')) {
                       toast.error(t('Cannot Delete Connection'), {
-                        description: t('This connection is managed by the system and cannot be deleted.'),
+                        description: t(
+                          'This connection is managed by the system and cannot be deleted.',
+                        ),
                         duration: 5000,
                       });
                     } else if (errorMessage) {
