@@ -4,6 +4,8 @@ import { PieceCategory } from '@activepieces/shared';
 import { sendMessageAction } from './lib/actions/send-message';
 import { sendBulkMessageAction } from './lib/actions/send-bulk-message';
 import { uploadContactParametersAction } from './lib/actions/upload-contact-parameters';
+import { storeConversationAction } from './lib/actions/store-conversation';
+import { getConversationAction } from './lib/actions/get-conversation';
 import { receiveWebhook } from './lib/triggers/receive-webhook';
 import { newMessageCallbackTrigger } from './lib/triggers/new-message-callback';
 import { getBaseUrl, extractApiToken } from './lib/common/config';
@@ -85,6 +87,8 @@ export const adaBmp = createPiece({
     sendMessageAction,
     sendBulkMessageAction,
     uploadContactParametersAction,
+    storeConversationAction,
+    getConversationAction,
     createCustomApiCallAction({
       baseUrl: () => getBaseUrl(),
       auth: adaBmpAuth,

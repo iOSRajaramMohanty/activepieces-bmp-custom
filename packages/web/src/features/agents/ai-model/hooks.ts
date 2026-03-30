@@ -1,4 +1,4 @@
-import { AIProviderModel, AIProviderName, isNil } from '@activepieces/shared';
+import { AIProviderModel, AIProviderName } from '@activepieces/shared';
 import { useQuery } from '@tanstack/react-query';
 
 import { aiProviderApi } from '@/features/platform-admin/api/ai-provider-api';
@@ -41,38 +41,38 @@ const GOOGLE_MODELS = [
 
 const X_AI_OPENROUTER_MODELS = ['grok-4.1-fast'] as const;
 
-const ALLOWED_MODELS_BY_PROVIDER: Partial<Record<Provider, readonly string[]>> =
-  {
-    openai: OPENAI_MODELS,
-    anthropic: ANTHROPIC_MODELS,
-    google: GOOGLE_MODELS,
-    activepieces: [
-      ...OPENAI_MODELS.map((model) => `${AIProviderName.OPENAI}/${model}`),
-      ...ANTHROPIC_OPENROUTER_MODELS.map(
-        (model) => `${AIProviderName.ANTHROPIC}/${model}`,
-      ),
-      ...GOOGLE_MODELS.map((model) => `${AIProviderName.GOOGLE}/${model}`),
-      ...X_AI_OPENROUTER_MODELS.map((model) => `${'x-ai'}/${model}`),
-    ],
-  };
+const PREFERRED_MODELS_BY_PROVIDER: Partial<
+  Record<Provider, readonly string[]>
+> = {
+  openai: OPENAI_MODELS,
+  anthropic: ANTHROPIC_MODELS,
+  google: GOOGLE_MODELS,
+  activepieces: [
+    ...OPENAI_MODELS.map((model) => `${AIProviderName.OPENAI}/${model}`),
+    ...ANTHROPIC_OPENROUTER_MODELS.map(
+      (model) => `${AIProviderName.ANTHROPIC}/${model}`,
+    ),
+    ...GOOGLE_MODELS.map((model) => `${AIProviderName.GOOGLE}/${model}`),
+    ...X_AI_OPENROUTER_MODELS.map((model) => `${'x-ai'}/${model}`),
+  ],
+};
 
-function getAllowedModelsForProvider(
+function getModelsForProvider(
   provider: Provider,
   allModels: AIProviderModel[],
   modelType: AIModelType,
 ): AIProviderModel[] {
-  const allowedIds = ALLOWED_MODELS_BY_PROVIDER[provider];
+  const preferredIds = PREFERRED_MODELS_BY_PROVIDER[provider];
 
   return allModels
     .filter((model) => model.type === modelType)
-    .filter((model) => {
-      if (isNil(allowedIds)) {
-        return true;
-      }
-
-      return allowedIds.includes(model.id);
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => {
+      const aPreferred = preferredIds?.includes(a.id) ?? false;
+      const bPreferred = preferredIds?.includes(b.id) ?? false;
+      if (aPreferred && !bPreferred) return -1;
+      if (!aPreferred && bPreferred) return 1;
+      return a.name.localeCompare(b.name);
+    });
 }
 
 export const aiModelHooks = {
@@ -88,11 +88,11 @@ export const aiModelHooks = {
       queryKey: ['ai-models', provider],
       enabled: !!provider,
       queryFn: async () => {
-        if (isNil(provider)) return [];
+        if (!provider) return [];
 
         const allModels = await aiProviderApi.listModelsForProvider(provider);
 
-        return getAllowedModelsForProvider(provider, allModels, 'text');
+        return getModelsForProvider(provider, allModels, 'text');
       },
     });
   },
