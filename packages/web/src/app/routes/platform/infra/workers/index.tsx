@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { WorkerConfigsModal } from './worker-configs-dialog';
 
 export default function WorkersPage() {
-  const isCloud = true;
+  const isCloud = false;
   const { data: workersData, isLoading } = workersQueries.useWorkerMachines();
 
   const fleetType = workersData?.[0]?.type;
