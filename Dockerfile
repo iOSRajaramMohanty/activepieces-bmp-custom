@@ -79,9 +79,6 @@ WORKDIR /usr/src/app
 # Copy only dependency files first for better layer caching
 COPY .npmrc package.json bun.lock bunfig.toml ./
 COPY packages/ ./packages/
-# Include local workspace packages referenced as file: deps so bun can resolve them
-COPY packages/pieces/community/framework ./packages/pieces/community/framework
-COPY packages/shared ./packages/shared
 
 # Do a fresh install (ignore lockfile) to allow resolving latest compatible versions
 RUN --mount=type=cache,target=/root/.bun/install/cache \
