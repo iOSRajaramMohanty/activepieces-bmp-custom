@@ -167,13 +167,13 @@ echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u $GITHUB_USERNAME --password-std
 > nodes run AMD64. Without `--platform linux/amd64`, the pods will crash with `exec format error`.
 
 ```bash
-cd /path/to/your/activepieces
+cd /path/to/your/activepieces-bmp-custom
 
-# Build for AMD64 (required even on Apple Silicon Macs)
-DOCKER_BUILDKIT=1 docker build \
-  --platform linux/amd64 \
-  -t nodeconnect-app:latest \
-  -f Dockerfile .
+# Step 1: Build the custom piece locally first
+npx nx build pieces-ada-bmp
+
+# Step 2: Build the Docker image for AMD64 (required even on Apple Silicon Macs)
+docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 ```
 
 This takes 15–25 minutes on first build.
@@ -834,13 +834,13 @@ Open `https://YOUR_DOMAIN` in your browser. Create your first admin account, the
 ### Rebuild and Push
 
 ```bash
-cd /path/to/your/activepieces
+cd /path/to/your/activepieces-bmp-custom
 
-# Build for AMD64 (always required for DOKS)
-DOCKER_BUILDKIT=1 docker build \
-  --platform linux/amd64 \
-  -t nodeconnect-app:latest \
-  -f Dockerfile .
+# Build the custom piece first
+npx nx build pieces-ada-bmp
+
+# Build the Docker image for AMD64 (always required for DOKS)
+docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 
 # Tag and push
 docker tag nodeconnect-app:latest ghcr.io/$GITHUB_USERNAME/nodeconnect-app:latest
