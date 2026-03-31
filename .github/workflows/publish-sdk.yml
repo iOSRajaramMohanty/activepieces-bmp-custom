@@ -46,9 +46,17 @@ jobs:
           SDK_PUBLISH_REPO_URL: https://github.com/iOSRajaramMohanty/activepieces-bmp-custom.git
         run: npx nx run react-ui-sdk:fix-bundle-package --skip-nx-cache
 
-      - name: Publish package
+      - name: Publish package (skip if version already exists)
         working-directory: dist/packages/extensions/react-ui-sdk-bundled
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm publish
+        run: |
+          OUTPUT=$(npm publish 2>&1) && echo "$OUTPUT" || {
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -q "Cannot publish over existing version"; then
+              echo "::notice::Version already published — skipping."
+              exit 0
+            fi
+            exit 1
+          }
 
