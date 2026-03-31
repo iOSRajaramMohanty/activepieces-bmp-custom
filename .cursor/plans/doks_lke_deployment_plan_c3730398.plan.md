@@ -81,6 +81,71 @@ Monitoring:
 
 ---
 
+## System Requirements
+
+### Cloud Infrastructure (DigitalOcean)
+
+
+| Component              | Spec                         | Notes                                               |
+| ---------------------- | ---------------------------- | --------------------------------------------------- |
+| **K8s Nodes (x2)**     | 2 vCPU, 4 GB RAM each        | `s-2vcpu-4gb` — handles API + Worker per pod        |
+| **Managed PostgreSQL** | 1 vCPU, 1 GB RAM, 10 GB disk | `db-s-1vcpu-1gb` — stores flows, users, run history |
+| **In-cluster Redis**   | 2 GB persistent volume       | Standalone Bitnami chart on existing nodes          |
+| **Load Balancer**      | DO managed                   | Provisioned automatically by Ingress-NGINX          |
+| **Block Storage**      | 10 GB per pod                | `do-block-storage` for app cache                    |
+
+
+### Local Build Machine
+
+
+| Requirement    | Minimum               | Notes                                                                       |
+| -------------- | --------------------- | --------------------------------------------------------------------------- |
+| **Docker**     | Docker Desktop 4.x+   | BuildKit enabled (default)                                                  |
+| **Disk space** | ~15 GB free           | Docker image build uses ~5 GB; caches ~10 GB                                |
+| **RAM**        | 8 GB                  | Docker build can peak at ~4 GB                                              |
+| **CPU**        | 4 cores recommended   | Faster builds; cross-compilation (`linux/amd64`) is slower on Apple Silicon |
+| **Node.js**    | v20+                  | For local Nx commands if needed                                             |
+| **OS**         | macOS, Linux, or WSL2 | Apple Silicon Macs require `--platform linux/amd64`                         |
+
+
+### Application Resource Usage (per pod)
+
+
+| Resource | Request (guaranteed) | Limit (max)    |
+| -------- | -------------------- | -------------- |
+| CPU      | 250m (0.25 cores)    | 1000m (1 core) |
+| Memory   | 512 Mi               | 2 Gi           |
+
+
+With 2 replicas, the total cluster footprint is:
+
+- **CPU:** 0.5–2.0 cores for NodeConnect + overhead for Redis, ingress, system pods
+- **Memory:** 1–4 GB for NodeConnect + ~0.5 GB for Redis + system overhead
+- **Storage:** 20 GB block storage (10 GB x 2 pods) + 2 GB Redis persistence
+
+### Software Stack
+
+
+| Layer           | Technology                       | Version |
+| --------------- | -------------------------------- | ------- |
+| Runtime         | Node.js                          | 20.x    |
+| Process Manager | PM2                              | latest  |
+| Framework       | Fastify                          | 5.x     |
+| ORM             | TypeORM                          | latest  |
+| Job Queue       | BullMQ (Redis-backed)            | latest  |
+| Frontend        | React 18 + Vite                  | 18.x    |
+| Database        | PostgreSQL                       | 16      |
+| Cache/Queue     | Redis                            | 7.x     |
+| Container       | Docker (BuildKit)                | latest  |
+| Orchestration   | Kubernetes (DOKS)                | latest  |
+| Package Manager | Helm                             | 3.x     |
+| SSL             | cert-manager + Let's Encrypt     | 1.13+   |
+| Ingress         | NGINX Ingress Controller         | latest  |
+| Registry        | GitHub Container Registry (GHCR) | —       |
+
+
+---
+
 ## Prerequisites Summary
 
 
