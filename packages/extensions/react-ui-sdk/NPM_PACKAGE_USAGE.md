@@ -82,6 +82,19 @@ You can keep both approaches depending on what you need:
 
 Only use **one** at a time in the consumer app’s `package.json`.
 
+## Step 2.2: Auto-publish (CI/CD)
+
+A GitHub Actions workflow (`.github/workflows/publish-sdk.yml`) automatically builds and publishes to GitHub Packages on every push to `main` that changes SDK files.
+
+**Versioning:**
+- The published version comes from `packages/extensions/react-ui-sdk/package.json`.
+- To release a new version: bump `version` (e.g. `1.0.1` -> `1.0.2`), commit, push.
+- If SDK code changes but the version is **not** bumped, the workflow succeeds silently (skips the duplicate publish).
+
+**Manual trigger:** Go to **Actions** > **Publish React UI SDK (Private)** > **Run workflow**.
+
+**PAT not required in CI:** the workflow uses the automatic `GITHUB_TOKEN` with `packages: write`.
+
 ---
 
 ## Step 3: Copy SDK Files into Your App’s Output

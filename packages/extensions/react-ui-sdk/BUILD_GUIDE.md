@@ -236,6 +236,22 @@ In `package.json`:
 }
 ```
 
+### 4. Auto-publish via GitHub Actions
+
+A CI workflow (`.github/workflows/publish-sdk.yml`) automatically builds and publishes to GitHub Packages on every push to `main` that touches `packages/extensions/react-ui-sdk/**`.
+
+**How it works:**
+- Builds the SDK bundle, runs `fix-bundle-package` with the publish env vars, then runs `npm publish`.
+- If the version in `package.json` was **already published**, the workflow **succeeds silently** (skips publish with a notice instead of failing).
+- Uses the automatic `GITHUB_TOKEN` for auth (no extra secrets needed).
+
+**To publish a new version:**
+1. Bump `version` in `packages/extensions/react-ui-sdk/package.json` (e.g. `1.0.1` -> `1.0.2`).
+2. Commit and push to `main`.
+3. The workflow publishes the new version automatically.
+
+**To trigger manually** (without a code change): go to **Actions** > **Publish React UI SDK (Private)** > **Run workflow**.
+
 ## Build Targets
 
 | Target | Command | Output | Purpose |
