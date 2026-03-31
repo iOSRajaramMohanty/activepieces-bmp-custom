@@ -21,6 +21,11 @@ if (fs.existsSync(pkgPath)) {
   console.error('No package.json found at', pkgPath, 'or', sourcePkgPath);
   process.exit(1);
 }
+
+const publishScope = (process.env.SDK_PUBLISH_SCOPE ?? '').trim().replace(/^@/, '');
+const publishRegistry = (process.env.SDK_PUBLISH_REGISTRY ?? '').trim();
+const repositoryUrl = (process.env.SDK_PUBLISH_REPO_URL ?? '').trim();
+
 pkg.main = './index.js';
 pkg.types = undefined; // Bundle has no .d.ts
 pkg.exports = {
@@ -36,11 +41,39 @@ if (pkg.exports['.'].types === undefined) {
   delete pkg.exports['.'].types;
 }
 
-// Replace workspace:* with file: path so the bundle works when consumed outside the monorepo
-// (e.g. angular-test-app). Path is relative to the bundle: dist/packages/extensions/react-ui-sdk-bundled
-if (pkg.dependencies && pkg.dependencies['@activepieces/shared'] === 'workspace:*') {
-  pkg.dependencies['@activepieces/shared'] = 'file:../../../../packages/shared';
+// For registry publishing: avoid monorepo-only dependency specifiers.
+if (pkg.dependencies?.['@activepieces/shared']) {
+  delete pkg.dependencies['@activepieces/shared'];
 }
+
+// Publishable metadata for GitHub Packages (or any private registry).
+if (publishScope.length > 0) {
+  pkg.name = `@${publishScope}/react-ui-sdk`;
+}
+if (publishRegistry.length > 0) {
+  pkg.publishConfig = {
+    ...(pkg.publishConfig ?? {}),
+    registry: publishRegistry,
+  };
+}
+if (repositoryUrl.length > 0) {
+  pkg.repository = {
+    type: 'git',
+    url: repositoryUrl,
+  };
+}
+pkg.private = false;
+
+// The bundle output is self-contained; publish only what consumers need.
+pkg.files = [
+  'index.js',
+  '*.woff2',
+  'assets',
+  'locales',
+  'LICENSE',
+  'README.md',
+  'package.json',
+];
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 console.log('✅ Fixed bundle package.json: main -> ./index.js');
