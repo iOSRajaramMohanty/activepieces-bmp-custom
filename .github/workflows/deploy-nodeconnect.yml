@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   NAMESPACE: nodeconnect
   STATEFULSET: nodeconnect-activepieces
@@ -13,9 +17,6 @@ jobs:
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     outputs:
       image_name: ${{ steps.prep.outputs.image_name }}
 
@@ -37,7 +38,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}
 
       - name: Generate image tags
         id: meta
