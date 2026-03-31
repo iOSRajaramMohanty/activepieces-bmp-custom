@@ -97,7 +97,9 @@ RUN echo "AP_BMP_ENABLED=true" > .env && \
     AP_BMP_ENABLED=true npx turbo run build --filter=web --filter=@activepieces/engine --filter=api --filter=worker
 
 # BMP piece: use Nx (prebuild + outputPath dist/packages/pieces/custom/ada-bmp), same as clean-build-run.sh
-RUN npx nx build pieces-ada-bmp --skip-nx-cache
+# Mount the bun cache so the prebuild "bun install" resolves from cache instead of hitting the network
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+    npx nx build pieces-ada-bmp --skip-nx-cache
 
 # file-pieces-utils loads from packages/pieces/**/*/dist — mirror nx output next to package.json
 RUN if [ -d dist/packages/pieces/custom/ada-bmp ]; then \

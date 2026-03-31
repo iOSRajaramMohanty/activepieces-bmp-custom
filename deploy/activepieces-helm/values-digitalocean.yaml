@@ -1,0 +1,189 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/iosrajarammohanty/nodeconnect-app
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+workloadType: statefulset
+
+container:
+  port: 3001
+
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "2Gi"
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: do-block-storage
+  mountPath: "/usr/src/app/cache"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "900"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+  hosts:
+    - host: nodesconnect.in
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: nodeconnect-tls
+      hosts:
+        - nodesconnect.in
+
+activepieces:
+  frontendUrl: "https://nodesconnect.in"
+  edition: "ce"
+  executionMode: "UNSANDBOXED"
+  environment: "prod"
+  telemetryEnabled: false
+
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+autoscaling:
+  enabled: false
+
+activepiecesConfig:
+  AP_CONTAINER_TYPE: ""
+  NODE_TLS_REJECT_UNAUTHORIZED: "0"
+
+activepiecesEnvVariables:
+  # Null out defaults from values.yaml to prevent duplicate env vars
+  activepieces-config-secrets: null
+  activepieces-auth-secrets: null
+  activepieces-queue-secrets: null
+  activepieces-log-secrets: null
+  activepieces-telemetry-secrets: null
+  activepieces-limits-secrets: null
+  activepieces-cloudflare-secrets: null
+  activepieces-integrations-secrets: null
+  activepieces-db-secrets: null
+  activepieces-redis-secrets: null
+  activepieces-s3-secrets: null
+  activepieces-smtp-secrets: null
+  activepieces-stripe-secrets: null
+  activepieces-otel-secrets: null
+
+  nodeconnect-config-secrets:
+    - AP_EDITION
+    - AP_EXECUTION_MODE
+    - AP_ENVIRONMENT
+    - AP_PORT
+    - AP_FRONTEND_URL
+    - AP_ENABLE_FLOW_ON_PUBLISH
+    - AP_CLIENT_REAL_IP_HEADER
+    - AP_DB_TYPE
+    - AP_ENGINE_EXECUTABLE_PATH
+    - AP_PLATFORM_ID_FOR_DEDICATED_WORKER
+    - AP_PIECES_SYNC_MODE
+    - AP_PIECES_SOURCE
+    - AP_DEV_PIECES
+    - AP_BMP_ENABLED
+    - AP_BMP_ORGANIZATIONS
+    - AP_BMP_SUPER_ADMIN
+    - AP_BMP_ACCOUNT_SWITCHING
+    - AP_MULTI_TENANT_MODE
+    - ADA_BMP_API_URL
+    - ADA_BMP_TIMEOUT
+    - AP_SANDBOX_PROPAGATED_ENV_VARS
+    - AP_WEBHOOK_TIMEOUT_SECONDS
+    - AP_TRIGGER_DEFAULT_POLL_INTERVAL
+  nodeconnect-auth-secrets:
+    - AP_ENCRYPTION_KEY
+    - AP_JWT_SECRET
+    - AP_API_KEY
+    - AP_WORKER_TOKEN
+    - AP_GOOGLE_CLIENT_ID
+    - AP_GOOGLE_CLIENT_SECRET
+    - AP_FIREBASE_HASH_PARAMETERS
+  nodeconnect-queue-secrets:
+    - AP_QUEUE_MODE
+    - AP_QUEUE_UI_ENABLED
+    - AP_QUEUE_UI_USERNAME
+    - AP_QUEUE_UI_PASSWORD
+  nodeconnect-log-secrets:
+    - AP_LOG_LEVEL
+    - AP_LOG_PRETTY
+    - AP_SENTRY_DSN
+    - AP_HYPERDX_TOKEN
+  nodeconnect-telemetry-secrets:
+    - AP_TELEMETRY_ENABLED
+    - AP_OTEL_ENABLED
+    - AP_FEATUREBASE_API_KEY
+  nodeconnect-limits-secrets:
+    - AP_MAX_CONCURRENT_JOBS_PER_PROJECT
+    - AP_PROJECT_RATE_LIMITER_ENABLED
+    - AP_API_RATE_LIMIT_AUTHN_ENABLED
+    - AP_MAX_FILE_SIZE_MB
+    - AP_MAX_FLOW_RUN_LOG_SIZE_MB
+    - AP_EXECUTION_DATA_RETENTION_DAYS
+  nodeconnect-cloudflare-secrets:
+    - AP_CLOUDFLARE_API_BASE
+    - AP_CLOUDFLARE_ZONE_ID
+    - AP_CLOUDFLARE_API_TOKEN
+  nodeconnect-integrations-secrets:
+    - AP_APP_WEBHOOK_SECRETS
+    - AP_SECRET_MANAGER_API_KEY
+    - AP_OPENROUTER_PROVISION_KEY
+    - AP_TEMPLATES_API_KEY
+    - AP_TEMPLATE_MANAGER_API_KEY
+  nodeconnect-db-secrets:
+    - AP_POSTGRES_DATABASE
+    - AP_POSTGRES_HOST
+    - AP_POSTGRES_PORT
+    - AP_POSTGRES_PASSWORD
+    - AP_POSTGRES_USERNAME
+    - AP_POSTGRES_USE_SSL
+    - AP_POSTGRES_POOL_SIZE
+    - AP_POSTGRES_SSL_CA
+  nodeconnect-redis-secrets:
+    - AP_REDIS_TYPE
+    - AP_REDIS_HOST
+    - AP_REDIS_PORT
+    - AP_REDIS_PASSWORD
+    - AP_REDIS_USE_SSL
+    - AP_REDIS_USER
+  nodeconnect-s3-secrets:
+    - AP_FILE_STORAGE_LOCATION
+    - AP_S3_BUCKET
+    - AP_S3_REGION
+    - AP_S3_ENDPOINT
+    - AP_S3_USE_SIGNED_URLS
+    - AP_S3_ACCESS_KEY_ID
+    - AP_S3_SECRET_ACCESS_KEY
+  nodeconnect-smtp-secrets:
+    - AP_SMTP_HOST
+    - AP_SMTP_PORT
+    - AP_SMTP_USERNAME
+    - AP_SMTP_PASSWORD
+    - AP_SMTP_SENDER_EMAIL
+    - AP_SMTP_SENDER_NAME
+  nodeconnect-stripe-secrets:
+    - AP_STRIPE_SECRET_KEY
+    - AP_STRIPE_WEBHOOK_SECRET
+  nodeconnect-otel-secrets:
+    - OTEL_EXPORTER_OTLP_ENDPOINT
+    - OTEL_EXPORTER_OTLP_HEADERS
