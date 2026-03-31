@@ -44,29 +44,105 @@ This guide walks through deploying **NodeConnect** (a custom Activepieces build 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     DigitalOcean Cloud                           │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              DOKS Kubernetes Cluster (nyc1)                │  │
-│  │                                                            │  │
-│  │   [DO Load Balancer]                                       │  │
-│  │         │                                                  │  │
-│  │         ▼                                                  │  │
-│  │   [Ingress-NGINX + cert-manager (HTTPS)]                  │  │
-│  │         │                                                  │  │
-│  │         ▼                                                  │  │
-│  │   [NodeConnect StatefulSet — 2 replicas]                   │  │
-│  │     (ghcr.io/YOUR_USERNAME/nodeconnect-app:latest)         │  │
-│  │         │                    │                             │  │
-│  │         ▼                    ▼                             │  │
-│  │   [In-cluster Redis]   [DO Managed Postgres]               │  │
-│  │   (Bitnami Helm)        (external, SSL)                    │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  [GHCR] ◄── Docker image pushed from local Mac                  │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        DigitalOcean Cloud                            │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                 DOKS Kubernetes Cluster (nyc1)                 │  │
+│  │                                                                │  │
+│  │   [DO Load Balancer]                                           │  │
+│  │         │                                                      │  │
+│  │         ▼                                                      │  │
+│  │   [Ingress-NGINX + cert-manager (HTTPS)]                      │  │
+│  │         │                                                      │  │
+│  │         ▼                                                      │  │
+│  │   [NodeConnect StatefulSet — 2 replicas]                       │  │
+│  │     (ghcr.io/YOUR_USERNAME/nodeconnect-app:latest)             │  │
+│  │     Each pod runs WORKER_AND_APP mode via PM2:                 │  │
+│  │       ├─ activepieces-app    (API server on port 3001)         │  │
+│  │       └─ activepieces-worker (job executor via Socket.IO)      │  │
+│  │              │                    │                             │  │
+│  │              ▼                    ▼                             │  │
+│  │   [In-cluster Redis]        [DO Managed Postgres]              │  │
+│  │   (Bitnami Helm)             (external, SSL)                   │  │
+│  │   ├─ Job queues (BullMQ)    ├─ Flows, users, connections      │  │
+│  │   ├─ Worker registration    └─ Flow run history                │  │
+│  │   └─ Cache                                                     │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  [GHCR] ◄── Docker image pushed from local Mac (linux/amd64)        │
+└──────────────────────────────────────────────────────────────────────┘
+
+Monitoring:
+  ├─ BullMQ Dashboard: https://YOUR_DOMAIN/api/ui
+  ├─ Workers page:     https://YOUR_DOMAIN/platform/infrastructure/workers
+  └─ DBeaver:          Connect to DO Managed Postgres (port 25060, SSL)
 ```
+
+---
+
+## System Requirements
+
+### Cloud Infrastructure (DigitalOcean)
+
+
+| Component              | Spec                         | Notes                                               |
+| ---------------------- | ---------------------------- | --------------------------------------------------- |
+| **K8s Nodes (x2)**     | 2 vCPU, 4 GB RAM each        | `s-2vcpu-4gb` — handles API + Worker per pod        |
+| **Managed PostgreSQL** | 1 vCPU, 1 GB RAM, 10 GB disk | `db-s-1vcpu-1gb` — stores flows, users, run history |
+| **In-cluster Redis**   | 2 GB persistent volume       | Standalone Bitnami chart on existing nodes          |
+| **Load Balancer**      | DO managed                   | Provisioned automatically by Ingress-NGINX          |
+| **Block Storage**      | 10 GB per pod                | `do-block-storage` for app cache                    |
+
+
+### Local Build Machine
+
+
+| Requirement    | Minimum               | Notes                                                                       |
+| -------------- | --------------------- | --------------------------------------------------------------------------- |
+| **Docker**     | Docker Desktop 4.x+   | BuildKit enabled (default)                                                  |
+| **Disk space** | ~15 GB free           | Docker image build uses ~5 GB; caches ~10 GB                                |
+| **RAM**        | 8 GB                  | Docker build can peak at ~4 GB                                              |
+| **CPU**        | 4 cores recommended   | Faster builds; cross-compilation (`linux/amd64`) is slower on Apple Silicon |
+| **Node.js**    | v20+                  | For local Nx commands if needed                                             |
+| **OS**         | macOS, Linux, or WSL2 | Apple Silicon Macs require `--platform linux/amd64`                         |
+
+
+### Application Resource Usage (per pod)
+
+
+| Resource | Request (guaranteed) | Limit (max)    |
+| -------- | -------------------- | -------------- |
+| CPU      | 250m (0.25 cores)    | 1000m (1 core) |
+| Memory   | 512 Mi               | 2 Gi           |
+
+
+With 2 replicas, the total cluster footprint is:
+
+- **CPU:** 0.5–2.0 cores for NodeConnect + overhead for Redis, ingress, system pods
+- **Memory:** 1–4 GB for NodeConnect + ~0.5 GB for Redis + system overhead
+- **Storage:** 20 GB block storage (10 GB x 2 pods) + 2 GB Redis persistence
+
+### Software Stack
+
+
+| Layer           | Technology                       | Version |
+| --------------- | -------------------------------- | ------- |
+| Runtime         | Node.js                          | 20.x    |
+| Process Manager | PM2                              | latest  |
+| Framework       | Fastify                          | 5.x     |
+| ORM             | TypeORM                          | latest  |
+| Job Queue       | BullMQ (Redis-backed)            | latest  |
+| Frontend        | React 18 + Vite                  | 18.x    |
+| Database        | PostgreSQL                       | 16      |
+| Cache/Queue     | Redis                            | 7.x     |
+| Container       | Docker (BuildKit)                | latest  |
+| Orchestration   | Kubernetes (DOKS)                | latest  |
+| Package Manager | Helm                             | 3.x     |
+| SSL             | cert-manager + Let's Encrypt     | 1.13+   |
+| Ingress         | NGINX Ingress Controller         | latest  |
+| Registry        | GitHub Container Registry (GHCR) | —       |
+
 
 ---
 
@@ -169,10 +245,8 @@ echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u $GITHUB_USERNAME --password-std
 ```bash
 cd /path/to/your/activepieces-bmp-custom
 
-# Step 1: Build the custom piece locally first
-npx nx build pieces-ada-bmp
-
-# Step 2: Build the Docker image for AMD64 (required even on Apple Silicon Macs)
+# Build the Docker image for AMD64 (required even on Apple Silicon Macs)
+# The Dockerfile already builds the ada-bmp piece internally — no local pre-build needed.
 docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 ```
 
@@ -339,10 +413,9 @@ EOF
 ```bash
 echo "AP_ENCRYPTION_KEY: $(openssl rand -hex 16)"
 echo "AP_JWT_SECRET: $(openssl rand -hex 32)"
-echo "AP_WORKER_TOKEN: $(openssl rand -hex 32)"
 ```
 
-Save all three values.
+Save both values. (`AP_WORKER_TOKEN` is auto-generated at container startup from the JWT secret.)
 
 ### 7b: Set Environment Variables
 
@@ -362,7 +435,6 @@ export REDIS_PASSWORD="YourSecureRedisPassword!"
 # Security keys (from 7a)
 export ENCRYPTION_KEY="paste-here"
 export JWT_SECRET="paste-here"
-export WORKER_TOKEN="paste-here"
 
 # Domain
 export MY_DOMAIN="nodesconnect.in"
@@ -409,16 +481,18 @@ kubectl create secret generic nodeconnect-config-secrets \
   --from-literal=ADA_BMP_TIMEOUT=30000 \
   --from-literal=AP_SANDBOX_PROPAGATED_ENV_VARS=ADA_BMP_API_URL \
   --from-literal=AP_WEBHOOK_TIMEOUT_SECONDS=30 \
-  --from-literal=AP_TRIGGER_DEFAULT_POLL_INTERVAL=1 \
-  --from-literal=AP_PLATFORM_ID_FOR_DEDICATED_WORKER=""
+  --from-literal=AP_TRIGGER_DEFAULT_POLL_INTERVAL=1
 
 # Auth secrets
+# IMPORTANT: Leave AP_WORKER_TOKEN empty — the docker-entrypoint.sh auto-generates
+# a valid JWT from AP_JWT_SECRET at startup. Setting it to a random string breaks
+# worker registration because it expects a properly signed JWT.
 kubectl create secret generic nodeconnect-auth-secrets \
   --namespace nodeconnect \
   --from-literal=AP_ENCRYPTION_KEY=$ENCRYPTION_KEY \
   --from-literal=AP_JWT_SECRET=$JWT_SECRET \
   --from-literal=AP_API_KEY="" \
-  --from-literal=AP_WORKER_TOKEN=$WORKER_TOKEN \
+  --from-literal=AP_WORKER_TOKEN="" \
   --from-literal=AP_GOOGLE_CLIENT_ID="" \
   --from-literal=AP_GOOGLE_CLIENT_SECRET="" \
   --from-literal=AP_FIREBASE_HASH_PARAMETERS=""
@@ -479,6 +553,15 @@ done
 
 > **Gotcha — AP_OTEL_ENABLED:** This variable expects exactly `"true"` or `"false"`. An empty
 > string causes the app to crash with `EnvVarError`. Always set it explicitly to `false`.
+
+> **Gotcha — AP_WORKER_TOKEN:** Do NOT set this to a random string. Leave it empty (`""`) so
+> the `docker-entrypoint.sh` auto-generates a valid JWT from `AP_JWT_SECRET`. A non-JWT value
+> prevents the worker from registering with the API.
+
+> **Gotcha — AP_PLATFORM_ID_FOR_DEDICATED_WORKER:** Do NOT include this variable at all (not
+> even as empty string). An empty string `""` causes the worker to register as `DEDICATED` type
+> with no platform, making it invisible on the Workers page. When omitted, the worker registers
+> as `SHARED` and appears correctly.
 
 **Verify:**
 
@@ -606,7 +689,6 @@ activepiecesEnvVariables:
     - AP_CLIENT_REAL_IP_HEADER
     - AP_DB_TYPE
     - AP_ENGINE_EXECUTABLE_PATH
-    - AP_PLATFORM_ID_FOR_DEDICATED_WORKER
     - AP_PIECES_SYNC_MODE
     - AP_PIECES_SOURCE
     - AP_DEV_PIECES
@@ -836,10 +918,8 @@ Open `https://YOUR_DOMAIN` in your browser. Create your first admin account, the
 ```bash
 cd /path/to/your/activepieces-bmp-custom
 
-# Build the custom piece first
-npx nx build pieces-ada-bmp
-
 # Build the Docker image for AMD64 (always required for DOKS)
+# The Dockerfile already builds the ada-bmp piece internally.
 docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 
 # Tag and push
@@ -899,6 +979,8 @@ kubectl delete pod nodeconnect-activepieces-0 nodeconnect-activepieces-1 -n node
 | `cannot reuse a name that is still in use`            | Previous failed Helm release still exists                    | `helm uninstall nodeconnect -n nodeconnect` then re-install              |
 | `CrashLoopBackOff`                                    | Various — check logs                                         | `kubectl logs -n nodeconnect nodeconnect-activepieces-0`                 |
 | Custom piece not visible                              | `AP_PIECES_SOURCE` / `AP_DEV_PIECES` not set                 | Set `AP_PIECES_SOURCE=FILE` and `AP_DEV_PIECES=ada-bmp`                  |
+| Workers page "No workers found"                       | `AP_WORKER_TOKEN` set to random string (not JWT)             | Leave `AP_WORKER_TOKEN=""` so entrypoint auto-generates a valid JWT      |
+| Workers page "No workers found"                       | `AP_PLATFORM_ID_FOR_DEDICATED_WORKER=""`                     | Remove this variable entirely — empty string registers as DEDICATED      |
 | Redis password with `!` causes `dquote>`              | Bash history expansion                                       | Use single quotes: `--set auth.password='Pass!'`                         |
 | `ConnectionRefused` during Docker build (bun install) | Missing BuildKit cache mount                                 | Add `--mount=type=cache,target=/root/.bun/install/cache` to the RUN line |
 
@@ -933,6 +1015,87 @@ kubectl port-forward -n nodeconnect svc/nodeconnect-activepieces 8080:80
 
 ---
 
+## Monitoring: BullMQ Queue Dashboard
+
+Activepieces includes a built-in Bull Dashboard for monitoring job queues.
+
+### Enable the Queue UI
+
+Update the queue secrets to enable it:
+
+```bash
+kubectl delete secret nodeconnect-queue-secrets -n nodeconnect
+
+kubectl create secret generic nodeconnect-queue-secrets \
+  --namespace nodeconnect \
+  --from-literal=AP_QUEUE_MODE=REDIS \
+  --from-literal=AP_QUEUE_UI_ENABLED=true \
+  --from-literal=AP_QUEUE_UI_USERNAME=admin \
+  --from-literal=AP_QUEUE_UI_PASSWORD='YourSecureQueuePassword!'
+
+# Restart pods to pick up the change
+kubectl delete pod nodeconnect-activepieces-0 nodeconnect-activepieces-1 -n nodeconnect
+```
+
+### Access the Dashboard
+
+Open in your browser:
+
+```
+https://YOUR_DOMAIN/api/ui
+```
+
+The dashboard shows three queues:
+
+
+| Queue                | Purpose                                     |
+| -------------------- | ------------------------------------------- |
+| **workerJobs**       | Flow execution jobs (triggered flows)       |
+| **system-job-queue** | Internal system tasks (cleanup, piece sync) |
+| **runsMetadata**     | Flow run metadata processing                |
+
+
+Click any queue to see Active, Waiting, Completed, Failed, and Delayed jobs with full details.
+
+---
+
+## Connecting to PostgreSQL with DBeaver
+
+### Get Connection Details
+
+```bash
+doctl databases connection nodeconnect-postgres
+```
+
+Or find them in the DigitalOcean dashboard: **Databases** → **nodeconnect-postgres** → **Connection Details**.
+
+### DBeaver Setup
+
+1. Open DBeaver → **New Database Connection** → **PostgreSQL** → **Next**
+2. Fill in the **Main** tab:
+
+
+| Field    | Value                                     |
+| -------- | ----------------------------------------- |
+| Host     | `your-db-xxxxx.db.ondigitalocean.com`     |
+| Port     | `25060`                                   |
+| Database | `defaultdb`                               |
+| Username | `doadmin`                                 |
+| Password | Your DB password (`AVNS_xxxxxxxxxxxxxxx`) |
+
+
+1. Check **Save password**.
+2. Go to the **SSL** tab:
+  - Check **Use SSL**
+  - Set **SSL mode** to `require`
+  - Leave CA/Client certificate fields empty
+  - If you get a "self-signed certificate" error, check **Do not validate certificate**
+3. Click **Test Connection** → should show "Connected" → **Finish**
+
+Browse tables under: **defaultdb** → **Schemas** → **public** → **Tables** (you'll see `user`, `project`, `flow`, `flow_run`, etc.)
+
+---
+
 ## Monthly Costs (DigitalOcean)
 
 
@@ -946,11 +1109,85 @@ kubectl port-forward -n nodeconnect svc/nodeconnect-activepieces 8080:80
 | **Total**                 | **~$77/mo**                 |
 
 
+All costs are **fixed monthly** regardless of traffic or request volume. You'd only pay more if you:
+
+- Add more nodes (autoscaling)
+- Exceed the outbound bandwidth allowance (several TB included, overage at $0.01/GB)
+- Upgrade the Postgres plan due to storage growth
+- Enable database backups (~$3/mo extra)
+
+---
+
+## Stopping / Tearing Down the Service
+
+### Option 1: Scale Down Pods (pause the app, restart in seconds)
+
+Stops the app but keeps everything running. No data loss.
+
+```bash
+# Stop
+kubectl scale statefulset nodeconnect-activepieces -n nodeconnect --replicas=0
+
+# Restart
+kubectl scale statefulset nodeconnect-activepieces -n nodeconnect --replicas=2
+```
+
+Cost: Still ~$77/mo.
+
+### Option 2: Delete App + Redis, Keep Cluster + Database
+
+Removes the Helm releases but keeps the cluster and Postgres (data safe).
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+```
+
+Cost: Still ~$75/mo. To redeploy: reinstall Redis (Step 5b), recreate secrets (Step 7), helm install (Step 8).
+
+### Option 3: Keep Only Database (saves ~$62/mo)
+
+Preserves your data in Postgres. Everything else is deleted.
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+helm uninstall ingress-nginx -n ingress-nginx
+doctl kubernetes cluster delete nodeconnect-cluster --dangerous
+```
+
+Cost: **~$15/mo** (managed Postgres only). To redeploy: recreate cluster (Step 4), then Steps 5b–9.
+
+### Option 4: Delete Everything ($0/mo)
+
+Completely removes all resources. **Data will be permanently lost.**
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+helm uninstall ingress-nginx -n ingress-nginx
+doctl kubernetes cluster delete nodeconnect-cluster --dangerous
+doctl databases delete nodeconnect-postgres --force
+```
+
+Cost: **$0/mo**. To redeploy: follow the entire guide from Step 4.
+
+### Teardown Summary
+
+
+| Option        | What's Kept   | Monthly Cost | Time to Restart |
+| ------------- | ------------- | ------------ | --------------- |
+| Scale to 0    | Everything    | ~$77         | Seconds         |
+| Uninstall app | Cluster + DB  | ~$75         | ~10 min         |
+| Keep DB only  | Postgres only | ~$15         | ~20 min         |
+| Delete all    | Nothing       | $0           | ~30 min         |
+
+
 ---
 
 ## Next Steps
 
-1. **Database backups** — Enable automatic backups for PostgreSQL in the DO dashboard.
+1. **Database backups** — Enable automatic backups for PostgreSQL in the DO dashboard (~$3/mo extra).
 2. **Proper SSL for Postgres** — Download the DO CA certificate and set `AP_POSTGRES_SSL_CA` instead of `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 3. **Monitoring** — Add DigitalOcean Monitoring or Prometheus/Grafana.
 4. **Scaling** — Enable `autoscaling` in `values-digitalocean.yaml` for auto-scaling based on CPU.
