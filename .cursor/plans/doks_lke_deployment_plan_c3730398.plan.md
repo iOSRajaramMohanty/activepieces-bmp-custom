@@ -933,6 +933,87 @@ kubectl port-forward -n nodeconnect svc/nodeconnect-activepieces 8080:80
 
 ---
 
+## Monitoring: BullMQ Queue Dashboard
+
+Activepieces includes a built-in Bull Dashboard for monitoring job queues.
+
+### Enable the Queue UI
+
+Update the queue secrets to enable it:
+
+```bash
+kubectl delete secret nodeconnect-queue-secrets -n nodeconnect
+
+kubectl create secret generic nodeconnect-queue-secrets \
+  --namespace nodeconnect \
+  --from-literal=AP_QUEUE_MODE=REDIS \
+  --from-literal=AP_QUEUE_UI_ENABLED=true \
+  --from-literal=AP_QUEUE_UI_USERNAME=admin \
+  --from-literal=AP_QUEUE_UI_PASSWORD='YourSecureQueuePassword!'
+
+# Restart pods to pick up the change
+kubectl delete pod nodeconnect-activepieces-0 nodeconnect-activepieces-1 -n nodeconnect
+```
+
+### Access the Dashboard
+
+Open in your browser:
+
+```
+https://YOUR_DOMAIN/api/ui
+```
+
+The dashboard shows three queues:
+
+
+| Queue                | Purpose                                     |
+| -------------------- | ------------------------------------------- |
+| **workerJobs**       | Flow execution jobs (triggered flows)       |
+| **system-job-queue** | Internal system tasks (cleanup, piece sync) |
+| **runsMetadata**     | Flow run metadata processing                |
+
+
+Click any queue to see Active, Waiting, Completed, Failed, and Delayed jobs with full details.
+
+---
+
+## Connecting to PostgreSQL with DBeaver
+
+### Get Connection Details
+
+```bash
+doctl databases connection nodeconnect-postgres
+```
+
+Or find them in the DigitalOcean dashboard: **Databases** → **nodeconnect-postgres** → **Connection Details**.
+
+### DBeaver Setup
+
+1. Open DBeaver → **New Database Connection** → **PostgreSQL** → **Next**
+2. Fill in the **Main** tab:
+
+
+| Field    | Value                                     |
+| -------- | ----------------------------------------- |
+| Host     | `your-db-xxxxx.db.ondigitalocean.com`     |
+| Port     | `25060`                                   |
+| Database | `defaultdb`                               |
+| Username | `doadmin`                                 |
+| Password | Your DB password (`AVNS_xxxxxxxxxxxxxxx`) |
+
+
+1. Check **Save password**.
+2. Go to the **SSL** tab:
+  - Check **Use SSL**
+  - Set **SSL mode** to `require`
+  - Leave CA/Client certificate fields empty
+  - If you get a "self-signed certificate" error, check **Do not validate certificate**
+3. Click **Test Connection** → should show "Connected" → **Finish**
+
+Browse tables under: **defaultdb** → **Schemas** → **public** → **Tables** (you'll see `user`, `project`, `flow`, `flow_run`, etc.)
+
+---
+
 ## Monthly Costs (DigitalOcean)
 
 
@@ -946,11 +1027,85 @@ kubectl port-forward -n nodeconnect svc/nodeconnect-activepieces 8080:80
 | **Total**                 | **~$77/mo**                 |
 
 
+All costs are **fixed monthly** regardless of traffic or request volume. You'd only pay more if you:
+
+- Add more nodes (autoscaling)
+- Exceed the outbound bandwidth allowance (several TB included, overage at $0.01/GB)
+- Upgrade the Postgres plan due to storage growth
+- Enable database backups (~$3/mo extra)
+
+---
+
+## Stopping / Tearing Down the Service
+
+### Option 1: Scale Down Pods (pause the app, restart in seconds)
+
+Stops the app but keeps everything running. No data loss.
+
+```bash
+# Stop
+kubectl scale statefulset nodeconnect-activepieces -n nodeconnect --replicas=0
+
+# Restart
+kubectl scale statefulset nodeconnect-activepieces -n nodeconnect --replicas=2
+```
+
+Cost: Still ~$77/mo.
+
+### Option 2: Delete App + Redis, Keep Cluster + Database
+
+Removes the Helm releases but keeps the cluster and Postgres (data safe).
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+```
+
+Cost: Still ~$75/mo. To redeploy: reinstall Redis (Step 5b), recreate secrets (Step 7), helm install (Step 8).
+
+### Option 3: Keep Only Database (saves ~$62/mo)
+
+Preserves your data in Postgres. Everything else is deleted.
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+helm uninstall ingress-nginx -n ingress-nginx
+doctl kubernetes cluster delete nodeconnect-cluster --dangerous
+```
+
+Cost: **~$15/mo** (managed Postgres only). To redeploy: recreate cluster (Step 4), then Steps 5b–9.
+
+### Option 4: Delete Everything ($0/mo)
+
+Completely removes all resources. **Data will be permanently lost.**
+
+```bash
+helm uninstall nodeconnect -n nodeconnect
+helm uninstall nodeconnect-redis -n nodeconnect
+helm uninstall ingress-nginx -n ingress-nginx
+doctl kubernetes cluster delete nodeconnect-cluster --dangerous
+doctl databases delete nodeconnect-postgres --force
+```
+
+Cost: **$0/mo**. To redeploy: follow the entire guide from Step 4.
+
+### Teardown Summary
+
+
+| Option        | What's Kept   | Monthly Cost | Time to Restart |
+| ------------- | ------------- | ------------ | --------------- |
+| Scale to 0    | Everything    | ~$77         | Seconds         |
+| Uninstall app | Cluster + DB  | ~$75         | ~10 min         |
+| Keep DB only  | Postgres only | ~$15         | ~20 min         |
+| Delete all    | Nothing       | $0           | ~30 min         |
+
+
 ---
 
 ## Next Steps
 
-1. **Database backups** — Enable automatic backups for PostgreSQL in the DO dashboard.
+1. **Database backups** — Enable automatic backups for PostgreSQL in the DO dashboard (~$3/mo extra).
 2. **Proper SSL for Postgres** — Download the DO CA certificate and set `AP_POSTGRES_SSL_CA` instead of `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 3. **Monitoring** — Add DigitalOcean Monitoring or Prometheus/Grafana.
 4. **Scaling** — Enable `autoscaling` in `values-digitalocean.yaml` for auto-scaling based on CPU.
