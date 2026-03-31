@@ -44,28 +44,39 @@ This guide walks through deploying **NodeConnect** (a custom Activepieces build 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     DigitalOcean Cloud                           │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │              DOKS Kubernetes Cluster (nyc1)                │  │
-│  │                                                            │  │
-│  │   [DO Load Balancer]                                       │  │
-│  │         │                                                  │  │
-│  │         ▼                                                  │  │
-│  │   [Ingress-NGINX + cert-manager (HTTPS)]                  │  │
-│  │         │                                                  │  │
-│  │         ▼                                                  │  │
-│  │   [NodeConnect StatefulSet — 2 replicas]                   │  │
-│  │     (ghcr.io/YOUR_USERNAME/nodeconnect-app:latest)         │  │
-│  │         │                    │                             │  │
-│  │         ▼                    ▼                             │  │
-│  │   [In-cluster Redis]   [DO Managed Postgres]               │  │
-│  │   (Bitnami Helm)        (external, SSL)                    │  │
-│  └────────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  [GHCR] ◄── Docker image pushed from local Mac                  │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                        DigitalOcean Cloud                            │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                 DOKS Kubernetes Cluster (nyc1)                 │  │
+│  │                                                                │  │
+│  │   [DO Load Balancer]                                           │  │
+│  │         │                                                      │  │
+│  │         ▼                                                      │  │
+│  │   [Ingress-NGINX + cert-manager (HTTPS)]                      │  │
+│  │         │                                                      │  │
+│  │         ▼                                                      │  │
+│  │   [NodeConnect StatefulSet — 2 replicas]                       │  │
+│  │     (ghcr.io/YOUR_USERNAME/nodeconnect-app:latest)             │  │
+│  │     Each pod runs WORKER_AND_APP mode via PM2:                 │  │
+│  │       ├─ activepieces-app    (API server on port 3001)         │  │
+│  │       └─ activepieces-worker (job executor via Socket.IO)      │  │
+│  │              │                    │                             │  │
+│  │              ▼                    ▼                             │  │
+│  │   [In-cluster Redis]        [DO Managed Postgres]              │  │
+│  │   (Bitnami Helm)             (external, SSL)                   │  │
+│  │   ├─ Job queues (BullMQ)    ├─ Flows, users, connections      │  │
+│  │   ├─ Worker registration    └─ Flow run history                │  │
+│  │   └─ Cache                                                     │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  [GHCR] ◄── Docker image pushed from local Mac (linux/amd64)        │
+└──────────────────────────────────────────────────────────────────────┘
+
+Monitoring:
+  ├─ BullMQ Dashboard: https://YOUR_DOMAIN/api/ui
+  ├─ Workers page:     https://YOUR_DOMAIN/platform/infrastructure/workers
+  └─ DBeaver:          Connect to DO Managed Postgres (port 25060, SSL)
 ```
 
 ---
@@ -169,10 +180,8 @@ echo "YOUR_GITHUB_PAT" | docker login ghcr.io -u $GITHUB_USERNAME --password-std
 ```bash
 cd /path/to/your/activepieces-bmp-custom
 
-# Step 1: Build the custom piece locally first
-npx nx build pieces-ada-bmp
-
-# Step 2: Build the Docker image for AMD64 (required even on Apple Silicon Macs)
+# Build the Docker image for AMD64 (required even on Apple Silicon Macs)
+# The Dockerfile already builds the ada-bmp piece internally — no local pre-build needed.
 docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 ```
 
@@ -339,10 +348,9 @@ EOF
 ```bash
 echo "AP_ENCRYPTION_KEY: $(openssl rand -hex 16)"
 echo "AP_JWT_SECRET: $(openssl rand -hex 32)"
-echo "AP_WORKER_TOKEN: $(openssl rand -hex 32)"
 ```
 
-Save all three values.
+Save both values. (`AP_WORKER_TOKEN` is auto-generated at container startup from the JWT secret.)
 
 ### 7b: Set Environment Variables
 
@@ -362,7 +370,6 @@ export REDIS_PASSWORD="YourSecureRedisPassword!"
 # Security keys (from 7a)
 export ENCRYPTION_KEY="paste-here"
 export JWT_SECRET="paste-here"
-export WORKER_TOKEN="paste-here"
 
 # Domain
 export MY_DOMAIN="nodesconnect.in"
@@ -409,16 +416,18 @@ kubectl create secret generic nodeconnect-config-secrets \
   --from-literal=ADA_BMP_TIMEOUT=30000 \
   --from-literal=AP_SANDBOX_PROPAGATED_ENV_VARS=ADA_BMP_API_URL \
   --from-literal=AP_WEBHOOK_TIMEOUT_SECONDS=30 \
-  --from-literal=AP_TRIGGER_DEFAULT_POLL_INTERVAL=1 \
-  --from-literal=AP_PLATFORM_ID_FOR_DEDICATED_WORKER=""
+  --from-literal=AP_TRIGGER_DEFAULT_POLL_INTERVAL=1
 
 # Auth secrets
+# IMPORTANT: Leave AP_WORKER_TOKEN empty — the docker-entrypoint.sh auto-generates
+# a valid JWT from AP_JWT_SECRET at startup. Setting it to a random string breaks
+# worker registration because it expects a properly signed JWT.
 kubectl create secret generic nodeconnect-auth-secrets \
   --namespace nodeconnect \
   --from-literal=AP_ENCRYPTION_KEY=$ENCRYPTION_KEY \
   --from-literal=AP_JWT_SECRET=$JWT_SECRET \
   --from-literal=AP_API_KEY="" \
-  --from-literal=AP_WORKER_TOKEN=$WORKER_TOKEN \
+  --from-literal=AP_WORKER_TOKEN="" \
   --from-literal=AP_GOOGLE_CLIENT_ID="" \
   --from-literal=AP_GOOGLE_CLIENT_SECRET="" \
   --from-literal=AP_FIREBASE_HASH_PARAMETERS=""
@@ -479,6 +488,15 @@ done
 
 > **Gotcha — AP_OTEL_ENABLED:** This variable expects exactly `"true"` or `"false"`. An empty
 > string causes the app to crash with `EnvVarError`. Always set it explicitly to `false`.
+
+> **Gotcha — AP_WORKER_TOKEN:** Do NOT set this to a random string. Leave it empty (`""`) so
+> the `docker-entrypoint.sh` auto-generates a valid JWT from `AP_JWT_SECRET`. A non-JWT value
+> prevents the worker from registering with the API.
+
+> **Gotcha — AP_PLATFORM_ID_FOR_DEDICATED_WORKER:** Do NOT include this variable at all (not
+> even as empty string). An empty string `""` causes the worker to register as `DEDICATED` type
+> with no platform, making it invisible on the Workers page. When omitted, the worker registers
+> as `SHARED` and appears correctly.
 
 **Verify:**
 
@@ -606,7 +624,6 @@ activepiecesEnvVariables:
     - AP_CLIENT_REAL_IP_HEADER
     - AP_DB_TYPE
     - AP_ENGINE_EXECUTABLE_PATH
-    - AP_PLATFORM_ID_FOR_DEDICATED_WORKER
     - AP_PIECES_SYNC_MODE
     - AP_PIECES_SOURCE
     - AP_DEV_PIECES
@@ -836,10 +853,8 @@ Open `https://YOUR_DOMAIN` in your browser. Create your first admin account, the
 ```bash
 cd /path/to/your/activepieces-bmp-custom
 
-# Build the custom piece first
-npx nx build pieces-ada-bmp
-
 # Build the Docker image for AMD64 (always required for DOKS)
+# The Dockerfile already builds the ada-bmp piece internally.
 docker build --platform linux/amd64 -t nodeconnect-app:latest -f Dockerfile .
 
 # Tag and push
@@ -899,6 +914,8 @@ kubectl delete pod nodeconnect-activepieces-0 nodeconnect-activepieces-1 -n node
 | `cannot reuse a name that is still in use`            | Previous failed Helm release still exists                    | `helm uninstall nodeconnect -n nodeconnect` then re-install              |
 | `CrashLoopBackOff`                                    | Various — check logs                                         | `kubectl logs -n nodeconnect nodeconnect-activepieces-0`                 |
 | Custom piece not visible                              | `AP_PIECES_SOURCE` / `AP_DEV_PIECES` not set                 | Set `AP_PIECES_SOURCE=FILE` and `AP_DEV_PIECES=ada-bmp`                  |
+| Workers page "No workers found"                       | `AP_WORKER_TOKEN` set to random string (not JWT)             | Leave `AP_WORKER_TOKEN=""` so entrypoint auto-generates a valid JWT      |
+| Workers page "No workers found"                       | `AP_PLATFORM_ID_FOR_DEDICATED_WORKER=""`                     | Remove this variable entirely — empty string registers as DEDICATED      |
 | Redis password with `!` causes `dquote>`              | Bash history expansion                                       | Use single quotes: `--set auth.password='Pass!'`                         |
 | `ConnectionRefused` during Docker build (bun install) | Missing BuildKit cache mount                                 | Add `--mount=type=cache,target=/root/.bun/install/cache` to the RUN line |
 
