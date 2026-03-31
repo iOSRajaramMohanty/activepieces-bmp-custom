@@ -1185,11 +1185,91 @@ Cost: **$0/mo**. To redeploy: follow the entire guide from Step 4.
 
 ---
 
+## CI/CD: Auto-Deploy with GitHub Actions
+
+A GitHub Actions workflow at `.github/workflows/deploy-nodeconnect.yml` auto-builds and deploys on every push to `main`.
+
+### How It Works
+
+```
+Push to main → Build Docker image (linux/amd64) → Push to GHCR → Rollout restart on DOKS
+```
+
+The workflow:
+
+1. Checks out the code
+2. Builds the Docker image for `linux/amd64` with BuildKit caching
+3. Pushes three tags to GHCR: `latest`, `<short-sha>`, `<timestamp>`
+4. Connects to your DOKS cluster via `doctl`
+5. Restarts the statefulset and waits for pods to be healthy
+6. Fails the workflow if any pod isn't ready within 5 minutes
+
+### Required GitHub Secrets
+
+Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**:
+
+
+| Secret Name                 | Value                 | How to Get                                      |
+| --------------------------- | --------------------- | ----------------------------------------------- |
+| `DIGITALOCEAN_ACCESS_TOKEN` | Your DO API token     | DO dashboard → API → Tokens                     |
+| `DOKS_CLUSTER_NAME`         | `nodeconnect-cluster` | The name from `doctl kubernetes cluster create` |
+
+
+> `GITHUB_TOKEN` is automatically provided by GitHub Actions — no setup needed. It handles
+> GHCR authentication with `write:packages` permission.
+
+### Setup Steps
+
+1. **Add the secrets** to your GitHub repo (see table above).
+2. **Push the workflow file** to your repo:
+
+```bash
+git add .github/workflows/deploy-nodeconnect.yml
+git commit -m "Add CI/CD workflow for DOKS deployment"
+git push origin main
+```
+
+1. **Verify** — Go to your repo → **Actions** tab. You should see the "Deploy NodeConnect to DOKS" workflow running.
+
+### Manual Trigger
+
+You can also trigger a deployment manually (without pushing code):
+
+1. Go to your repo → **Actions** → **Deploy NodeConnect to DOKS**
+2. Click **Run workflow** → **Run workflow**
+
+This is useful for redeploying the same code (e.g., after changing Kubernetes secrets).
+
+### Rollback
+
+If a deployment goes wrong, roll back to a previous image tag:
+
+```bash
+# List available tags
+# Go to https://github.com/users/YOUR_USERNAME/packages/container/nodeconnect-app/versions
+
+# Roll back to a specific SHA tag
+kubectl set image statefulset/nodeconnect-activepieces \
+  activepieces=ghcr.io/YOUR_USERNAME/nodeconnect-app:abc1234 \
+  -n nodeconnect
+
+# Or roll back to the previous revision
+kubectl rollout undo statefulset nodeconnect-activepieces -n nodeconnect
+```
+
+### Build Caching
+
+The workflow uses GitHub Actions cache (`type=gha`) for Docker layer caching. This means:
+
+- **First build:** ~15–25 minutes (no cache)
+- **Subsequent builds:** ~3–8 minutes (cached layers reused)
+
+---
+
 ## Next Steps
 
 1. **Database backups** — Enable automatic backups for PostgreSQL in the DO dashboard (~$3/mo extra).
 2. **Proper SSL for Postgres** — Download the DO CA certificate and set `AP_POSTGRES_SSL_CA` instead of `NODE_TLS_REJECT_UNAUTHORIZED=0`.
 3. **Monitoring** — Add DigitalOcean Monitoring or Prometheus/Grafana.
 4. **Scaling** — Enable `autoscaling` in `values-digitalocean.yaml` for auto-scaling based on CPU.
-5. **CI/CD** — Set up GitHub Actions to auto-build and deploy on push to main.
 
