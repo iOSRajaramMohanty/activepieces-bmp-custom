@@ -306,7 +306,19 @@ module.exports = composePlugins(withNx(), (config) => {
     'assert': false,
     'buffer': false,
     'querystring': false,
+    'dns': false,
   };
+
+  // Strip `node:` URI prefix so that node:http → http, node:dns → dns, etc.
+  // and the fallback entries above can resolve them to empty modules.
+  config.plugins.push(
+    new NormalModuleReplacementPlugin(
+      /^node:/,
+      (resource) => {
+        resource.request = resource.request.replace(/^node:/, '');
+      }
+    )
+  );
 
   // Handle mime-types package that tries to use Node.js 'path' module
   // We need to provide a browser-compatible shim or exclude it
