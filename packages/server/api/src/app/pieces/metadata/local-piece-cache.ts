@@ -68,7 +68,7 @@ export const localPieceCache = (log: FastifyBaseLogger) => ({
         const cache = await getOrCreateCache()
         const cachedPiece = (await cache.db.get(META_PIECE_KEY(pieceName, version, platformId))) as PieceMetadataSchema | undefined
         const devPieces = await loadDevPiecesIfEnabled(log)
-        const devPiece = devPieces.find(p => p.name === pieceName && p.version === version)
+        const devPiece = devPieces.find(p => p.name === pieceName)
         if (!isNil(devPiece)) {
             return devPiece
         }

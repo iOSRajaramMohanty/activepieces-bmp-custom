@@ -78,7 +78,7 @@ export const pieceCache = (log: FastifyBaseLogger) => {
             const { pieceName, version, platformId } = params
 
             const devPieces = await loadDevPiecesIfEnabled(log)
-            const devPiece = devPieces.find(p => p.name === pieceName && p.version === version)
+            const devPiece = devPieces.find(p => p.name === pieceName)
             if (!isNil(devPiece)) {
                 return devPiece
             }
