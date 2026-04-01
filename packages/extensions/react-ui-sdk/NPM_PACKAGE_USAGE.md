@@ -4,7 +4,7 @@ This guide explains how to embed the Activepieces React UI SDK (flow builder, da
 
 ## Overview
 
-- **Package**: `@activepieces/react-ui-sdk` (bundled build from `dist/packages/react-ui-sdk-bundled`)
+- **Package**: `@activepieces/react-ui-sdk` (local bundle) or `@iosrajarammohanty/react-ui-sdk` (private GitHub Packages publish)
 - **Loading**: Script tag (not ESM import) – the bundle sets `window.__AP_SDK_MODULE__`
 - **Styles**: Inlined in the bundle via style-loader – no separate stylesheet required
 - **Framework**: Works in any host app (Angular, Vue, plain HTML/JS) that can inject a script and mount React components
@@ -39,19 +39,28 @@ npx nx run react-ui-sdk:fix-bundle-package
 ```json
 {
   "dependencies": {
-    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/react-ui-sdk-bundled"
+    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/extensions/react-ui-sdk-bundled"
   }
 }
 ```
 
 Adjust the path so it correctly points to your activepieces `dist` folder.
 
-### Option B: Published package (if you publish to npm)
+### Option B: Private GitHub Packages (recommended)
+
+Create a `.npmrc` in the **consumer project**:
+
+```bash
+@iosrajarammohanty:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=<YOUR_GITHUB_PAT>
+```
+
+Then use the published package:
 
 ```json
 {
   "dependencies": {
-    "@activepieces/react-ui-sdk": "^1.0.0"
+    "@iosrajarammohanty/react-ui-sdk": "^1.0.0"
   }
 }
 ```
@@ -64,9 +73,33 @@ bun install   # or npm install / yarn install
 
 ---
 
+## Step 2.1: Keep both setups (switching)
+
+You can keep both approaches depending on what you need:
+
+- **Local path**: fastest iteration while developing the SDK (no publish needed).
+- **GitHub Packages**: stable installs across machines/CI (recommended for teams).
+
+Only use **one** at a time in the consumer app’s `package.json`.
+
+## Step 2.2: Auto-publish (CI/CD)
+
+A GitHub Actions workflow (`.github/workflows/publish-sdk.yml`) automatically builds and publishes to GitHub Packages on every push to `main` that changes SDK files.
+
+**Versioning:**
+- The published version comes from `packages/extensions/react-ui-sdk/package.json`.
+- To release a new version: bump `version` (e.g. `1.0.1` -> `1.0.2`), commit, push.
+- If SDK code changes but the version is **not** bumped, the workflow succeeds silently (skips the duplicate publish).
+
+**Manual trigger:** Go to **Actions** > **Publish React UI SDK (Private)** > **Run workflow**.
+
+**PAT not required in CI:** the workflow uses the automatic `GITHUB_TOKEN` with `packages: write`.
+
+---
+
 ## Step 3: Copy SDK Files into Your App’s Output
 
-The SDK must be served from your app (e.g. under `/sdk/`). Copy the following from `node_modules/@activepieces/react-ui-sdk` into your build output:
+The SDK must be served from your app (e.g. under `/sdk/`). Copy the following from `node_modules/` into your build output:
 
 | Glob           | Output      | Purpose                                 |
 |----------------|------------|-----------------------------------------|
@@ -76,7 +109,9 @@ The SDK must be served from your app (e.g. under `/sdk/`). Copy the following fr
 | `assets/**/*`  | `sdk/`     | Images (e.g. ada-logo, todo guides)     |
 | `ada-logo.png` | `.` (root) | Default platform branding (see below)   |
 
-### Example: Angular `angular.json`
+### Example: Angular `angular.json` (Local path setup)
+
+If you use the local dependency `@activepieces/react-ui-sdk`:
 
 ```json
 "assets": [
@@ -87,6 +122,28 @@ The SDK must be served from your app (e.g. under `/sdk/`). Copy the following fr
   { "glob": "ada-logo.png", "input": "node_modules/@activepieces/react-ui-sdk/assets", "output": "." }
 ]
 ```
+
+### Example: Angular `angular.json` (GitHub Packages setup)
+
+If you use the published dependency `@iosrajarammohanty/react-ui-sdk`:
+
+```json
+"assets": [
+  { "glob": "index.js", "input": "node_modules/@iosrajarammohanty/react-ui-sdk", "output": "sdk" },
+  { "glob": "*.woff2", "input": "node_modules/@iosrajarammohanty/react-ui-sdk", "output": "sdk" },
+  { "glob": "locales/**/*", "input": "node_modules/@iosrajarammohanty/react-ui-sdk", "output": "sdk" },
+  { "glob": "assets/**/*", "input": "node_modules/@iosrajarammohanty/react-ui-sdk", "output": "sdk" },
+  { "glob": "ada-logo.png", "input": "node_modules/@iosrajarammohanty/react-ui-sdk/assets", "output": "." }
+]
+```
+
+After updating `angular.json`, restart the dev server, then validate the SDK is served:
+
+```bash
+curl -I http://localhost:4200/sdk/index.js
+```
+
+Expected: `200` and `Content-Type: application/javascript`.
 
 ### Example: Vite `vite.config.ts`
 
@@ -478,11 +535,22 @@ Use these if you need to target specific UI parts (prefer variables when possibl
 
 ### 1. `package.json`
 
+#### Option A: Local path (development)
+
 ```json
 {
   "dependencies": {
-    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/react-ui-sdk-bundled",
-    "@activepieces/shared": "file:../activepieces/packages/shared"
+    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/extensions/react-ui-sdk-bundled"
+  }
+}
+```
+
+#### Option B: GitHub Packages (private)
+
+```json
+{
+  "dependencies": {
+    "@iosrajarammohanty/react-ui-sdk": "^1.0.0"
   }
 }
 ```

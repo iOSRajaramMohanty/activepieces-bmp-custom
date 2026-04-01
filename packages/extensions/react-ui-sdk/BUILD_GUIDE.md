@@ -10,7 +10,7 @@ This guide explains how to build the React UI SDK bundle for embedding in Angula
 
 ## Quick Build
 
-From the workspace root (`/Users/rajarammohanty/Documents/POC/activepieces`):
+From the workspace root:
 
 ```bash
 # 1. Build the SDK bundle
@@ -21,20 +21,21 @@ npx nx run react-ui-sdk:fix-bundle-package
 
 # Or with skip cache (for fresh build)
 npx nx run react-ui-sdk:bundle --skip-nx-cache
-npx nx run react-ui-sdk:fix-bundle-package
+npx nx run react-ui-sdk:fix-bundle-package --skip-nx-cache
 ```
 
 **Always run `fix-bundle-package` after `bundle`.** It:
 
 - Sets `main` and `exports` to `./index.js` (bundle output is at root, not in `dist/`).
-- Replaces `@activepieces/shared` dependency `workspace:*` with `file:../../../packages/shared` so the bundle can be installed in non-workspace apps (e.g. Angular).
+- For local file-based installs, it can replace monorepo-only dependency specifiers (like `workspace:*`) so the bundle can be installed in non-workspace apps (e.g. Angular).
+- For registry publishing (GitHub Packages), it removes monorepo-only deps and adds `publishConfig`.
 
 ## Output Location
 
 After a successful build, the SDK bundle is located at:
 
 ```
-dist/packages/react-ui-sdk-bundled/
+dist/packages/extensions/react-ui-sdk-bundled/
 ├── assets/
 │   ├── ActivepiecesCreateTodoGuide.png
 │   ├── ActivepiecesTodo.png
@@ -75,7 +76,7 @@ npx nx run react-ui-sdk:fix-bundle-package
 ```json
 {
   "dependencies": {
-    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/react-ui-sdk-bundled"
+    "@activepieces/react-ui-sdk": "file:../activepieces/dist/packages/extensions/react-ui-sdk-bundled"
   }
 }
 ```
@@ -133,20 +134,20 @@ After building (and running `fix-bundle-package`), copy all SDK files into your 
 
 ```bash
 mkdir -p /path/to/bmp-fe-web/src/assets/sdk/{assets,locales}
-cp dist/packages/react-ui-sdk-bundled/index.js /path/to/bmp-fe-web/src/assets/sdk/
-cp dist/packages/react-ui-sdk-bundled/*.woff2 /path/to/bmp-fe-web/src/assets/sdk/ 2>/dev/null || true
-cp -r dist/packages/react-ui-sdk-bundled/assets/* /path/to/bmp-fe-web/src/assets/sdk/assets/
-cp -r dist/packages/react-ui-sdk-bundled/locales/* /path/to/bmp-fe-web/src/assets/sdk/locales/
+cp dist/packages/extensions/react-ui-sdk-bundled/index.js /path/to/bmp-fe-web/src/assets/sdk/
+cp dist/packages/extensions/react-ui-sdk-bundled/*.woff2 /path/to/bmp-fe-web/src/assets/sdk/ 2>/dev/null || true
+cp -r dist/packages/extensions/react-ui-sdk-bundled/assets/* /path/to/bmp-fe-web/src/assets/sdk/assets/
+cp -r dist/packages/extensions/react-ui-sdk-bundled/locales/* /path/to/bmp-fe-web/src/assets/sdk/locales/
 ```
 
 For bmp-fe-web specifically:
 
 ```bash
 mkdir -p /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/{assets,locales} && \
-cp dist/packages/react-ui-sdk-bundled/index.js /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/ && \
-cp dist/packages/react-ui-sdk-bundled/*.woff2 /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/ 2>/dev/null || true && \
-cp -r dist/packages/react-ui-sdk-bundled/assets/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/assets/ && \
-cp -r dist/packages/react-ui-sdk-bundled/locales/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/locales/
+cp dist/packages/extensions/react-ui-sdk-bundled/index.js /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/ && \
+cp dist/packages/extensions/react-ui-sdk-bundled/*.woff2 /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/ 2>/dev/null || true && \
+cp -r dist/packages/extensions/react-ui-sdk-bundled/assets/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/assets/ && \
+cp -r dist/packages/extensions/react-ui-sdk-bundled/locales/* /Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/assets/sdk/locales/
 ```
 
 **Note:** Don’t overwrite `bmp-overrides.css` or other custom styles you maintain in the host app. See [BMP_OVERRIDES.md](./BMP_OVERRIDES.md) for how to customize the Connections page (and other SDK views) from bmp-fe-web using `bmp-overrides.css`.
@@ -169,10 +170,10 @@ npx nx run react-ui-sdk:bundle --skip-nx-cache
 npx nx run react-ui-sdk:fix-bundle-package
 
 mkdir -p "$SDK_DEST/assets" "$SDK_DEST/locales"
-cp dist/packages/react-ui-sdk-bundled/index.js "$SDK_DEST/"
-cp dist/packages/react-ui-sdk-bundled/*.woff2 "$SDK_DEST/" 2>/dev/null || true
-cp -r dist/packages/react-ui-sdk-bundled/assets/* "$SDK_DEST/assets/"
-cp -r dist/packages/react-ui-sdk-bundled/locales/* "$SDK_DEST/locales/"
+cp dist/packages/extensions/react-ui-sdk-bundled/index.js "$SDK_DEST/"
+cp dist/packages/extensions/react-ui-sdk-bundled/*.woff2 "$SDK_DEST/" 2>/dev/null || true
+cp -r dist/packages/extensions/react-ui-sdk-bundled/assets/* "$SDK_DEST/assets/"
+cp -r dist/packages/extensions/react-ui-sdk-bundled/locales/* "$SDK_DEST/locales/"
 
 echo "SDK built and copied successfully!"
 ls -la "$SDK_DEST/"
@@ -183,17 +184,80 @@ ls -la "$SDK_DEST/"
 If you encounter caching issues, clean and rebuild:
 
 ```bash
-rm -rf dist/packages/react-ui-sdk-bundled
+rm -rf dist/packages/extensions/react-ui-sdk-bundled
 npx nx run react-ui-sdk:bundle --skip-nx-cache
 npx nx run react-ui-sdk:fix-bundle-package
 ```
+
+---
+
+## Publish privately to GitHub Packages (recommended)
+
+GitHub Packages requires the npm scope to match your GitHub username/org.
+
+### 1. Build the bundle
+
+```bash
+npx nx run react-ui-sdk:bundle --skip-nx-cache
+SDK_PUBLISH_SCOPE=iosrajarammohanty \
+SDK_PUBLISH_REGISTRY=https://npm.pkg.github.com \
+SDK_PUBLISH_REPO_URL=https://github.com/iOSRajaramMohanty/activepieces-bmp-custom.git \
+  npx nx run react-ui-sdk:fix-bundle-package --skip-nx-cache
+```
+
+### 2. Publish (manual/local)
+
+Create a GitHub PAT with **write:packages**.
+
+```bash
+echo "@iosrajarammohanty:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT" >> ~/.npmrc
+
+cd dist/packages/extensions/react-ui-sdk-bundled
+npm publish
+```
+
+### 3. Consume in another project
+
+In the consumer project `.npmrc`:
+
+```bash
+@iosrajarammohanty:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=YOUR_GITHUB_PAT
+```
+
+In `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@iosrajarammohanty/react-ui-sdk": "^1.0.0"
+  }
+}
+```
+
+### 4. Auto-publish via GitHub Actions
+
+A CI workflow (`.github/workflows/publish-sdk.yml`) automatically builds and publishes to GitHub Packages on every push to `main` that touches `packages/extensions/react-ui-sdk/**`.
+
+**How it works:**
+- Builds the SDK bundle, runs `fix-bundle-package` with the publish env vars, then runs `npm publish`.
+- If the version in `package.json` was **already published**, the workflow **succeeds silently** (skips publish with a notice instead of failing).
+- Uses the automatic `GITHUB_TOKEN` for auth (no extra secrets needed).
+
+**To publish a new version:**
+1. Bump `version` in `packages/extensions/react-ui-sdk/package.json` (e.g. `1.0.1` -> `1.0.2`).
+2. Commit and push to `main`.
+3. The workflow publishes the new version automatically.
+
+**To trigger manually** (without a code change): go to **Actions** > **Publish React UI SDK (Private)** > **Run workflow**.
 
 ## Build Targets
 
 | Target | Command | Output | Purpose |
 |--------|---------|--------|---------|
 | `build` | `npx nx run react-ui-sdk:build` | `dist/packages/react-ui-sdk` | TypeScript library (for npm) |
-| `bundle` | `npx nx run react-ui-sdk:bundle` | `dist/packages/react-ui-sdk-bundled` | Webpack bundle (script tag) |
+| `bundle` | `npx nx run react-ui-sdk:bundle` | `dist/packages/extensions/react-ui-sdk-bundled` | Webpack bundle (script tag) |
 | `fix-bundle-package` | `npx nx run react-ui-sdk:fix-bundle-package` | (mutates bundle `package.json`) | Fix `main` and `@activepieces/shared` for external apps |
 
 **Use `bundle` + `fix-bundle-package` for Angular (or any host) embedding via script tag.**
