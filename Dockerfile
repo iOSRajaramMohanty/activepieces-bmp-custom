@@ -65,14 +65,30 @@ RUN --mount=type=cache,target=/root/.npm \
     node-gyp \
     npm@11.11.0 \
     pm2@6.0.10 \
-    typescript@4.9.4
+    typescript@4.9.4 \
+    pnpm@10.33.0 \
+    esbuild@0.25.0
+
+    
 
 # Prebuild isolated-vm@5.0.4 into Bun install cache (arm64 Docker has no usable 6.x prebuilds)
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     mkdir -p /tmp/bun-install && cd /tmp/bun-install && bun init -y >/dev/null 2>&1 || true && bun install isolated-vm@5.0.4 && rm -rf /tmp/bun-install
+# # Install isolated-vm globally (needed for sandboxes)
+# RUN --mount=type=cache,target=/root/.npm \
+#     cd /usr/src && npm install --no-fund --no-audit isolated-vm@6.0.2
 
 ### STAGE 1: Build ###
 FROM base AS build
+
+# Install bun for monorepo build (build-time only, not needed at runtime)
+RUN export ARCH=$(uname -m) && \
+    if [ "$ARCH" = "x86_64" ]; then \
+      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-x64-baseline.zip -o bun.zip; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-aarch64.zip -o bun.zip; \
+    fi
+RUN unzip bun.zip && mv bun-*/bun /usr/local/bin/bun && chmod +x /usr/local/bin/bun && rm -rf bun.zip bun-*
 
 WORKDIR /usr/src/app
 
@@ -174,6 +190,21 @@ COPY --from=build /usr/src/app/packages/server ./packages/server
 COPY --from=build /usr/src/app/packages/shared ./packages/shared
 COPY --from=build /usr/src/app/packages/pieces ./packages/pieces
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ada-bmp/ ./packages/pieces/custom/ada-bmp/dist/
+
+# Copy workspace package.json files (needed for workspace resolution)
+COPY --from=build /usr/src/app/packages ./packages
+
+# Copy built engine
+# COPY --from=build /usr/src/app/dist/packages/engine/ ./dist/packages/engine/
+
+# Copy bun from build stage (needed to resolve workspace:* protocol in package.json files)
+COPY --from=build /usr/local/bin/bun /usr/local/bin/bun
+
+# Install production dependencies
+# RUN --mount=type=cache,target=/root/.bun/install/cache \
+#     bun install --production
+
+# Copy frontend files
 COPY --from=build /usr/src/app/dist/packages/web ./dist/packages/web/
 
 LABEL service=activepieces
