@@ -81,15 +81,6 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 ### STAGE 1: Build ###
 FROM base AS build
 
-# Install bun for monorepo build (build-time only, not needed at runtime)
-RUN export ARCH=$(uname -m) && \
-    if [ "$ARCH" = "x86_64" ]; then \
-      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-x64-baseline.zip -o bun.zip; \
-    elif [ "$ARCH" = "aarch64" ]; then \
-      curl -fSL https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-aarch64.zip -o bun.zip; \
-    fi
-RUN unzip bun.zip && mv bun-*/bun /usr/local/bin/bun && chmod +x /usr/local/bin/bun && rm -rf bun.zip bun-*
-
 WORKDIR /usr/src/app
 
 # Copy only dependency files first for better layer caching
