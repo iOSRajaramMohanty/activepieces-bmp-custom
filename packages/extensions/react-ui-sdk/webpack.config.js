@@ -289,6 +289,7 @@ module.exports = composePlugins(withNx(), (config) => {
   };
 
   // Add fallbacks for Node.js modules (needed for browser bundle)
+  const nodeBuiltinsStub = path.resolve(__dirname, 'src/stubs/node-builtins-stub.js');
   config.resolve.fallback = {
     ...config.resolve.fallback,
     'util': false,
@@ -296,21 +297,21 @@ module.exports = composePlugins(withNx(), (config) => {
     'fs': false,
     'stream': false,
     'crypto': false,
-    'http': false,
-    'https': false,
-    'net': false,
-    'tls': false,
+    'http': nodeBuiltinsStub,
+    'https': nodeBuiltinsStub,
+    'net': nodeBuiltinsStub,
+    'tls': nodeBuiltinsStub,
+    'dns': nodeBuiltinsStub,
     'url': false,
     'zlib': false,
     'os': false,
     'assert': false,
     'buffer': false,
     'querystring': false,
-    'dns': false,
   };
 
   // Strip `node:` URI prefix so that node:http → http, node:dns → dns, etc.
-  // and the fallback entries above can resolve them to empty modules.
+  // and the fallback entries above can resolve them to the stub module.
   config.plugins.push(
     new NormalModuleReplacementPlugin(
       /^node:/,
