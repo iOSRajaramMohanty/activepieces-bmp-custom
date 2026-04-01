@@ -174,6 +174,7 @@ const systemPropValidators: {
     [AppSystemProp.MAX_FIELDS_PER_TABLE]: numberValidator,
 
     // MCP
+    [AppSystemProp.MCP_OAUTH_ISSUER_URL]: urlValidator,
     [AppSystemProp.ENABLE_FLOW_ON_PUBLISH]: booleanValidator,
     [AppSystemProp.ISSUE_ARCHIVE_DAYS]: (value: string) => {
         const days = parseInt(value)
@@ -195,6 +196,9 @@ const systemPropValidators: {
 
     // PM2 support
     [AppSystemProp.PM2_ENABLED]: booleanValidator,
+    // SSRF protection
+    [AppSystemProp.SSRF_ALLOW_LIST]: stringValidator,
+    [AppSystemProp.SSRF_PROTECTION_ENABLED]: booleanValidator,
 }
 
 

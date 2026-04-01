@@ -489,7 +489,7 @@ export const flowService = (log: FastifyBaseLogger) => ({
                 flowId: flowToUpdate.id,
                 projectId: flowToUpdate.projectId,
                 simulate: false,
-                ignoreError: false,
+                ignoreError: true,
             })
         }
 
