@@ -3,7 +3,7 @@
 # Run: docker compose -f docker-compose.local-db.yml up -d
 services:
   postgres-local:
-    image: 'postgres:14.4'
+    image: 'pgvector/pgvector:pg14'
     container_name: postgres-local
     restart: unless-stopped
     ports:

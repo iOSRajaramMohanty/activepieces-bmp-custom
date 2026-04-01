@@ -52,7 +52,7 @@ services:
         max-file: "2"
 
   postgres-dev:
-    image: 'postgres:14.4'
+    image: 'pgvector/pgvector:pg14'
     container_name: postgres-dev
     restart: unless-stopped
     # Docker dev: Expose on 5434 (different from existing 5433 - local FE 4300 keeps your data)

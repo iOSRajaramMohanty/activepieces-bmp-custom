@@ -44,7 +44,7 @@ services:
         max-file: "3"
 
   postgres:
-    image: 'postgres:14.4'
+    image: 'pgvector/pgvector:pg14'
     container_name: postgres
     restart: unless-stopped
     # Expose PostgreSQL externally on port 5434

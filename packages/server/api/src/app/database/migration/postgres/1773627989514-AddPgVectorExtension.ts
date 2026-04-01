@@ -6,6 +6,10 @@ const log = system.globalLogger()
 export class AddPgVectorExtension1773627989514 implements MigrationInterface {
     name = 'AddPgVectorExtension1773627989514'
 
+    // CREATE EXTENSION failure aborts the current PG transaction; without this,
+    // TypeORM cannot INSERT into "migrations" after a caught extension error.
+    transaction = false
+
     public async up(queryRunner: QueryRunner): Promise<void> {
         log.info('[AddPgVectorExtension1773627989514] up')
         try {
