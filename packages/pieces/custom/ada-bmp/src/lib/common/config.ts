@@ -254,6 +254,38 @@ export function extractApiToken(auth: any): string {
   throw new Error('Unable to extract API token from auth object');
 }
 
+function getConnectionEnvironment(auth: unknown): string | undefined {
+  if (!auth || typeof auth !== 'object') {
+    return undefined;
+  }
+  const record = auth as Record<string, unknown>;
+  if (record.type === 'CUSTOM_AUTH' && record.props && typeof record.props === 'object') {
+    const env = (record.props as Record<string, unknown>).environment;
+    if (typeof env === 'string' && env.trim()) {
+      return env.trim();
+    }
+  }
+  if (typeof record.environment === 'string' && record.environment.trim()) {
+    return record.environment.trim();
+  }
+  return undefined;
+}
+
+function resolveAdaBmpTargetEnvironment(
+  auth: unknown,
+  projectBody: { environment?: string },
+): string {
+  const fromConnection = getConnectionEnvironment(auth);
+  if (fromConnection) {
+    return fromConnection;
+  }
+  const fromProject = projectBody.environment?.trim();
+  if (fromProject) {
+    return fromProject;
+  }
+  return 'Production';
+}
+
 /**
  * Fetch organization/environment metadata for a project
  * 
@@ -264,6 +296,11 @@ export function extractApiToken(auth: any): string {
  * - Dev environment users → Dev API URL
  * - Staging environment users → Staging API URL  
  * - Production environment users → Production API URL
+ *
+ * The **connection's** Environment dropdown (CustomAuth) is used first to pick which
+ * organization_environment row to load. The worker project payload rarely includes
+ * `environment`, so defaulting only to Production previously ignored Staging and fell
+ * back to process.env.ADA_BMP_API_URL.
  * 
  * SANDBOX COMPATIBILITY:
  * When running in a sandbox (e.g., Docker), the server and project context may not be fully available.
@@ -334,7 +371,7 @@ export async function fetchMetadata(
     }
 
     const organizationId = projectResponse.body.organizationId;
-    const environment = projectResponse.body.environment || 'Production'; // Default to Production
+    const environment = resolveAdaBmpTargetEnvironment(auth, projectResponse.body);
 
     // IMPORTANT: Get organization environments - this will be filtered by the backend
     // to return only the environment the user is admin of.
@@ -355,28 +392,28 @@ export async function fetchMetadata(
 
     bmpLogger.info('Config: Looking for environment', {
       targetEnvironment: environment,
+      connectionEnvironment: getConnectionEnvironment(auth),
       availableEnvironments: environmentsResponse.body.map((e: any) => ({
         name: e.environment,
         hasMetadata: !!e.metadata,
         apiUrl: e.metadata?.ADA_BMP_API_URL,
       })),
     });
-    
-    const matchingEnv = environmentsResponse.body.find(
-      (env: any) => env.environment === environment
-    );
 
-    if (matchingEnv?.metadata) {
+    const matchingEnv = environmentsResponse.body.find(
+      (env: any) => env.environment === environment,
+    );
+    const envMetadata = matchingEnv?.metadata as AdaBmpMetadata | undefined;
+    const envHasBmpUrl = Boolean(envMetadata?.ADA_BMP_API_URL?.trim());
+
+    if (envMetadata && envHasBmpUrl) {
       bmpLogger.info('Config: Found environment-specific metadata', {
         environment,
-        apiUrl: (matchingEnv.metadata as AdaBmpMetadata)?.ADA_BMP_API_URL,
+        apiUrl: envMetadata.ADA_BMP_API_URL,
       });
-      return matchingEnv.metadata as AdaBmpMetadata;
+      return envMetadata;
     }
 
-    bmpLogger.warn('Config: No environment-specific metadata found, falling back to organization metadata');
-
-    // Fallback to organization-level metadata
     const orgResponse = await httpClient.sendRequest({
       method: 'GET',
       url: `${apiUrl}/v1/organizations/${organizationId}`,
@@ -385,10 +422,34 @@ export async function fetchMetadata(
         token: token,
       },
     });
+    const orgMetadata = orgResponse.body?.metadata as AdaBmpMetadata | undefined;
 
-    if (orgResponse.body?.metadata) {
+    if (envMetadata && !envHasBmpUrl && orgMetadata?.ADA_BMP_API_URL?.trim()) {
+      const merged: AdaBmpMetadata = {
+        ...orgMetadata,
+        ...envMetadata,
+        ADA_BMP_API_URL: orgMetadata.ADA_BMP_API_URL,
+      };
+      bmpLogger.info('Config: Merged organization ADA_BMP_API_URL into environment metadata', {
+        environment,
+        apiUrl: merged.ADA_BMP_API_URL,
+      });
+      return merged;
+    }
+
+    if (envMetadata && !envHasBmpUrl) {
+      bmpLogger.warn(
+        'Config: Environment row has metadata but no ADA_BMP_API_URL; organization metadata has none either',
+        { environment },
+      );
+      return envMetadata;
+    }
+
+    bmpLogger.warn('Config: No environment-specific metadata row, falling back to organization metadata');
+
+    if (orgMetadata) {
       bmpLogger.info('Config: Using organization-level metadata');
-      return orgResponse.body.metadata as AdaBmpMetadata;
+      return orgMetadata;
     }
 
     bmpLogger.info('Config: No metadata found at organization or environment level');
