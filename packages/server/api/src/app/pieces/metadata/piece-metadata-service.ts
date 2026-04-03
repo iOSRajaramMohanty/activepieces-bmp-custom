@@ -99,9 +99,10 @@ export const pieceMetadataService = (log: FastifyBaseLogger) => {
             return pieceTranslation.translatePiece<PieceMetadataModel>({ piece, locale, mutate: false })
         },
         async updateUsage({ id, usage }: UpdateUsage): Promise<void> {
-            const existingMetadata = await pieceRepos().findOneByOrFail({
-                id,
-            })
+            const existingMetadata = await pieceRepos().findOneBy({ id })
+            if (isNil(existingMetadata)) {
+                return
+            }
             await pieceRepos().update(id, {
                 projectUsage: usage,
                 updated: existingMetadata.updated,
