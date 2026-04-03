@@ -217,7 +217,6 @@ export const BuilderHeader = () => {
         title={titleContent}
         rightContent={rightContent}
         leftContent={leftContent}
-        showBorder={true}
         className="select-none"
       />
     </div>

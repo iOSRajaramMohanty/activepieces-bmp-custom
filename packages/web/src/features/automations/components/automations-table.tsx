@@ -30,7 +30,7 @@ type AutomationsTableProps = {
   onTogglePin: (itemId: string) => void;
   onToggleAllSelection: () => void;
   onToggleItemSelection: (item: TreeItem) => void;
-  onRowClick: (item: TreeItem) => void;
+  onRowClick: (item: TreeItem, ctrlKey?: boolean) => void;
   onRenameItem: (item: TreeItem) => void;
   onDeleteItem: (item: TreeItem) => void;
   onDuplicateFlow: (flow: PopulatedFlow) => void;
@@ -76,7 +76,7 @@ export const AutomationsTable = ({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[1000px]">
-        <div className="flex items-center h-10 text-xs border-b border-t font-medium text-foreground bg-background">
+        <div className="flex items-center h-8 text-xs border-b font-medium text-foreground bg-muted/50">
           <div className="w-10 shrink-0 pl-4 pr-1">
             <Checkbox
               checked={
@@ -114,8 +114,8 @@ export const AutomationsTable = ({
         {isLoading ? (
           <div className="p-2">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="w-full h-10 mb-4 rounded-sm">
-                <Skeleton className="w-full min-h-10" />
+              <div key={i} className="w-full h-9 mb-3 rounded-sm">
+                <Skeleton className="w-full min-h-9" />
               </div>
             ))}
           </div>
@@ -132,11 +132,13 @@ export const AutomationsTable = ({
                   <AccordionPrimitive.Item
                     key={`folder-${group.item.id}`}
                     value={group.item.id}
-                    className="not-last:border-b"
+                    className="border-b"
                   >
                     <div
                       className={cn(rowClassName)}
-                      onClick={() => onRowClick(group.item)}
+                      onClick={(e) =>
+                        onRowClick(group.item, e.ctrlKey || e.metaKey)
+                      }
                     >
                       <AutomationsTableRow
                         item={group.item}
@@ -167,7 +169,9 @@ export const AutomationsTable = ({
                         <div
                           key={`${child.type}-${child.id}`}
                           className={cn(rowClassName, 'border-t')}
-                          onClick={() => onRowClick(child)}
+                          onClick={(e) =>
+                            onRowClick(child, e.ctrlKey || e.metaKey)
+                          }
                         >
                           <AutomationsTableRow
                             item={child}
@@ -205,8 +209,10 @@ export const AutomationsTable = ({
               return (
                 <div
                   key={`${group.item.type}-${group.item.id}`}
-                  className={cn(rowClassName, 'not-last:border-b')}
-                  onClick={() => onRowClick(group.item)}
+                  className={cn(rowClassName, 'border-b')}
+                  onClick={(e) =>
+                    onRowClick(group.item, e.ctrlKey || e.metaKey)
+                  }
                 >
                   <AutomationsTableRow
                     item={group.item}
