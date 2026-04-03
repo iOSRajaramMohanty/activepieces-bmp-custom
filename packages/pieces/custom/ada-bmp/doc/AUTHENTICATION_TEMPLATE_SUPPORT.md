@@ -37,31 +37,35 @@ Added support for AUTHENTICATION category templates (e.g., OTP templates) in the
   "from": "601153813541",
   "to": ["596d2b93-13b0-4f66-8723-d5da1d775b5a"],
   "type": "template",
-  "buttons": [],
-  "templateData": ["2034"],
+  "channel": "CONTACT",
+  "platform": "WA",
+  "tag2": "Send bulk to contact category",
+  "templateId": "template-uuid",
   "templateLang": "en",
   "templateName": "vikotptest",
+  "buttons": [null, null],
+  "templateData": ["2034"],
+  "templateButton": [["2034"], []],
   "headerType": "TEXT",
-  "platform": "WA",
-  "channel": "CONTACT",
-  "payload": null,
-  "tag2": "Send bulk to contact category"
+  "payload": ["", ""]
 }
 ```
 
-#### For Other Templates:
+#### For Other Message Types (non-template):
 ```json
 {
   "from": "account-number",
   "to": ["contact-category-id"],
-  "type": "text|media|template|button|list|catalog",
+  "type": "text|media|button|list|catalog",
   "channel": "CONTACT",
   "platform": "WA|FB|IG|LINE",
   "tag2": "Send bulk to contact category",
-  "text": "message content",
-  "templateId": "template-id"  // if template selected
+  "text": "message content"
 }
 ```
+
+#### For MARKETING / UTILITY / carousel WA templates:
+Use **Template parameters (JSON)** for slot values; the piece builds the full `bulkmessage` body (see [`docs/ada-bmp-piece-mcp-guide.md`](../../../../docs/ada-bmp-piece-mcp-guide.md) §4.2).
 
 ## Usage
 

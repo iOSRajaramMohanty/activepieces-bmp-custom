@@ -143,6 +143,20 @@ export const bmpLogger = {
     if (!isLoggingEnabled()) return;
     console.log('[ADA-BMP API] Request:', details);
   },
+  /**
+   * Logs the exact JSON string sent to BMP (nested arrays are not collapsed like console object logging).
+   */
+  requestBodyFull(url: string, body: unknown) {
+    if (!isLoggingEnabled()) return;
+    try {
+      const json = JSON.stringify(body, null, 2);
+      console.log('[ADA-BMP API] POST URL:', url);
+      console.log('[ADA-BMP API] POST body (full JSON):\n' + json);
+    } catch {
+      console.log('[ADA-BMP API] POST URL:', url);
+      console.log('[ADA-BMP API] POST body (could not stringify):', body);
+    }
+  },
   response(details: { status: number; body?: unknown }) {
     if (!isLoggingEnabled()) return;
     console.log('[ADA-BMP API] Response:', details);

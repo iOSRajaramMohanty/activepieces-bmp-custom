@@ -1,0 +1,881 @@
+{
+  "info": {
+    "name": "Activepieces MCP Server",
+    "description": "Complete Postman collection for validating the Activepieces MCP Server.\n\nSetup:\n1. Set projectId and token in the Variables tab\n2. All requests inherit Bearer auth from the collection\n3. The Accept header (application/json, text/event-stream) is required by Streamable HTTP transport\n\nAll requests use POST to the same endpoint. The MCP method is specified in the JSON-RPC body.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4300/api/v1/projects/{{projectId}}/mcp-server/http",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "YOUR_PROJECT_ID",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "flowId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tableId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "recordId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. MCP Protocol",
+      "item": [
+        {
+          "name": "Initialize (Handshake)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 1,\n    \"method\": \"initialize\",\n    \"params\": {\n        \"protocolVersion\": \"2025-03-26\",\n        \"capabilities\": {},\n        \"clientInfo\": { \"name\": \"postman-test\", \"version\": \"1.0.0\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "MCP handshake. Confirms the server is alive and returns protocol version and capabilities."
+          }
+        },
+        {
+          "name": "List All Tools",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 2,\n    \"method\": \"tools/list\",\n    \"params\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Returns all registered MCP tools with name, description, inputSchema, and annotations."
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Discovery Tools (always on)",
+      "item": [
+        {
+          "name": "ap_list_flows",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 3,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_flows\",\n        \"arguments\": {}\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List all flows in the current project."
+          }
+        },
+        {
+          "name": "ap_flow_structure",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 4,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_flow_structure\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Get step tree, config status, and valid insert locations for a flow."
+          }
+        },
+        {
+          "name": "ap_list_pieces",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 5,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_pieces\",\n        \"arguments\": {\n            \"searchQuery\": \"slack\",\n            \"includeActions\": true,\n            \"includeTriggers\": true\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List available pieces with actions and triggers. Change searchQuery to filter."
+          }
+        },
+        {
+          "name": "ap_list_connections",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 6,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_connections\",\n        \"arguments\": {}\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List OAuth/app connections in the project."
+          }
+        },
+        {
+          "name": "ap_list_ai_models",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 7,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_ai_models\",\n        \"arguments\": {}\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List configured AI providers and their available models."
+          }
+        },
+        {
+          "name": "ap_list_tables",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 8,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_tables\",\n        \"arguments\": {}\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List all tables with fields and row counts."
+          }
+        },
+        {
+          "name": "ap_find_records",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 9,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_find_records\",\n        \"arguments\": {\n            \"tableId\": \"{{tableId}}\",\n            \"filters\": [\n                { \"fieldName\": \"status\", \"operator\": \"eq\", \"value\": \"active\" }\n            ],\n            \"limit\": 10\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Query records from a table with optional filtering. Operators: eq, neq, gt, gte, lt, lte, co, exists, not_exists."
+          }
+        },
+        {
+          "name": "ap_list_runs",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 10,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_list_runs\",\n        \"arguments\": {\n            \"limit\": 5\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "List recent flow runs. Optional filters: flowId, status, limit."
+          }
+        },
+        {
+          "name": "ap_get_run",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 11,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_get_run\",\n        \"arguments\": { \"flowRunId\": \"{{runId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Get detailed results of a flow run including step-by-step outputs."
+          }
+        },
+        {
+          "name": "ap_setup_guide",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 12,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_setup_guide\",\n        \"arguments\": { \"topic\": \"connection\", \"pieceName\": \"@activepieces/piece-gmail\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Get setup instructions for connections or AI providers."
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Flow Management",
+      "item": [
+        {
+          "name": "ap_create_flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 13,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_create_flow\",\n        \"arguments\": { \"flowName\": \"My New Flow\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Create a new empty flow. Save the returned flowId."
+          }
+        },
+        {
+          "name": "ap_rename_flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 14,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_rename_flow\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\", \"displayName\": \"Renamed Flow\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Rename an existing flow."
+          }
+        },
+        {
+          "name": "ap_lock_and_publish",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 15,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_lock_and_publish\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Publish and enable the current draft. Returns validation errors if flow is not ready."
+          }
+        },
+        {
+          "name": "ap_change_flow_status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 16,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_change_flow_status\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\", \"status\": \"ENABLED\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Enable or disable a flow. Status: ENABLED or DISABLED."
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Flow Building",
+      "item": [
+        {
+          "name": "ap_update_trigger",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 17,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_trigger\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"pieceName\": \"@activepieces/piece-schedule\",\n            \"pieceVersion\": \"~0.2.0\",\n            \"triggerName\": \"every_hour_trigger\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Set or update the trigger. Use ap_list_pieces to get valid pieceName, pieceVersion, triggerName."
+          }
+        },
+        {
+          "name": "ap_add_step (PIECE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 18,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_add_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"parentStepName\": \"trigger\",\n            \"stepLocationRelativeToParent\": \"AFTER\",\n            \"stepType\": \"PIECE\",\n            \"displayName\": \"Send Slack Message\",\n            \"pieceName\": \"@activepieces/piece-slack\",\n            \"pieceVersion\": \"~0.5.0\",\n            \"actionName\": \"send_channel_message\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add a PIECE step skeleton. Configure afterwards with ap_update_step."
+          }
+        },
+        {
+          "name": "ap_add_step (CODE)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 19,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_add_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"parentStepName\": \"trigger\",\n            \"stepLocationRelativeToParent\": \"AFTER\",\n            \"stepType\": \"CODE\",\n            \"displayName\": \"Transform Data\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add a CODE step skeleton. Note: source code must be edited in the Activepieces UI (known limitation)."
+          }
+        },
+        {
+          "name": "ap_update_step",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 20,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"stepName\": \"step_1\",\n            \"input\": {\n                \"channel\": \"general\",\n                \"text\": \"Hello from MCP! {{trigger.output.message}}\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Update step settings. Works best for PIECE steps. Use auth field for connection externalId."
+          }
+        },
+        {
+          "name": "ap_delete_step",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 21,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_delete_step\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\", \"stepName\": \"step_1\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Delete a step from a flow."
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Router and Branching",
+      "item": [
+        {
+          "name": "ap_add_branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 22,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_add_branch\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"routerStepName\": \"step_1\",\n            \"branchName\": \"High Priority\",\n            \"conditions\": [[{\n                \"firstValue\": \"{{trigger.output.priority}}\",\n                \"operator\": \"TEXT_CONTAINS\",\n                \"secondValue\": \"high\"\n            }]]\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add a conditional branch to a ROUTER step."
+          }
+        },
+        {
+          "name": "ap_delete_branch",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 23,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_delete_branch\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"routerStepName\": \"step_1\",\n            \"branchIndex\": 0\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Delete a branch from a ROUTER step. Cannot delete the fallback (last) branch."
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Annotations",
+      "item": [
+        {
+          "name": "ap_manage_notes (ADD)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 24,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_manage_notes\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"operation\": \"ADD\",\n            \"content\": \"This flow handles new Salesforce records\",\n            \"color\": \"blue\",\n            \"position\": { \"x\": 300, \"y\": 0 },\n            \"size\": { \"width\": 250, \"height\": 150 }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add a canvas note. Colors: orange, red, green, blue, purple, yellow."
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Tables",
+      "item": [
+        {
+          "name": "ap_create_table",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 25,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_create_table\",\n        \"arguments\": {\n            \"name\": \"Contacts\",\n            \"fields\": [\n                { \"name\": \"Name\", \"type\": \"TEXT\" },\n                { \"name\": \"Email\", \"type\": \"TEXT\" },\n                { \"name\": \"Age\", \"type\": \"NUMBER\" },\n                { \"name\": \"Status\", \"type\": \"STATIC_DROPDOWN\", \"options\": [\"Active\", \"Inactive\"] }\n            ]\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Create a table. Field types: TEXT, NUMBER, DATE, STATIC_DROPDOWN."
+          }
+        },
+        {
+          "name": "ap_manage_fields (ADD)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 26,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_manage_fields\",\n        \"arguments\": {\n            \"tableId\": \"{{tableId}}\",\n            \"operation\": \"ADD\",\n            \"name\": \"Phone\",\n            \"type\": \"TEXT\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add, rename, or delete fields. Operations: ADD, UPDATE, DELETE."
+          }
+        },
+        {
+          "name": "ap_insert_records",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 27,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_insert_records\",\n        \"arguments\": {\n            \"tableId\": \"{{tableId}}\",\n            \"records\": [\n                { \"Name\": \"Alice\", \"Email\": \"alice@example.com\", \"Age\": \"30\", \"Status\": \"Active\" },\n                { \"Name\": \"Bob\", \"Email\": \"bob@example.com\", \"Age\": \"25\", \"Status\": \"Inactive\" }\n            ]\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Insert 1-50 records. Use field names (not IDs)."
+          }
+        },
+        {
+          "name": "ap_update_record",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 28,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_record\",\n        \"arguments\": {\n            \"tableId\": \"{{tableId}}\",\n            \"recordId\": \"{{recordId}}\",\n            \"fields\": { \"Status\": \"Active\" }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Update specific cells in a record. Only specified fields are changed."
+          }
+        },
+        {
+          "name": "ap_delete_records",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 29,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_delete_records\",\n        \"arguments\": { \"recordIds\": [\"{{recordId}}\"] }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Permanently delete one or more records."
+          }
+        },
+        {
+          "name": "ap_delete_table",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 30,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_delete_table\",\n        \"arguments\": { \"tableId\": \"{{tableId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Permanently delete a table and all its data."
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Testing and Runs",
+      "item": [
+        {
+          "name": "ap_test_flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 31,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_test_flow\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Test a flow end-to-end using saved sample data. Polls up to 120 seconds."
+          }
+        },
+        {
+          "name": "ap_test_step",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 32,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_test_step\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\", \"stepName\": \"step_1\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Test a single step. Runs all steps up to and including the target."
+          }
+        },
+        {
+          "name": "ap_retry_run",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 33,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_retry_run\",\n        \"arguments\": {\n            \"flowRunId\": \"{{runId}}\",\n            \"strategy\": \"FROM_FAILED_STEP\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Retry a failed run. Strategies: FROM_FAILED_STEP or ON_LATEST_VERSION."
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. MCP Trigger Flow (Custom Tool)",
+      "description": "End-to-end: create flow, configure MCP trigger, add Code + Reply, publish, call the hashed tool name.\n\nStep numbering: Step 1 only creates an empty flow (default trigger name is `trigger`). There is NO separate request named \"Step 1 update\" — Step 2 (`ap_update_trigger`) is what replaces/configures that trigger as the MCP Tool piece. After Step 3 adds the Code step, use Step 3b to map `personName` via API (MCP webhook does not auto-fill Code `inputs`; publish before calling the tool so the webhook runs the published version).",
+      "item": [
+        {
+          "name": "Step 1 - Create Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 40,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_create_flow\",\n        \"arguments\": { \"flowName\": \"Greeting MCP Tool\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Create the flow. Copy the flowId from the response into the collection variable."
+          }
+        },
+        {
+          "name": "Step 2 - Set MCP Trigger (updates trigger from Step 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 41,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_trigger\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"pieceName\": \"@activepieces/piece-mcp\",\n            \"pieceVersion\": \"~0.0.17\",\n            \"triggerName\": \"mcp_tool\",\n            \"input\": {\n                \"toolName\": \"get_greeting\",\n                \"toolDescription\": \"Returns a greeting for the given name\",\n                \"inputSchema\": [\n                    {\n                        \"name\": \"personName\",\n                        \"type\": \"Text\",\n                        \"required\": true,\n                        \"description\": \"The name of the person to greet\"\n                    }\n                ],\n                \"returnsResponse\": true\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "This is the trigger configuration step after create — `ap_update_trigger` on the existing `trigger` step (internal name stays `trigger` on new flows). MCP tool name, params, and wait-for-response.\n\nFor inputSchema[].type use exact labels: Text, Boolean, Date, Number, Array, Object (not TEXT/NUMBER)."
+          }
+        },
+        {
+          "name": "Step 3 - Add Code Step",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 42,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_add_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"parentStepName\": \"trigger\",\n            \"stepLocationRelativeToParent\": \"AFTER\",\n            \"stepType\": \"CODE\",\n            \"displayName\": \"Build Greeting\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add a CODE skeleton (first action is usually `step_1`). Edit source in the UI: use `export const code`, not `run`.\n\nThen run Step 3b to map `personName`, or in the UI Inputs set personName = {{trigger.personName}} (internal trigger name is `trigger` unless renamed)."
+          }
+        },
+        {
+          "name": "Step 3b - Map Code step input personName (ap_update_step)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 47,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"stepName\": \"step_1\",\n            \"input\": {\n                \"personName\": \"{{trigger.personName}}\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Maps MCP tool arguments into the Code step: `inputs.personName` is resolved from the trigger output. Default new-flow trigger **internal** name is `trigger`; use `ap_flow_structure` if your code step is not `step_1` or names differ. This does not change Code **source** (still set `export const code` in the UI). Required for correct MCP `tools/call` unless you set the same mapping in the builder."
+          }
+        },
+        {
+          "name": "Step 4 - Add Reply Action",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 43,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_add_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"parentStepName\": \"step_1\",\n            \"stepLocationRelativeToParent\": \"AFTER\",\n            \"stepType\": \"PIECE\",\n            \"displayName\": \"Reply to MCP Client\",\n            \"pieceName\": \"@activepieces/piece-mcp\",\n            \"pieceVersion\": \"~0.0.17\",\n            \"actionName\": \"reply_to_mcp_client\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Add the Reply to MCP Client action."
+          }
+        },
+        {
+          "name": "Step 5 - Configure Reply",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 44,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_update_step\",\n        \"arguments\": {\n            \"flowId\": \"{{flowId}}\",\n            \"stepName\": \"step_2\",\n            \"input\": {\n                \"mode\": \"simple\",\n                \"response\": {\n                    \"response\": {\n                        \"message\": \"{{step_1.greeting}}\"\n                    }\n                },\n                \"respond\": \"stop\"\n            }\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Configure Reply to MCP Client. In Simple mode the inner response must be an object (e.g. message key), not a bare string — otherwise the UI splits the string into one character per row. Use response.response.message or switch to Advanced + JSON."
+          }
+        },
+        {
+          "name": "Step 6 - Publish Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 45,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"ap_lock_and_publish\",\n        \"arguments\": { \"flowId\": \"{{flowId}}\" }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Publish and enable the flow. After this, the tool appears in tools/list."
+          }
+        },
+        {
+          "name": "Step 7 - Call Custom Tool",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json, text/event-stream" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"jsonrpc\": \"2.0\",\n    \"id\": 46,\n    \"method\": \"tools/call\",\n    \"params\": {\n        \"name\": \"REPLACE_WITH_NAME_FROM_tools_list\",\n        \"arguments\": {\n            \"personName\": \"Alice\"\n        }\n    }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}",
+              "host": ["{{baseUrl}}"]
+            },
+            "description": "Call the custom MCP tool. Flow tools are NOT named {toolName}_mcp. Server builds: sanitize(lowercase(toolName + '_' + flowId.slice(0,4))) + '_' + 6-char hash + '_mcp'. Example: get_greeting + rCIt... → get_greeting_rcit_nyht0e_mcp. Always run List All Tools first and copy the exact name. Flow must be ENABLED and published."
+          }
+        }
+      ]
+    }
+  ]
+}

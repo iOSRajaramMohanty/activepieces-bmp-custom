@@ -3,6 +3,7 @@ import { httpClient, HttpMethod, AuthenticationType } from '@activepieces/pieces
 import { adaBmpAuth } from './auth';
 import { API_ENDPOINTS, debugLog, fetchMetadata, extractApiToken } from './config';
 
+
 /**
  * Mapping from channel names to platform codes
  */
@@ -958,109 +959,69 @@ export const adaBmpTemplate = <R extends boolean>(required: R) =>
           categoriesInResponse: [...new Set(body.data.map(t => t.category))],
         });
         
-        // Filter only APPROVED templates by selected category, then sort by createdDate (newest first)
-        // Normalize category comparison (trim and uppercase for consistency)
+        // Filter only APPROVED templates by selected category, then sort by createdDate (newest first).
         const normalizedSelectedCategory = (selectedCategory || '').trim().toUpperCase();
-        const templates = body.data
+        const isMarketingOrUtility =
+          normalizedSelectedCategory === 'MARKETING' || normalizedSelectedCategory === 'UTILITY';
+
+        const getDateValue = (template: { createdDate?: string | number | Date }): number => {
+          if (!template.createdDate) return 0;
+          if (typeof template.createdDate === 'number') return template.createdDate;
+          if (template.createdDate instanceof Date) return template.createdDate.getTime();
+          if (typeof template.createdDate === 'string') {
+            const date = new Date(template.createdDate);
+            return isNaN(date.getTime()) ? 0 : date.getTime();
+          }
+          return 0;
+        };
+
+        const approvedInCategory = body.data
           .filter((template) => {
             const isApproved = template.status === 'APPROVED';
             const templateCategoryValue = (template.category || '').trim().toUpperCase();
-            const matchesCategory = templateCategoryValue === normalizedSelectedCategory;
-            
-            // For MARKETING and UTILITY categories, only show templates where isCallPermissionRequest === true
-            // For AUTHENTICATION category, show all templates (no isCallPermissionRequest filter)
-            let matchesCallPermissionRequirement = true;
-            if (normalizedSelectedCategory === 'MARKETING' || normalizedSelectedCategory === 'UTILITY') {
-              matchesCallPermissionRequirement = template.isCallPermissionRequest === true;
-            }
-            
-            const shouldInclude = isApproved && matchesCategory && matchesCallPermissionRequirement;
-            
-            // Always log filtering decisions for debugging
-            if (!shouldInclude && isApproved && matchesCategory) {
-              console.log('[ADA-BMP Template Filter] Template filtered out', {
-                name: template.name,
-                templateCategory: template.category,
-                normalizedTemplateCategory: templateCategoryValue,
-                selectedCategory: selectedCategory,
-                normalizedSelectedCategory: normalizedSelectedCategory,
-                isCallPermissionRequest: template.isCallPermissionRequest,
-                matchesCategory,
-                matchesCallPermissionRequirement,
-                reason: !matchesCategory ? 'category mismatch' : !matchesCallPermissionRequirement ? 'isCallPermissionRequest is not true' : 'not approved',
-              });
-            }
-            
-            if (shouldInclude) {
-              console.log('[ADA-BMP Template Filter] Template included', {
-                name: template.name,
-                category: template.category,
-                isCallPermissionRequest: template.isCallPermissionRequest,
-              });
-            }
-            
-            return shouldInclude;
+            return isApproved && templateCategoryValue === normalizedSelectedCategory;
           })
-          .sort((a, b) => {
-            // Sort by createdDate (newest first)
-            // Handle different date formats: string, timestamp, or Date object
-            const getDateValue = (template: typeof a): number => {
-              if (!template.createdDate) {
-                return 0; // Put templates without date at the end
-              }
-              
-              if (typeof template.createdDate === 'number') {
-                return template.createdDate;
-              }
-              
-              if (template.createdDate instanceof Date) {
-                return template.createdDate.getTime();
-              }
-              
-              if (typeof template.createdDate === 'string') {
-                const date = new Date(template.createdDate);
-                return isNaN(date.getTime()) ? 0 : date.getTime();
-              }
-              
-              return 0;
-            };
-            
-            const dateA = getDateValue(a);
-            const dateB = getDateValue(b);
-            
-            // Sort descending (newest first)
-            return dateB - dateA;
-          });
-        
-        // Always log results for debugging
-        console.log('[ADA-BMP Template Filter] Filtering complete', { 
-          count: templates.length, 
+          .sort((a, b) => getDateValue(b) - getDateValue(a));
+
+        // For MARKETING/UTILITY: visually group using label prefixes.
+        const callPermissionTemplates = isMarketingOrUtility
+          ? approvedInCategory.filter(t => t.isCallPermissionRequest === true)
+          : [];
+        const standardTemplates = isMarketingOrUtility
+          ? approvedInCategory.filter(t => t.isCallPermissionRequest !== true)
+          : [];
+        const ordered = isMarketingOrUtility
+          ? [...callPermissionTemplates, ...standardTemplates]
+          : approvedInCategory;
+
+        console.log('[ADA-BMP Template Filter] Filtering complete', {
+          category: selectedCategory,
+          totalApprovedInCategory: approvedInCategory.length,
+          callPermissionTemplates: callPermissionTemplates.length,
+          standardTemplates: standardTemplates.length,
+          orderedCount: ordered.length,
+          filteredFrom: body.data.length,
+        });
+
+        debugLog('Templates fetched successfully', {
+          count: ordered.length,
           category: selectedCategory,
           filteredFrom: body.data.length,
-          sortedBy: 'createdDate (newest first)',
-          templateNames: templates.map(t => t.name),
         });
-        
-        debugLog('Templates fetched successfully', { 
-          count: templates.length, 
-          category: selectedCategory,
-          filteredFrom: body.data.length,
-          sortedBy: 'createdDate (newest first)'
-        });
-        
+
         return {
           disabled: false,
           placeholder: `Select template (optional) - ${selectedCategory} templates`,
-          options: templates.map((template) => {
+          options: ordered.map((template) => {
+            const label = isMarketingOrUtility
+              ? template.isCallPermissionRequest === true
+                ? `[CP] ${template.name}`
+                : `[STD] ${template.name}`
+              : template.name;
+
             return {
-              label: template.name, // Display only the template name from API
-              value: JSON.stringify({ 
-                id: template.id, 
-                name: template.name, 
-                category: template.category,
-                type: template.type,
-                isCallPermissionRequest: template.isCallPermissionRequest || false
-              }),
+              label,
+              value: template.name,
             };
           }),
         };
