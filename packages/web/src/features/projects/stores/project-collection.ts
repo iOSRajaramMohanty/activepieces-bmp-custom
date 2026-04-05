@@ -149,16 +149,21 @@ export const projectCollectionUtils = {
     };
   },
   useAll: () => {
-    // Don't filter on frontend - backend already applies access filters
-    // This allows operators/members to see admin's personal projects
+    const currentUserId = authenticationSession.getCurrentUserId();
     return useLiveSuspenseQuery(
       (q) =>
         q
           .from({ project: projectCollection })
+          .where(({ project }) =>
+            or(
+              eq(project.type, ProjectType.TEAM),
+              eq(project.ownerId, currentUserId),
+            ),
+          )
           .orderBy(({ project }) => project.type, 'asc')
           .orderBy(({ project }) => project.created, 'asc')
           .select(({ project }) => ({ ...project })),
-      [],
+      [currentUserId],
     );
   },
   useAllPlatformProjects: (filters?: {
