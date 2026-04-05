@@ -1,8 +1,8 @@
 name: Continuous Delivery — Cloud
 
 on:
-  schedule:
-    - cron: '0 9 * * *'  # Daily at 9 AM UTC — promote staging to prod
+  # schedule:
+  #   - cron: '0 9 * * *'  # Daily at 9 AM UTC — promote staging to prod
   workflow_dispatch:
     inputs:
       image_tag:
