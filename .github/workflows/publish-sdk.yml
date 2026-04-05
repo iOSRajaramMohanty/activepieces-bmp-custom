@@ -34,7 +34,9 @@ jobs:
           scope: "@iosrajarammohanty"
 
       - name: Install dependencies
-        run: bun install
+        run: |
+          printf '[install]\nlinker = "hoisted"\n' > bunfig.toml
+          bun install
 
       - name: Build SDK bundle
         run: npx nx run react-ui-sdk:bundle --skip-nx-cache
