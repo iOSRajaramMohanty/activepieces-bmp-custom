@@ -59,14 +59,13 @@ RUN unzip bun.zip \
 
 RUN bun --version
 
-# Install global npm packages in a single layer (build stage only)
+# Install global npm packages in a single layer
 RUN --mount=type=cache,target=/root/.npm \
     npm install -g --no-fund --no-audit \
     node-gyp \
     npm@11.11.0 \
     pm2@6.0.10 \
     typescript@4.9.4 \
-    pnpm@10.33.0 \
     esbuild@0.25.0
 
     
@@ -187,7 +186,7 @@ COPY --from=build /usr/src/app/packages/shared ./packages/shared
 COPY --from=build /usr/src/app/packages/pieces ./packages/pieces
 COPY --from=build /usr/src/app/dist/packages/pieces/custom/ada-bmp/ ./packages/pieces/custom/ada-bmp/dist/
 
-# Copy workspace package.json files (needed for workspace resolution)
+# Copy workspace package.json files (needed for bun workspace resolution)
 COPY --from=build /usr/src/app/packages ./packages
 
 # Copy built engine
