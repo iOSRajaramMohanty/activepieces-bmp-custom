@@ -34,9 +34,16 @@ jobs:
           scope: "@iosrajarammohanty"
 
       - name: Install dependencies
+        run: bun install
+
+      - name: Fix workspace symlinks
         run: |
-          printf '[install]\nlinker = "hoisted"\n' > bunfig.toml
-          bun install
+          rm -f node_modules/@activepieces/shared
+          rm -f node_modules/@activepieces/pieces-framework
+          rm -f node_modules/@activepieces/pieces-common
+          ln -s ../../packages/shared node_modules/@activepieces/shared
+          ln -s ../../packages/pieces/framework node_modules/@activepieces/pieces-framework
+          ln -s ../../packages/pieces/common node_modules/@activepieces/pieces-common
 
       - name: Build SDK bundle
         run: npx nx run react-ui-sdk:bundle --skip-nx-cache
