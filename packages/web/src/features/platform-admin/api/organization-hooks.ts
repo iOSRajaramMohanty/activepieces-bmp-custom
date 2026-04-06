@@ -9,10 +9,23 @@ import { toast } from 'sonner';
 import { organizationApi } from './organization-api';
 
 export const organizationHooks = {
-  useOrganizations(platformId: string) {
+  useOrganizations(
+    platformId: string,
+    options?: { availableForAdminInvite?: boolean },
+  ) {
     return useQuery({
-      queryKey: ['organizations', platformId],
-      queryFn: () => organizationApi.list(platformId, { limit: 100 }),
+      queryKey: [
+        'organizations',
+        platformId,
+        options?.availableForAdminInvite ?? false,
+      ],
+      queryFn: () =>
+        organizationApi.list(platformId, {
+          limit: 100,
+          ...(options?.availableForAdminInvite === true
+            ? { availableForAdminInvite: true }
+            : {}),
+        }),
       enabled: !!platformId,
     });
   },

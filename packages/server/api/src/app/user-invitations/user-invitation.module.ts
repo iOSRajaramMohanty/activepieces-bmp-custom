@@ -66,7 +66,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                     }
                     
                     // Handle organization for ADMIN invitations from OWNER
-                    // ADMIN invite: organization only, no environment; multiple Admins per org allowed
+                    // ADMIN invite: organization only, no environment; one Admin per org (enforced server-side)
                     if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
                         const body = request.body as any;
                         // Accept either organizationName (for creating new) or organizationId (for existing)
@@ -107,6 +107,10 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                                 platformId: request.principal.platform.id,
                             })
                         }
+                        await organizationService.assertOrganizationIsAvailableForAdminInvite(
+                            request.principal.platform.id,
+                            organization.id,
+                        )
                         organizationId = organization.id
                         // No environment for ADMIN; org's shared project used on accept
                         

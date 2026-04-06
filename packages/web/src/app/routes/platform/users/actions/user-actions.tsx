@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { authenticationSession } from '../../../../../lib/authentication-session';
 import { UserRowData } from '../index';
 
 import { UpdateUserDialog } from './update-user-dialog';
@@ -41,6 +42,8 @@ export const UserActions = ({
   const isInvitation = row.type === 'invitation';
   const isAdmin = !isInvitation && row.data.platformRole === PlatformRole.ADMIN;
   const isActive = !isInvitation && row.data.status === UserStatus.ACTIVE;
+  const isSelf =
+    !isInvitation && row.data.id === authenticationSession.getCurrentUserId();
 
   return (
     <div className="flex justify-end">
@@ -66,7 +69,7 @@ export const UserActions = ({
           )}
           {!isInvitation && (
             <DropdownMenuItem
-              disabled={isAdmin || isUpdatingStatus}
+              disabled={isSelf || isAdmin || isUpdatingStatus}
               onSelect={() => {
                 onToggleStatus(row.data.id, row.data.status);
                 setOpen(false);
@@ -80,28 +83,32 @@ export const UserActions = ({
               {isActive ? t('Deactivate') : t('Activate')}
             </DropdownMenuItem>
           )}
-          <ConfirmationDeleteDialog
-            title={isInvitation ? t('Delete Invitation') : t('Delete User')}
-            message={
-              isInvitation
-                ? t('This invitation will be permanently deleted.')
-                : t('This user and all their data will be permanently deleted.')
-            }
-            entityName={`${isInvitation ? t('Invitation') : t('User')} ${
-              row.data.email
-            }`}
-            mutationFn={async () => {
-              onDelete(isInvitation ? row.id : row.data.id, isInvitation);
-            }}
-          >
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={(e) => e.preventDefault()}
+          {!isSelf && (
+            <ConfirmationDeleteDialog
+              title={isInvitation ? t('Delete Invitation') : t('Delete User')}
+              message={
+                isInvitation
+                  ? t('This invitation will be permanently deleted.')
+                  : t(
+                      'This user and all their data will be permanently deleted.',
+                    )
+              }
+              entityName={`${isInvitation ? t('Invitation') : t('User')} ${
+                row.data.email
+              }`}
+              mutationFn={async () => {
+                onDelete(isInvitation ? row.id : row.data.id, isInvitation);
+              }}
             >
-              <Trash className="h-4 w-4" />
-              {t('Delete')}
-            </DropdownMenuItem>
-          </ConfirmationDeleteDialog>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <Trash className="h-4 w-4" />
+                {t('Delete')}
+              </DropdownMenuItem>
+            </ConfirmationDeleteDialog>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

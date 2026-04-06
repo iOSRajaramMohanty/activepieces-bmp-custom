@@ -53,6 +53,7 @@ export const platformUserController: FastifyPluginAsyncZod = async (app) => {
         await userService(req.log).delete({
             id: req.params.id,
             platformId,
+            callerId: req.principal.id,
         })
 
         return res.status(StatusCodes.NO_CONTENT).send()

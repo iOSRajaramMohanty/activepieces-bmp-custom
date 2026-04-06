@@ -1,11 +1,19 @@
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEntity } from './organization.entity'
 import { OrganizationEnvironmentEntity } from './organization-environment.entity'
-import { Organization, apId, SeekPage } from '@activepieces/shared'
-import { ActivepiecesError, ErrorCode } from '@activepieces/shared'
+import {
+    ActivepiecesError,
+    ErrorCode,
+    InvitationStatus,
+    Organization,
+    PlatformRole,
+    SeekPage,
+    apId,
+} from '@activepieces/shared'
 import { UserEntity } from '../user/user-entity'
 import { AppConnectionEntity } from '../app-connection/app-connection.entity'
-import { Like, In } from 'typeorm'
+import { In, IsNull, Like, Not } from 'typeorm'
+import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
 import { FlowEntity } from '../flows/flow/flow.entity'
 import { ProjectEntity } from '../project/project-entity'
 import pino from 'pino'
@@ -69,7 +77,7 @@ export const organizationService = {
     },
 
     async list(params: ListOrganizationsParams): Promise<SeekPage<Organization>> {
-        const { platformId, limit = 50, cursor, userId, userOrganizationId, userPlatformRole } = params
+        const { platformId, limit = 50, cursor, userId: _userId, userOrganizationId, userPlatformRole, availableForAdminInvite } = params
 
         const query = databaseConnection()
             .getRepository(OrganizationEntity)
@@ -82,6 +90,13 @@ export const organizationService = {
         const isPrivileged = userPlatformRole === 'OWNER' || userPlatformRole === 'SUPER_ADMIN'
         if (!isPrivileged && userOrganizationId) {
             query.andWhere('organization.id = :userOrganizationId', { userOrganizationId })
+        }
+
+        if (availableForAdminInvite === true) {
+            const blockedIds = await getOrganizationIdsBlockedFromAdminInvite(platformId)
+            if (blockedIds.length > 0) {
+                query.andWhere('organization.id NOT IN (:...blockedIds)', { blockedIds })
+            }
         }
 
         if (cursor) {
@@ -210,6 +225,50 @@ export const organizationService = {
 
         return await this.create(params)
     },
+
+    async assertOrganizationIsAvailableForAdminInvite(platformId: string, organizationId: string): Promise<void> {
+        const blocked = await getOrganizationIdsBlockedFromAdminInvite(platformId)
+        if (blocked.includes(organizationId)) {
+            throw new ActivepiecesError({
+                code: ErrorCode.VALIDATION,
+                params: {
+                    message: 'organizationAlreadyHasAdmin',
+                },
+            })
+        }
+    },
+}
+
+async function getOrganizationIdsBlockedFromAdminInvite(platformId: string): Promise<string[]> {
+    const adminUsers = await databaseConnection()
+        .getRepository(UserEntity)
+        .find({
+            where: {
+                platformId,
+                platformRole: PlatformRole.ADMIN,
+                organizationId: Not(IsNull()),
+            },
+            select: ['organizationId'],
+        })
+    const fromUsers = adminUsers
+        .map((u) => u.organizationId)
+        .filter((id): id is string => id != null && id !== '')
+
+    const adminInvites = await databaseConnection()
+        .getRepository(UserInvitationEntity)
+        .createQueryBuilder('inv')
+        .where('inv.platformId = :platformId', { platformId })
+        .andWhere('inv.platformRole = :adminRole', { adminRole: PlatformRole.ADMIN })
+        .andWhere('inv.organizationId IS NOT NULL')
+        .andWhere('inv.status IN (:...statuses)', {
+            statuses: [InvitationStatus.PENDING, InvitationStatus.ACCEPTED],
+        })
+        .getMany()
+    const fromInvites = adminInvites
+        .map((inv) => inv.organizationId)
+        .filter((id): id is string => id != null && id !== '')
+
+    return [...new Set([...fromUsers, ...fromInvites])]
 }
 
 type CreateOrganizationParams = {
@@ -224,4 +283,5 @@ type ListOrganizationsParams = {
     userId?: string
     userOrganizationId?: string | undefined
     userPlatformRole?: string
+    availableForAdminInvite?: boolean
 }

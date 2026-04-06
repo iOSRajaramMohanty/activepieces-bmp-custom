@@ -3,10 +3,11 @@ import {
   Permission,
   PlatformRole,
   ProjectType,
+  ProjectWithLimits,
   UserInvitationWithLink,
 } from '@activepieces/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { CopyIcon } from 'lucide-react';
 import { useState, useRef } from 'react';
@@ -44,18 +45,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { userInvitationApi } from '@/features/members/api/user-invitation';
 import { PlatformRoleSelect } from '@/features/members/components/platform-role-select';
 import { ProjectRoleSelect } from '@/features/members/components/project-role-select';
-import { organizationHooks } from '@/features/platform-admin/api/organization-hooks';
-import { projectCollectionUtils } from '@/features/projects/stores/project-collection';
-import { useAuthorization } from '@/hooks/authorization-hooks';
-import { platformHooks } from '@/hooks/platform-hooks';
-import { userHooks } from '@/hooks/user-hooks';
-import { HttpError } from '@/lib/api';
-import { authenticationSession } from '@/lib/authentication-session';
-import { formatUtils } from '@/lib/format-utils';
 
+import { useAuthorization } from '../../../../hooks/authorization-hooks';
+import { platformHooks } from '../../../../hooks/platform-hooks';
+import { userHooks } from '../../../../hooks/user-hooks';
+import { HttpError, api } from '../../../../lib/api';
+import { authenticationSession } from '../../../../lib/authentication-session';
+import { formatUtils } from '../../../../lib/format-utils';
+import { userInvitationApi } from '../../../members/api/user-invitation';
+import { organizationHooks } from '../../../platform-admin/api/organization-hooks';
+import { projectCollectionUtils } from '../../../projects/stores/project-collection';
 import { userInvitationsHooks } from '../../hooks/user-invitations-hooks';
 
 import { UserSuggestionsPopover } from './user-suggestions-popover';
@@ -88,7 +89,6 @@ export const InviteUserDialog = ({
 }) => {
   const { embedState } = useEmbedding();
   const [invitationLink, setInvitationLink] = useState('');
-  const [selectedOrg, setSelectedOrg] = useState<string>('');
 
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -99,12 +99,6 @@ export const InviteUserDialog = ({
   const { data: currentUser } = userHooks.useCurrentUser();
   const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   const projectId = authenticationSession.getProjectId();
-
-  // Fetch organizations for the platform
-  const { data: orgsData } = organizationHooks.useOrganizations(
-    platform?.id || '',
-  );
-  const organizations = orgsData?.data || [];
 
   // Get current project (hook must be called unconditionally; owners may have no project)
   const projectQuery = projectCollectionUtils.useCurrentProject();
@@ -166,6 +160,16 @@ export const InviteUserDialog = ({
       onInviteSuccess?.();
     },
     onError: (error) => {
+      const payload = error.response?.data as {
+        params?: { message?: string };
+      };
+      const serverMessage = payload?.params?.message;
+      if (serverMessage === 'organizationAlreadyHasAdmin') {
+        toast.error(t('organizationAlreadyHasAdmin'), {
+          duration: 4000,
+        });
+        return;
+      }
       toast.error(error.message || t('Failed to send invitations'), {
         duration: 4000,
       });
@@ -196,6 +200,40 @@ export const InviteUserDialog = ({
   const watchedInvitationType = form.watch('type');
   const watchedPlatformRole = form.watch('platformRole');
   const watchedOrganizationName = form.watch('organizationName');
+
+  const { data: orgsData } = organizationHooks.useOrganizations(
+    platform?.id || '',
+    isOwner && watchedPlatformRole === PlatformRole.ADMIN
+      ? { availableForAdminInvite: true }
+      : undefined,
+  );
+  const organizations = orgsData?.data || [];
+
+  const showSharedProjectInfo =
+    !isOwner &&
+    watchedInvitationType === InvitationType.PLATFORM &&
+    (watchedPlatformRole === PlatformRole.OPERATOR ||
+      watchedPlatformRole === PlatformRole.MEMBER);
+
+  const needsOrgLookup =
+    showSharedProjectInfo && !project && !!currentUser?.organizationId;
+  const { data: orgForSharedProject } = organizationHooks.useOrganization(
+    needsOrgLookup ? currentUser.organizationId ?? undefined : undefined,
+  );
+  const sharedProjectId = needsOrgLookup
+    ? orgForSharedProject?.projectId
+    : undefined;
+  const {
+    data: sharedProjectFromOrg,
+    isPending: isSharedProjectLoading,
+    isError: isSharedProjectError,
+  } = useQuery({
+    queryKey: ['invite-shared-project', sharedProjectId],
+    queryFn: () =>
+      api.get<ProjectWithLimits>(`/v1/projects/${sharedProjectId}`),
+    enabled: !!sharedProjectId,
+  });
+  const sharedProjectForInvite = project ?? sharedProjectFromOrg ?? null;
 
   const onSubmit = (data: FormSchema) => {
     if (data.emails.length === 0) {
@@ -403,6 +441,34 @@ export const InviteUserDialog = ({
                     <>
                       <PlatformRoleSelect form={form} />
 
+                      {showSharedProjectInfo && (
+                        <div className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+                          {sharedProjectForInvite ? (
+                            <>
+                              <p className="font-medium text-foreground">
+                                {t('SharedProjectForInvite')}:{' '}
+                                {sharedProjectForInvite.displayName}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {t('InviteeSharedProjectDescription')}
+                              </p>
+                            </>
+                          ) : needsOrgLookup && isSharedProjectLoading ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t('LoadingSharedProjectName')}
+                            </p>
+                          ) : needsOrgLookup && isSharedProjectError ? (
+                            <p className="text-xs text-destructive">
+                              {t('inviteDialogProjectLoadFailed')}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-destructive">
+                              {t('organizationMissingSharedProject')}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       {/* Show organization and environment selectors only for ADMIN role and OWNER users */}
                       {isOwner &&
                         watchedPlatformRole === PlatformRole.ADMIN && (
@@ -451,7 +517,7 @@ export const InviteUserDialog = ({
                                 </FormItem>
                               )}
                             />
-                            {/* Environment selector hidden for ADMIN — multiple Admins per org, shared project */}
+                            {/* Environment selector hidden for ADMIN — one Admin per org, shared project */}
                           </>
                         )}
                     </>

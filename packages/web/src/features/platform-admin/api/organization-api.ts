@@ -14,7 +14,14 @@ export const organizationApi = {
     return api.post<Organization>('/v1/organizations', request);
   },
 
-  list(platformId: string, params?: { limit?: number; cursor?: string }) {
+  list(
+    platformId: string,
+    params?: {
+      limit?: number;
+      cursor?: string;
+      availableForAdminInvite?: boolean;
+    },
+  ) {
     return api.get<SeekPage<Organization>>('/v1/organizations', {
       platformId,
       ...params,

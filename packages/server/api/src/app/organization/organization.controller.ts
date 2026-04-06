@@ -38,8 +38,13 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
 
     // List organizations
     app.get('/', ListOrganizationsRequestParams, async (request) => {
-        const { platformId, limit, cursor } = request.query as { platformId: string; limit?: number; cursor?: string }
-        
+        const { platformId, limit, cursor, availableForAdminInvite } = request.query as {
+            platformId: string
+            limit?: number
+            cursor?: string
+            availableForAdminInvite?: boolean
+        }
+
         // Get current user's organization info
         const { userService } = await import('../user/user-service')
         const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
@@ -51,6 +56,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             userId: request.principal.id,
             userOrganizationId: currentUser.organizationId || undefined,
             userPlatformRole: currentUser.platformRole,
+            availableForAdminInvite,
         })
     })
 
@@ -378,6 +384,7 @@ const ListOrganizationsRequestParams = {
             platformId: z.string(),
             limit: z.coerce.number().min(1).max(100).optional(),
             cursor: z.string().optional(),
+            availableForAdminInvite: z.coerce.boolean().optional(),
         }),
         // Response schema omitted due to TypeBox/Zod compatibility
     },

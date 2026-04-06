@@ -134,37 +134,13 @@ export const userService = (log: FastifyBaseLogger) => ({
             ...spreadIfDefined('externalId', externalId),
         })
         
-        // Apply role-based filtering for user list visibility
-        // OWNER (tenant): Can see all users in the platform
-        // ADMIN (sub-owner): Can only see users who are members of their personal project (their operators/members)
-        // OPERATOR/MEMBER: Should not access this endpoint (controlled by security)
         if (currentUserRole === PlatformRole.ADMIN && currentUserId) {
-            // ADMIN can only see:
-            // 1. Themselves
-            // 2. OPERATORS/MEMBERS who are members of their personal project
-            
-            // First, get the admin's personal project
-            const adminProject = await projectService(log).getOneByOwnerAndPlatform({
-                ownerId: currentUserId,
-                platformId,
-            })
-            
-            if (adminProject) {
-                // Get user IDs who are members of this project
-                const projectMemberUserIds = await databaseConnection().createQueryBuilder()
-                    .select('pm."userId"')
-                    .from('project_member', 'pm')
-                    .where('pm."projectId" = :projectId', { projectId: adminProject.id })
-                    .getRawMany()
-                
-                const memberUserIds = projectMemberUserIds.map((pm: any) => pm.userId)
-                
-                // Filter to show only: the admin themselves + their project members
-                queryBuilder.andWhere('user.id IN (:...userIds)', { 
-                    userIds: [currentUserId, ...memberUserIds] 
-                })
-            } else {
-                // If admin has no project, only show themselves
+            const currentUser = await userRepo().findOneBy({ id: currentUserId, platformId })
+            const orgId = currentUser?.organizationId
+            if (orgId) {
+                queryBuilder.andWhere('user.organizationId = :orgId', { orgId })
+            }
+            else {
                 queryBuilder.andWhere('user.id = :currentUserId', { currentUserId })
             }
         }
@@ -219,7 +195,7 @@ export const userService = (log: FastifyBaseLogger) => ({
             })),
         }
     },
-    async delete({ id, platformId }: DeleteParams): Promise<void> {
+    async delete({ id, platformId, callerId }: DeleteParams): Promise<void> {
         const platform = await platformService(log).getOneOrThrow(platformId)
         if (platform.ownerId === id) {
             throw new ActivepiecesError({
@@ -236,6 +212,30 @@ export const userService = (log: FastifyBaseLogger) => ({
 
         if (!userToDelete) {
             return
+        }
+
+        if (callerId) {
+            const caller = await userRepo().findOneBy({ id: callerId, platformId })
+            if (caller?.platformRole === PlatformRole.ADMIN) {
+                if (callerId === id) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.VALIDATION,
+                        params: {
+                            message: 'Admin cannot delete their own account',
+                        },
+                    })
+                }
+                const targetRole = userToDelete.platformRole
+                const sameOrg = !!caller.organizationId && caller.organizationId === userToDelete.organizationId
+                if (!sameOrg || (targetRole !== PlatformRole.OPERATOR && targetRole !== PlatformRole.MEMBER)) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.AUTHORIZATION,
+                        params: {
+                            message: 'Admin can only delete operators and members in the same organization',
+                        },
+                    })
+                }
+            }
         }
 
         // Store the identityId before deleting the user
@@ -427,6 +427,7 @@ type ListUsersForProjectParams = {
 type DeleteParams = {
     id: UserId
     platformId: PlatformId
+    callerId?: UserId
 }
 
 

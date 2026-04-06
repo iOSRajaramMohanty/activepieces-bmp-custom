@@ -17,6 +17,8 @@ export const ListOrganizationsRequest = Type.Object({
     platformId: Type.String(),
     cursor: Type.Optional(Type.String()),
     limit: Type.Optional(Type.Number({ minimum: 1, maximum: 100 })),
+    /** When true, exclude organizations that already have an Admin or a pending Admin invitation (OWNER admin-invite flow). */
+    availableForAdminInvite: Type.Optional(Type.Boolean()),
 })
 
 export type ListOrganizationsRequest = Static<typeof ListOrganizationsRequest>
