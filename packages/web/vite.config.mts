@@ -152,6 +152,24 @@ export default defineConfig(({ command, mode }) => {
         transformMixedEsModules: true,
       },
       rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined;
+            }
+            if (
+              id.includes('node_modules/react-dom') ||
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-router')
+            ) {
+              return 'vendor-react';
+            }
+            if (id.includes('@tanstack')) {
+              return 'vendor-tanstack';
+            }
+            return undefined;
+          },
+        },
         onLog(level, log, handler) {
           if (
             log.cause &&

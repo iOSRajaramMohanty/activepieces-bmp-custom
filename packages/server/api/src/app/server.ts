@@ -1,5 +1,6 @@
 import path from 'path'
 import { ApEnvironment, apId, ApMultipartFile, spreadIfDefined } from '@activepieces/shared'
+import compress from '@fastify/compress'
 import cors from '@fastify/cors'
 import formBody from '@fastify/formbody'
 import fastifyMultipart, { MultipartFile } from '@fastify/multipart'
@@ -152,6 +153,11 @@ async function setupBaseApp(): Promise<FastifyInstance> {
         origin: '*',
         exposedHeaders: ['*'],
         methods: ['*'],
+    })
+    await app.register(compress, {
+        global: true,
+        encodings: ['br', 'gzip'],
+        threshold: 1024,
     })
     // SurveyMonkey
     app.addContentTypeParser(
