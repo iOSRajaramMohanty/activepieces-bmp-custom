@@ -453,7 +453,7 @@ function AppConnectionsPage() {
     [userHasPermissionToWriteAppConnection, refresh],
   );
   return (
-    <div className="flex-col w-full">
+    <div className="flex flex-col w-full">
       <DataTable
         emptyStateTextTitle={t('No connections found')}
         emptyStateTextDescription={t(

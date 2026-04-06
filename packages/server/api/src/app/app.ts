@@ -82,6 +82,7 @@ import { projectHooks } from './project/project-hooks'
 import { projectModule } from './project/project-module'
 // BMP modules - conditionally loaded based on AP_BMP_ENABLED
 // Import references kept for type checking, actual registration is conditional
+import { isBmpEnabled } from './bmp/bmp-runtime'
 import { organizationModule } from './organization/organization.module'
 import { superAdminModule } from './super-admin/super-admin.module'
 import { authHooks } from './authentication/auth-hooks'
@@ -223,8 +224,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(platformModule)
     
     // BMP Modules - Conditionally registered based on AP_BMP_ENABLED
-    const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
-    if (bmpEnabled) {
+    if (isBmpEnabled()) {
         app.log.info('[BMP] BMP is enabled, registering organization and super-admin modules')
         await app.register(organizationModule)
         await app.register(superAdminModule)

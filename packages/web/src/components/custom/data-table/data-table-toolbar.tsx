@@ -1,4 +1,8 @@
-import { cn, DASHBOARD_CONTENT_PADDING_X } from '@/lib/utils';
+import {
+  cn,
+  DASHBOARD_CONTENT_PADDING_X,
+  DASHBOARD_FILTER_TOOLBAR_VERTICAL,
+} from '@/lib/utils';
 
 type DataTableToolbarProps = {
   children?: React.ReactNode;
@@ -8,7 +12,8 @@ const DataTableToolbar = (params: DataTableToolbarProps) => {
   return (
     <div
       className={cn(
-        'flex items-center justify-between pb-4 overflow-auto gap-4',
+        'flex items-center justify-between overflow-auto gap-4',
+        DASHBOARD_FILTER_TOOLBAR_VERTICAL,
         DASHBOARD_CONTENT_PADDING_X,
       )}
     >

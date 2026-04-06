@@ -23,6 +23,7 @@ import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
 import { z } from 'zod'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
+import { isBmpEnabled } from '../bmp/bmp-runtime'
 import { ProjectResourceType } from '../core/security/authorization/common'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { platformMustBeOwnedByCurrentUser, platformMustHaveFeatureEnabled, projectMustBeTeamType } from '../ee/authentication/ee-authorization'
@@ -64,10 +65,10 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                             },
                         })
                     }
-                    
+
                     // Handle organization for ADMIN invitations from OWNER
                     // ADMIN invite: organization only, no environment; one Admin per org (enforced server-side)
-                    if (user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
+                    if (isBmpEnabled() && user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
                         const body = request.body as any;
                         // Accept either organizationName (for creating new) or organizationId (for existing)
                         if (!body.organizationName && !body.organizationId) {
@@ -120,9 +121,9 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                             inviteeEmail: email,
                         }, '[POST /user-invitations] OWNER inviting ADMIN with organization (no env slot check)')
                     }
-                    
+
                     // If ADMIN is inviting OPERATOR/MEMBER, use the org's shared project (not admin's personal project)
-                    if (user.platformRole === PlatformRole.ADMIN && 
+                    if (isBmpEnabled() && user.platformRole === PlatformRole.ADMIN &&
                         (request.body.platformRole === PlatformRole.OPERATOR || request.body.platformRole === PlatformRole.MEMBER)) {
                         if (!user.organizationId) {
                             throw new ActivepiecesError({
@@ -185,7 +186,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
         
         // For PLATFORM invitations, ADMINs should see invitations for their org's shared project
         let filterProjectId = request.query.type === InvitationType.PROJECT ? projectId : null
-        if (request.query.type === InvitationType.PLATFORM && request.principal.type === PrincipalType.USER) {
+        if (isBmpEnabled() && request.query.type === InvitationType.PLATFORM && request.principal.type === PrincipalType.USER) {
             const user = await userService(request.log).getOneOrFail({ id: request.principal.id })
             if (user.platformRole === PlatformRole.ADMIN && user.organizationId) {
                 const org = await organizationService.getById(user.organizationId)

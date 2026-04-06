@@ -1,3 +1,4 @@
+import { isBmpEnabled } from '../bmp/bmp-runtime'
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEntity } from './organization.entity'
 import { OrganizationEnvironmentEntity } from './organization-environment.entity'
@@ -78,6 +79,7 @@ export const organizationService = {
 
     async list(params: ListOrganizationsParams): Promise<SeekPage<Organization>> {
         const { platformId, limit = 50, cursor, userId: _userId, userOrganizationId, userPlatformRole, availableForAdminInvite } = params
+        const applyAdminInviteFilter = isBmpEnabled() && availableForAdminInvite === true
 
         const query = databaseConnection()
             .getRepository(OrganizationEntity)
@@ -92,7 +94,7 @@ export const organizationService = {
             query.andWhere('organization.id = :userOrganizationId', { userOrganizationId })
         }
 
-        if (availableForAdminInvite === true) {
+        if (applyAdminInviteFilter) {
             const blockedIds = await getOrganizationIdsBlockedFromAdminInvite(platformId)
             if (blockedIds.length > 0) {
                 query.andWhere('organization.id NOT IN (:...blockedIds)', { blockedIds })
@@ -206,11 +208,11 @@ export const organizationService = {
             }
         }
 
-        // Delete all BMP auto-created app connections (externalId starts with 'bmp-auto-')
-        // These connections are created automatically for users in this organization
-        await databaseConnection()
-            .getRepository(AppConnectionEntity)
-            .delete({ externalId: Like('bmp-auto-%') })
+        if (isBmpEnabled()) {
+            await databaseConnection()
+                .getRepository(AppConnectionEntity)
+                .delete({ externalId: Like('bmp-auto-%') })
+        }
 
         // Finally delete the organization itself
         await databaseConnection().getRepository(OrganizationEntity).delete(id)
@@ -227,6 +229,9 @@ export const organizationService = {
     },
 
     async assertOrganizationIsAvailableForAdminInvite(platformId: string, organizationId: string): Promise<void> {
+        if (!isBmpEnabled()) {
+            return
+        }
         const blocked = await getOrganizationIdsBlockedFromAdminInvite(platformId)
         if (blocked.includes(organizationId)) {
             throw new ActivepiecesError({

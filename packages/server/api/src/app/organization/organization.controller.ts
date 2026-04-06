@@ -10,6 +10,11 @@ import {
     PlatformRole,
 } from '@activepieces/shared'
 import { StatusCodes } from 'http-status-codes'
+import {
+    canInitializeOrganizationEnvironments,
+    effectiveUserOrganizationIdForScope,
+    shouldIsolateOrganizationEnvironmentsForUser,
+} from '../bmp/bmp-runtime'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 
 // Zod schemas for request validation (converted from TypeBox for Zod validator compatibility)
@@ -54,7 +59,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             limit,
             cursor,
             userId: request.principal.id,
-            userOrganizationId: currentUser.organizationId || undefined,
+            userOrganizationId: effectiveUserOrganizationIdForScope(currentUser.organizationId),
             userPlatformRole: currentUser.platformRole,
             availableForAdminInvite,
         })
@@ -82,7 +87,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const organization = await organizationService.getById(
             id,
             request.principal.id,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
         if (!organization) {
@@ -93,7 +98,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         }
 
         let filteredEnvironments = allEnvironments
-        if (currentUser.platformRole !== PlatformRole.OWNER && currentUser.platformRole !== PlatformRole.SUPER_ADMIN) {
+        if (shouldIsolateOrganizationEnvironmentsForUser({ platformRole: currentUser.platformRole })) {
             if (currentUser.organizationId !== id) {
                 filteredEnvironments = []
             }
@@ -122,7 +127,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const organization = await organizationService.getById(
             id,
             request.principal.id,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
         if (!organization) {
@@ -143,7 +148,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const organization = await organizationService.getById(
             organizationId,
             request.principal.id,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
         if (!organization) {
@@ -153,9 +158,11 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             })
         }
 
-        const isAdminOrOwner = currentUser.platformRole === PlatformRole.OWNER ||
-            currentUser.platformRole === PlatformRole.SUPER_ADMIN ||
-            (currentUser.platformRole === PlatformRole.ADMIN && currentUser.organizationId === organizationId)
+        const isAdminOrOwner = canInitializeOrganizationEnvironments({
+            platformRole: currentUser.platformRole,
+            userOrganizationId: currentUser.organizationId,
+            targetOrganizationId: organizationId,
+        })
         if (!isAdminOrOwner) {
             throw new ActivepiecesError({
                 code: ErrorCode.VALIDATION,
@@ -196,7 +203,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const organization = await organizationService.getById(
             organizationId,
             request.principal.id,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
         if (!organization) {
@@ -258,7 +265,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             id,
             updates,
             request.principal.id,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
     })
@@ -317,7 +324,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const organization = await organizationService.getById(
             organizationId,
             currentUserId,
-            currentUser.organizationId || undefined,
+            effectiveUserOrganizationIdForScope(currentUser.organizationId),
             currentUser.platformRole
         )
         if (!organization) {

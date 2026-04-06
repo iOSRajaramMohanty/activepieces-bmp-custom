@@ -23,6 +23,7 @@ import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { In } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
+import { isBmpEnabled } from '../bmp/bmp-runtime'
 import { databaseConnection } from '../database/database-connection'
 import { repoFactory } from '../core/db/repo-factory'
 import { platformProjectService } from '../ee/projects/platform-project-service'
@@ -134,7 +135,7 @@ export const userService = (log: FastifyBaseLogger) => ({
             ...spreadIfDefined('externalId', externalId),
         })
         
-        if (currentUserRole === PlatformRole.ADMIN && currentUserId) {
+        if (isBmpEnabled() && currentUserRole === PlatformRole.ADMIN && currentUserId) {
             const currentUser = await userRepo().findOneBy({ id: currentUserId, platformId })
             const orgId = currentUser?.organizationId
             if (orgId) {
@@ -225,15 +226,17 @@ export const userService = (log: FastifyBaseLogger) => ({
                         },
                     })
                 }
-                const targetRole = userToDelete.platformRole
-                const sameOrg = !!caller.organizationId && caller.organizationId === userToDelete.organizationId
-                if (!sameOrg || (targetRole !== PlatformRole.OPERATOR && targetRole !== PlatformRole.MEMBER)) {
-                    throw new ActivepiecesError({
-                        code: ErrorCode.AUTHORIZATION,
-                        params: {
-                            message: 'Admin can only delete operators and members in the same organization',
-                        },
-                    })
+                if (isBmpEnabled()) {
+                    const targetRole = userToDelete.platformRole
+                    const sameOrg = !!caller.organizationId && caller.organizationId === userToDelete.organizationId
+                    if (!sameOrg || (targetRole !== PlatformRole.OPERATOR && targetRole !== PlatformRole.MEMBER)) {
+                        throw new ActivepiecesError({
+                            code: ErrorCode.AUTHORIZATION,
+                            params: {
+                                message: 'Admin can only delete operators and members in the same organization',
+                            },
+                        })
+                    }
                 }
             }
         }

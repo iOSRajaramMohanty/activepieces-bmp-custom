@@ -18,16 +18,20 @@ import {
 import { FastifyBaseLogger } from 'fastify'
 import { Brackets, EntityManager, IsNull, Not, ObjectLiteral, SelectQueryBuilder, In } from 'typeorm'
 import { repoFactory } from '../core/db/repo-factory'
+import { isBmpEnabled } from '../bmp/bmp-runtime'
 import { getProjectMaxConcurrentJobsKey } from '../database/redis/keys'
 import { distributedStore } from '../database/redis-connections'
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEntity } from '../organization/organization.entity'
 import { platformService } from '../platform/platform.service'
 import { userService } from '../user/user-service'
+import { UserEntity } from '../user/user-entity'
 import { ProjectEntity } from './project-entity'
 import { projectHooks } from './project-hooks'
 
 export const projectRepo = repoFactory(ProjectEntity)
+
+const userRepoForProjectListAccess = repoFactory(UserEntity)
 
 export const projectService = (log: FastifyBaseLogger) => ({
     async create(params: CreateParams): Promise<Project> {
@@ -308,40 +312,67 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
     queryBuilder: SelectQueryBuilder<T>,
     params: ApplyProjectsAccessFiltersParams,
 ): Promise<void> {
-    const { platformId, userId, platformRole, userOrganizationId, isPrivileged } = params
-    
+    const { platformId, userId, isPrivileged } = params
+    let { platformRole, userOrganizationId } = params
+
     // If isPrivileged is true (from EE code), don't apply filters - user can see all projects
     if (isPrivileged === true) {
         return
     }
-    
+
+    // Callers under packages/ee often omit role/org; resolve from DB here so EE files stay unchanged (MIT-only policy).
+    if (isNil(platformRole)) {
+        const userRow = await userRepoForProjectListAccess().findOneBy({
+            id: userId,
+            platformId,
+        })
+        if (isNil(userRow)) {
+            queryBuilder.andWhere('1 = 0')
+            return
+        }
+        platformRole = userRow.platformRole
+        userOrganizationId = userRow.organizationId
+        if (!isBmpEnabled()) {
+            userOrganizationId = undefined
+        }
+    }
+
     // OWNER (tenant) can see all ADMINs' personal projects in their platform
     if (platformRole === PlatformRole.OWNER || platformRole === PlatformRole.SUPER_ADMIN) {
         return
     }
+
+    const projectMemberCondition =
+        'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)'
+    const orgSharedProjectViaOrganizationTable =
+        'project.id IN (SELECT o."projectId" FROM organization o WHERE o.id = :userOrganizationId AND o."projectId" IS NOT NULL)'
 
     queryBuilder.andWhere(new Brackets(qb => {
         if (platformRole === PlatformRole.ADMIN) {
             // ADMIN with org: only org shared project + TEAM projects (one project per org)
             // ADMIN without org: own personal projects + TEAM projects
             if (!isNil(userOrganizationId)) {
-                qb.where('project."organizationId" = :userOrganizationId', { userOrganizationId })
+                qb.where(new Brackets((inner) => {
+                    inner
+                        .where('project."organizationId" = :userOrganizationId', { userOrganizationId })
+                        .orWhere(orgSharedProjectViaOrganizationTable, { userOrganizationId })
+                }))
             } else {
                 qb.where(
                     'project."ownerId" = :userId AND project.type = :personalType',
                     { userId, personalType: ProjectType.PERSONAL },
                 )
             }
-            qb.orWhere(
-                'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)',
-                { userId, platformId },
-            )
+            qb.orWhere(projectMemberCondition, { userId, platformId })
         } else {
-            // OPERATOR/MEMBER: org shared project (visibility) + TEAM projects (if member)
-            const projectMemberCondition = 'project.id IN (SELECT "projectId" FROM project_member WHERE "userId" = :userId AND "platformId" = :platformId)'
+            // OPERATOR/MEMBER: org shared project (by project.organizationId or organization.projectId) + project_member
             if (!isNil(userOrganizationId)) {
-                qb.where('project."organizationId" = :userOrganizationId', { userOrganizationId })
-                    .orWhere(projectMemberCondition, { userId, platformId })
+                qb.where(new Brackets((inner) => {
+                    inner
+                        .where('project."organizationId" = :userOrganizationId', { userOrganizationId })
+                        .orWhere(orgSharedProjectViaOrganizationTable, { userOrganizationId })
+                        .orWhere(projectMemberCondition, { userId, platformId })
+                }))
             } else {
                 qb.where(projectMemberCondition, { userId, platformId })
             }

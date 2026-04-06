@@ -39,7 +39,11 @@ import { Input } from '@/components/ui/input';
 import { useOwnerOptions } from '@/features/automations/hooks/use-owner-options';
 import { TemplatesBrowseDialog } from '@/features/templates';
 import { formatUtils } from '@/lib/format-utils';
-import { cn, DASHBOARD_CONTENT_PADDING_X } from '@/lib/utils';
+import {
+  cn,
+  DASHBOARD_CONTENT_PADDING_X,
+  DASHBOARD_FILTER_TOOLBAR_VERTICAL,
+} from '@/lib/utils';
 
 import { MultiSelectFilter } from './multi-select-filter';
 
@@ -140,7 +144,11 @@ export const AutomationsFilters = ({
   return (
     <>
       <div
-        className={cn('overflow-x-auto mt-4 mb-4', DASHBOARD_CONTENT_PADDING_X)}
+        className={cn(
+          'overflow-x-auto',
+          DASHBOARD_FILTER_TOOLBAR_VERTICAL,
+          DASHBOARD_CONTENT_PADDING_X,
+        )}
       >
         <div className="flex items-center justify-between gap-4 min-w-max">
           <div className="flex items-center gap-2">

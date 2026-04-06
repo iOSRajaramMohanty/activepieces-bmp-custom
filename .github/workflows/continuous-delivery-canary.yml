@@ -1,8 +1,9 @@
 name: Continuous Delivery — Canary
 
 on:
-  schedule:
-    - cron: '0 9 * * *'  # Daily 9 AM UTC
+  workflow_dispatch: {}
+  # schedule:
+    # - cron: '0 9 * * *'  # Daily 9 AM UTC
 
 jobs:
   build-image:

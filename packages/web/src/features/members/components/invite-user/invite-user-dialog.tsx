@@ -16,6 +16,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { isBmpEnabled } from '@/features/bmp/bmp-integration';
 import { TagInput } from '@/components/custom/tag-input';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { Button } from '@/components/ui/button';
@@ -97,6 +98,7 @@ export const InviteUserDialog = ({
   const { platform } = platformHooks.useCurrentPlatform();
   const { refetch } = userInvitationsHooks.useInvitations();
   const { data: currentUser } = userHooks.useCurrentUser();
+  const bmpEnabled = isBmpEnabled();
   const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   const projectId = authenticationSession.getProjectId();
 
@@ -125,9 +127,10 @@ export const InviteUserDialog = ({
             email: email.trim().toLowerCase(),
             type: data.type,
             platformRole: data.platformRole,
-            ...(data.organizationName != null && {
-              organizationName: data.organizationName,
-            }),
+            ...(bmpEnabled &&
+              data.organizationName != null && {
+                organizationName: data.organizationName,
+              }),
             ...(data.environment != null && { environment: data.environment }),
           } as Parameters<typeof userInvitationApi.invite>[0]);
         } else {
@@ -203,13 +206,16 @@ export const InviteUserDialog = ({
 
   const { data: orgsData } = organizationHooks.useOrganizations(
     platform?.id || '',
-    isOwner && watchedPlatformRole === PlatformRole.ADMIN
+    bmpEnabled &&
+      isOwner &&
+      watchedPlatformRole === PlatformRole.ADMIN
       ? { availableForAdminInvite: true }
       : undefined,
   );
   const organizations = orgsData?.data || [];
 
   const showSharedProjectInfo =
+    bmpEnabled &&
     !isOwner &&
     watchedInvitationType === InvitationType.PLATFORM &&
     (watchedPlatformRole === PlatformRole.OPERATOR ||
@@ -265,6 +271,7 @@ export const InviteUserDialog = ({
     }
 
     if (
+      bmpEnabled &&
       isOwner &&
       data.platformRole === PlatformRole.ADMIN &&
       !data.organizationName
@@ -470,7 +477,8 @@ export const InviteUserDialog = ({
                       )}
 
                       {/* Show organization and environment selectors only for ADMIN role and OWNER users */}
-                      {isOwner &&
+                      {bmpEnabled &&
+                        isOwner &&
                         watchedPlatformRole === PlatformRole.ADMIN && (
                           <>
                             <FormField
@@ -542,7 +550,8 @@ export const InviteUserDialog = ({
                       loading={isPending}
                       disabled={
                         isPending ||
-                        (isOwner &&
+                        (bmpEnabled &&
+                          isOwner &&
                           watchedPlatformRole === PlatformRole.ADMIN &&
                           !watchedOrganizationName)
                       }

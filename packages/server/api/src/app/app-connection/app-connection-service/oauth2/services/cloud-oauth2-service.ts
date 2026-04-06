@@ -7,9 +7,9 @@ import {
     ErrorCode,
 } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import { isBmpEnabled } from '../../../../bmp/bmp-runtime'
 import { apAxios } from '../../../../helper/ap-axios'
 import { system } from '../../../../helper/system/system'
-import { AppSystemProp } from '../../../../helper/system/system-props'
 import {
     ClaimOAuth2Request,
     OAuth2Service,
@@ -19,8 +19,7 @@ import { cloudOAuthHooks } from '../../../cloud-oauth-hooks'
 
 export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudOAuth2ConnectionValue> => ({
     refresh: async (params: RefreshOAuth2Request<CloudOAuth2ConnectionValue>): Promise<CloudOAuth2ConnectionValue> => {
-        const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
-        if (bmpEnabled) {
+        if (isBmpEnabled()) {
             return cloudOAuthHooks.get(log).refresh(params)
         }
 
@@ -63,8 +62,7 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
         }
     },
     claim: async (params: ClaimOAuth2Request): Promise<CloudOAuth2ConnectionValue> => {
-        const bmpEnabled = system.getBoolean(AppSystemProp.BMP_ENABLED) ?? false
-        if (bmpEnabled) {
+        if (isBmpEnabled()) {
             return cloudOAuthHooks.get(log).claim(params)
         }
 

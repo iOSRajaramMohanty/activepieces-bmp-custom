@@ -20,7 +20,9 @@ import { QueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { userOrganizationIdForListScope } from '@/features/bmp/bmp-integration';
 import { useEmbedding } from '@/components/providers/embed-provider';
+import { userHooks } from '@/hooks/user-hooks';
 import { api } from '@/lib/api';
 import { authenticationSession } from '@/lib/authentication-session';
 
@@ -150,20 +152,31 @@ export const projectCollectionUtils = {
   },
   useAll: () => {
     const currentUserId = authenticationSession.getCurrentUserId();
+    const { data: currentUser } = userHooks.useCurrentUser();
+    const userOrganizationId = userOrganizationIdForListScope(
+      currentUser?.organizationId,
+    );
     return useLiveSuspenseQuery(
       (q) =>
         q
           .from({ project: projectCollection })
-          .where(({ project }) =>
-            or(
+          .where(({ project }) => {
+            if (userOrganizationId) {
+              return or(
+                eq(project.type, ProjectType.TEAM),
+                eq(project.ownerId, currentUserId),
+                eq(project.organizationId, userOrganizationId),
+              );
+            }
+            return or(
               eq(project.type, ProjectType.TEAM),
               eq(project.ownerId, currentUserId),
-            ),
-          )
+            );
+          })
           .orderBy(({ project }) => project.type, 'asc')
           .orderBy(({ project }) => project.created, 'asc')
           .select(({ project }) => ({ ...project })),
-      [currentUserId],
+      [currentUserId, userOrganizationId],
     );
   },
   useAllPlatformProjects: (filters?: {
