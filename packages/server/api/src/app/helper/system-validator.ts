@@ -196,6 +196,8 @@ const systemPropValidators: {
 
     // PM2 support
     [AppSystemProp.PM2_ENABLED]: booleanValidator,
+    // Canary
+    [AppSystemProp.CANARY_APP_URL]: urlValidator,
     // SSRF protection
     [AppSystemProp.SSRF_ALLOW_LIST]: stringValidator,
     [AppSystemProp.SSRF_PROTECTION_ENABLED]: booleanValidator,
