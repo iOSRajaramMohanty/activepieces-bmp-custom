@@ -23,6 +23,7 @@ export * from './lib/core/license-keys'
 export * from './lib/core/support-url'
 export * from './lib/core/feedback-url'
 export * from './lib/core/health'
+export * from './lib/form-errors'
 
 // Look at https://github.com/sinclairzx81/typebox/issues/350
 import { TypeSystemPolicy } from '@sinclair/typebox/system'
@@ -76,6 +77,7 @@ export * from './lib/automation/webhook'
 export * from './lib/automation/trigger'
 export * from './lib/automation/workers/job-data'
 
+export * from './lib/automation/engine/rpc'
 export * from './lib/automation/workers/worker-contract'
 export * from './lib/automation/workers'
 export * from './lib/automation/forms'

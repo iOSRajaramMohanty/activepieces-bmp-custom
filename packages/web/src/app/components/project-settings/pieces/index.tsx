@@ -109,6 +109,7 @@ const PiecesSettings = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const { pieces, isLoading, refetch } = piecesHooks.usePieces({
     searchQuery,
+    isTableQuery: true,
   });
 
   const toolbarButtons = useMemo(

@@ -34,6 +34,7 @@ const PlatformPiecesPage = () => {
     searchQuery,
     includeTags: true,
     includeHidden: true,
+    isTableQuery: true,
   });
 
   const { refetch: refetchPiecesOAuth2AppsMap } =
