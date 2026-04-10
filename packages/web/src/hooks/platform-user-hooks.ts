@@ -11,6 +11,7 @@ export const platformUserHooks = {
 
     return useQuery<SeekPage<UserWithMetaInformation>, Error>({
       queryKey: ['users', platform?.id],
+      meta: { showErrorDialog: true, loadSubsetOptions: {} },
       queryFn: async () => {
         try {
           console.log(
