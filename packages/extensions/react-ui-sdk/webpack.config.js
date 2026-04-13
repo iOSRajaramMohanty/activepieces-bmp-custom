@@ -1,6 +1,50 @@
+const fs = require('fs');
 const { composePlugins, withNx } = require('@nx/webpack');
 const path = require('path');
 const NormalModuleReplacementPlugin = require('webpack').NormalModuleReplacementPlugin;
+
+function resolvePackageRootFromBunStore({ workspaceRoot, packageName }) {
+  const bunRoot = path.join(workspaceRoot, 'node_modules', '.bun');
+  if (!fs.existsSync(bunRoot)) {
+    return null;
+  }
+  // Bun store dirs look like `react@18.x` or `@floating-ui+core@1.x` (leading @ for scoped).
+  const dirPrefix = packageName.startsWith('@')
+    ? `@${packageName.slice(1).replace('/', '+')}@`
+    : `${packageName}@`;
+  const dirs = fs
+    .readdirSync(bunRoot)
+    .filter((name) => name.startsWith(dirPrefix));
+  const matches = dirs
+    .map((dir) =>
+      path.join(bunRoot, dir, 'node_modules', packageName, 'package.json')
+    )
+    .filter((pkgJson) => fs.existsSync(pkgJson));
+  if (matches.length === 0) {
+    return null;
+  }
+  matches.sort();
+  return path.dirname(matches[0]);
+}
+
+function resolvePackageRoot({ workspaceRoot, packageName }) {
+  try {
+    return path.dirname(
+      require.resolve(`${packageName}/package.json`, { paths: [workspaceRoot] })
+    );
+  } catch {
+    const fromBun = resolvePackageRootFromBunStore({
+      workspaceRoot,
+      packageName,
+    });
+    if (fromBun) {
+      return fromBun;
+    }
+    throw new Error(
+      `Cannot resolve package "${packageName}" from workspace root or Bun store (.bun)`
+    );
+  }
+}
 
 module.exports = composePlugins(withNx(), (config) => {
   // Configure output for pure ES module format (no CommonJS require)
@@ -204,25 +248,44 @@ module.exports = composePlugins(withNx(), (config) => {
   // Add path aliases for web internal imports (@/...) and workspace packages
   // IMPORTANT: Alias React, ReactDOM, React Query, and React Router to ensure only ONE instance is bundled
   // Multiple instances cause hooks errors ("useState is null", "No QueryClient set", "useLocation outside Router")
-  const reactPath = path.resolve(workspaceRoot, 'node_modules/react');
-  const reactDomPath = path.resolve(workspaceRoot, 'node_modules/react-dom');
-  const reactQueryPath = path.resolve(workspaceRoot, 'node_modules/@tanstack/react-query');
-  // Use the same react-router-dom instance that packages/web uses
-  const reactRouterDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router-dom@6.11.2+bf16f8eded5e12ee/node_modules/react-router-dom');
-  const reactRouterPath = path.resolve(workspaceRoot, 'node_modules/.bun/react-router@6.11.2+b1ab299f0a400331/node_modules/react-router');
-  
-  // Force single instance of floating-ui for Radix Popper positioning
-  const floatingUiCorePath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+core@1.7.5/node_modules/@floating-ui/core');
-  const floatingUiDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+dom@1.7.6/node_modules/@floating-ui/dom');
-  const floatingUiReactDomPath = path.resolve(workspaceRoot, 'node_modules/.bun/@floating-ui+react-dom@2.1.8+bf16f8eded5e12ee/node_modules/@floating-ui/react-dom');
-  
+  // Resolve via require (not hardcoded .bun/... paths) so installs keep working when Bun's store hash changes.
+  const reactPath = resolvePackageRoot({ workspaceRoot, packageName: 'react' });
+  const reactDomPath = resolvePackageRoot({ workspaceRoot, packageName: 'react-dom' });
+  const reactQueryPath = resolvePackageRoot({
+    workspaceRoot,
+    packageName: '@tanstack/react-query',
+  });
+  const reactRouterDomPath = resolvePackageRoot({
+    workspaceRoot,
+    packageName: 'react-router-dom',
+  });
+  // react-router is often not hoisted to the workspace root; resolve it as a dependency of react-router-dom.
+  const reactRouterPath = path.dirname(
+    require.resolve('react-router/package.json', { paths: [reactRouterDomPath] })
+  );
+
+  const floatingUiCorePath = resolvePackageRoot({
+    workspaceRoot,
+    packageName: '@floating-ui/core',
+  });
+  const floatingUiDomPath = resolvePackageRoot({
+    workspaceRoot,
+    packageName: '@floating-ui/dom',
+  });
+  const floatingUiReactDomPath = resolvePackageRoot({
+    workspaceRoot,
+    packageName: '@floating-ui/react-dom',
+  });
+
   config.resolve.alias = {
     ...config.resolve.alias,
     // Force single React instance - critical for hooks to work
     'react': reactPath,
     'react-dom': reactDomPath,
-    'react/jsx-runtime': path.resolve(reactPath, 'jsx-runtime'),
-    'react/jsx-dev-runtime': path.resolve(reactPath, 'jsx-dev-runtime'),
+    'react/jsx-runtime': require.resolve('react/jsx-runtime', { paths: [workspaceRoot] }),
+    'react/jsx-dev-runtime': require.resolve('react/jsx-dev-runtime', {
+      paths: [workspaceRoot],
+    }),
     // Force single React Query instance - critical for QueryClient context
     '@tanstack/react-query': reactQueryPath,
     // Force single React Router instance - critical for useLocation/useNavigate hooks
