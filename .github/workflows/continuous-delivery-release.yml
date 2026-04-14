@@ -82,7 +82,7 @@ jobs:
       - name: Check for breaking migrations
         id: migration-check
         run: bunx tsx tools/scripts/check-release-migrations.ts ${{ steps.version.outputs.release }}
-    
+
       - name: Add breaking migration note to release
         if: steps.migration-check.outputs.has_breaking == 'true'
         run: |

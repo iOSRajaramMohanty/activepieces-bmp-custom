@@ -10,6 +10,7 @@ import {
 } from '@activepieces/shared';
 import { queryCollectionOptions } from '@tanstack/query-db-collection';
 import {
+  and,
   createCollection,
   eq,
   like,
@@ -56,6 +57,7 @@ export const projectCollection = createCollection<ProjectWithLimits, string>(
               : undefined,
           icon: modified.icon,
           plan: modified.plan,
+          maxConcurrentJobs: modified.maxConcurrentJobs,
         };
         await api.post<ProjectWithLimits>(
           `/v1/projects/${original.id}`,

@@ -67,6 +67,7 @@ export function ProjectSettingsDialog({
       projectName: initialValues?.projectName,
       icon: project.icon,
       externalId: initialValues?.externalId,
+      maxConcurrentJobs: project.maxConcurrentJobs,
     },
     disabled: checkAccess(Permission.WRITE_PROJECT) === false,
   });
@@ -76,6 +77,7 @@ export function ProjectSettingsDialog({
       displayName: values.projectName,
       externalId: values.externalId,
       icon: values.icon,
+      maxConcurrentJobs: values.maxConcurrentJobs,
     });
     toast.success(t('Your changes have been saved.'), {
       duration: 3000,
@@ -89,6 +91,7 @@ export function ProjectSettingsDialog({
       form.reset({
         ...initialValues,
         icon: project.icon,
+        maxConcurrentJobs: project.maxConcurrentJobs,
       });
       setActiveTab(initialTab);
     }
