@@ -165,14 +165,15 @@ function OAuth2ConnectionSettings({
                     type="button"
                     onClick={async () => {
                       if (!hasCode) {
-                        openPopup(
+                        openPopup({
                           redirectUrl,
-                          form.getValues().request.value.client_id,
-                          form.getValues().request.value.props,
-                          piece.name,
+                          clientId: form.getValues().request.value.client_id,
+                          props: form.getValues().request.value.props,
+                          pieceName: piece.name,
                           form,
+                          pieceVersion: piece.version,
                           setLoading,
-                        );
+                        });
                       } else {
                         field.onChange('');
                         form.setValue('request.value.code_challenge', '', {
@@ -197,19 +198,15 @@ function OAuth2ConnectionSettings({
 OAuth2ConnectionSettings.displayName = 'OAuth2ConnectionSettings';
 export { OAuth2ConnectionSettings };
 
-async function openPopup(
-  redirectUrl: string,
-  clientId: string,
-  props: Record<string, unknown> | undefined,
-  pieceName: string,
-  form: UseFormReturn<{
-    request:
-      | UpsertCloudOAuth2Request
-      | UpsertOAuth2Request
-      | UpsertPlatformOAuth2Request;
-  }>,
-  setLoading: Dispatch<SetStateAction<boolean>>,
-) {
+async function openPopup({
+  redirectUrl,
+  clientId,
+  props,
+  pieceName,
+  pieceVersion,
+  form,
+  setLoading,
+}: OpenPopupParams) {
   let authorizationUrl, codeVerifier;
   try {
     setLoading(true);
@@ -217,6 +214,7 @@ async function openPopup(
       pieceName,
       clientId,
       redirectUrl,
+      pieceVersion,
       props,
     });
     authorizationUrl = result.authorizationUrl;
@@ -249,4 +247,19 @@ type OAuth2ConnectionSettingsProps = {
   authProperty: OAuth2Property<OAuth2Props>;
   oauth2App: OAuth2App;
   grantType: OAuth2GrantType;
+};
+
+type OpenPopupParams = {
+  redirectUrl: string;
+  clientId: string;
+  props: Record<string, unknown> | undefined;
+  pieceName: string;
+  pieceVersion: string;
+  form: UseFormReturn<{
+    request:
+      | UpsertCloudOAuth2Request
+      | UpsertOAuth2Request
+      | UpsertPlatformOAuth2Request;
+  }>;
+  setLoading: Dispatch<SetStateAction<boolean>>;
 };
