@@ -97,7 +97,7 @@ async function appendTurn(params: AppendTurnParams & { log: FastifyBaseLogger })
         {
             messages,
             flowId: params.sessionFlowIdAfter,
-            expiresAt,
+            expiresAt: expiresAt.toISOString(),
         },
     )
     return {

@@ -48,8 +48,8 @@ export const chatbotPublicMessageRateLimiter = (log: FastifyBaseLogger): Chatbot
             }
             if (count > MAX_REQUESTS_PER_WINDOW) {
                 throw new ActivepiecesError({
-                    code: ErrorCode.RATE_LIMIT_EXCEEDED,
-                    params: {},
+                    code: ErrorCode.GENERIC_ERROR,
+                    params: { message: 'Rate limit exceeded' },
                 })
             }
         },

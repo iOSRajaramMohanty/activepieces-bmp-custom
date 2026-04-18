@@ -159,6 +159,7 @@ const GetChatbotSessionRequest = {
         }),
         response: {
             [StatusCodes.OK]: ChatbotSessionResponse,
+            [StatusCodes.NOT_FOUND]: z.void(),
         },
     },
 }
@@ -226,6 +227,7 @@ const GetPublicChatbotSessionRequest = {
         }),
         response: {
             [StatusCodes.OK]: ChatbotSessionResponse,
+            [StatusCodes.NOT_FOUND]: z.void(),
         },
     },
 }

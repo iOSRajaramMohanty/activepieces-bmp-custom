@@ -115,7 +115,7 @@ function assertOriginAllowedForEmbed(params: AssertOriginAllowedParams): void {
     if (isNil(requestHost)) {
         throw new ActivepiecesError({
             code: ErrorCode.DOMAIN_NOT_ALLOWED,
-            params: {},
+            params: { domain: '(no origin)' },
         })
     }
     const normalizedHost = requestHost.toLowerCase()
@@ -126,7 +126,7 @@ function assertOriginAllowedForEmbed(params: AssertOriginAllowedParams): void {
     }
     throw new ActivepiecesError({
         code: ErrorCode.DOMAIN_NOT_ALLOWED,
-        params: {},
+        params: { domain: normalizedHost },
     })
 }
 
