@@ -4,12 +4,20 @@ import replyFrom from '@fastify/reply-from'
 import swagger from '@fastify/swagger'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { FastifyInstance, FastifyRequest, HTTPMethods } from 'fastify'
+import { cloudOAuthController } from '../../../../extensions/bmp/src/server/controllers/cloud-oauth.controller'
+import { bmpAppEventRoutingHooks } from '../../../../extensions/bmp/src/server/hooks/app-event-routing.hooks'
+import { bmpCloudOAuthHooks } from '../../../../extensions/bmp/src/server/hooks/cloud-oauth.hooks'
 import { aiProviderService } from './ai/ai-provider-service'
 import { aiProviderModule } from './ai/ai-provider.module'
 import { platformAnalyticsModule } from './analytics/platform-analytics.module'
 import { setPlatformOAuthService } from './app-connection/app-connection-service/oauth2'
 import { appConnectionModule } from './app-connection/app-connection.module'
+import { cloudOAuthHooks } from './app-connection/cloud-oauth-hooks'
+import { connectionHooks } from './app-connection/connection-hooks'
+import { authHooks } from './authentication/auth-hooks'
 import { authenticationModule } from './authentication/authentication.module'
+import { isBmpEnabled } from './bmp/bmp-runtime'
+import { chatbotModule } from './chatbot/chatbot.module'
 import { canaryRoutingMiddleware } from './core/canary/canary-routing.middleware'
 import { collaborativeModule } from './core/collaborative/collaborative.module'
 import { rateLimitModule } from './core/security/rate-limit'
@@ -71,6 +79,7 @@ import { validateEnvPropsOnStartup } from './helper/system-validator'
 import { knowledgeBaseModule } from './knowledge-base/knowledge-base.module'
 import { mcpServerModule } from './mcp/mcp-module'
 import { mcpOAuthApproveController } from './mcp/oauth/code/mcp-oauth-approve.controller'
+import { organizationModule } from './organization/organization.module'
 import { communityPiecesModule } from './pieces/community-piece-module'
 import { startDevPieceWatcher } from './pieces/dev-piece-watcher'
 import { pieceModule } from './pieces/metadata/piece-metadata-controller'
@@ -83,19 +92,11 @@ import { projectHooks } from './project/project-hooks'
 import { projectModule } from './project/project-module'
 // BMP modules - conditionally loaded based on AP_BMP_ENABLED
 // Import references kept for type checking, actual registration is conditional
-import { isBmpEnabled } from './bmp/bmp-runtime'
-import { organizationModule } from './organization/organization.module'
-import { superAdminModule } from './super-admin/super-admin.module'
-import { authHooks } from './authentication/auth-hooks'
-import { connectionHooks } from './app-connection/connection-hooks'
-import { cloudOAuthHooks } from './app-connection/cloud-oauth-hooks'
-import { cloudOAuthController } from '../../../../extensions/bmp/src/server/controllers/cloud-oauth.controller'
-import { bmpCloudOAuthHooks } from '../../../../extensions/bmp/src/server/hooks/cloud-oauth.hooks'
-import { bmpAppEventRoutingHooks } from '../../../../extensions/bmp/src/server/hooks/app-event-routing.hooks'
-import { appEventRoutingHooks } from './trigger/app-event-routing/app-event-routing.hooks'
 import { storeEntryModule } from './store-entry/store-entry.module'
+import { superAdminModule } from './super-admin/super-admin.module'
 import { tablesModule } from './tables/tables.module'
 import { templateModule } from './template/template.module'
+import { appEventRoutingHooks } from './trigger/app-event-routing/app-event-routing.hooks'
 import { appEventRoutingModule } from './trigger/app-event-routing/app-event-routing.module'
 import { triggerModule } from './trigger/trigger.module'
 import { userBadgeModule } from './user/badges/badge-module'
@@ -252,7 +253,8 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
         cloudOAuthHooks.set(bmpCloudOAuthHooks)
         appEventRoutingHooks.set(bmpAppEventRoutingHooks)
         app.log.info('[BMP] BMP hooks registered')
-    } else {
+    }
+    else {
         app.log.info('[BMP] BMP is disabled, skipping organization and super-admin modules')
     }
     
@@ -260,6 +262,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(tagsModule)
     await app.register(mcpServerModule)
     await app.register(mcpOAuthApproveController)
+    await app.register(chatbotModule)
     await app.register(platformUserModule)
     await app.register(alertsModule)
     await app.register(invitationModule)
@@ -377,8 +380,8 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     app.addHook('onClose', async () => {
         app.log.info('Shutting down')
         await systemJobsSchedule(app.log).close()
-        await redisConnections.destroy()
         await distributedLock(app.log).destroy()
+        await redisConnections.destroy()
         await engineResponseWatcher(app.log).shutdown()
     })
 

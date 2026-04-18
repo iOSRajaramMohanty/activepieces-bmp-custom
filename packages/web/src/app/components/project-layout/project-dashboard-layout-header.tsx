@@ -3,6 +3,7 @@ import { t } from 'i18next';
 import { useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { BotIcon } from '@/components/icons/bot';
 import { BoxIcon } from '@/components/icons/box';
 import { ConnectIcon } from '@/components/icons/connect';
 import { HistoryIcon } from '@/components/icons/history';
@@ -10,13 +11,14 @@ import { WorkflowIcon } from '@/components/icons/workflow';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { projectCollectionUtils } from '@/features/projects';
-import { useAuthorization } from '@/hooks/authorization-hooks';
-import { authenticationSession } from '@/lib/authentication-session';
 
 import { ProjectDashboardPageHeader } from './project-dashboard-page-header';
 
 import { ProjectDashboardLayoutHeaderTab } from '.';
+
+import { projectCollectionUtils } from '@/features/projects';
+import { useAuthorization } from '@/hooks/authorization-hooks';
+import { authenticationSession } from '@/lib/authentication-session';
 
 type AnimatedIconHandle = {
   startAnimation: () => void;
@@ -87,6 +89,13 @@ export const ProjectDashboardLayoutHeader = () => {
       label: t('Connections'),
       icon: ConnectIcon,
       hasPermission: checkAccess(Permission.READ_APP_CONNECTION),
+      show: true,
+    },
+    {
+      to: authenticationSession.appendProjectRoutePrefix('/chatbots'),
+      label: t('Chatbots'),
+      icon: BotIcon,
+      hasPermission: checkAccess(Permission.WRITE_FLOW),
       show: true,
     },
     {

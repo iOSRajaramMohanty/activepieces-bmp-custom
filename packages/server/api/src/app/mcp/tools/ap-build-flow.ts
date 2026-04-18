@@ -54,7 +54,9 @@ export const apBuildFlowTool = (mcp: McpServer, log: FastifyBaseLogger): McpTool
                 pieceName: z.string().describe('Trigger piece name (e.g. "@activepieces/piece-webhook")'),
                 pieceVersion: z.string().describe('Piece version (e.g. "~0.1.32")'),
                 triggerName: z.string().describe('Trigger name (e.g. "catch_webhook")'),
-                input: z.record(z.string(), z.unknown()).optional().describe('Trigger input config'),
+                input: z.record(z.string(), z.unknown()).optional().describe(
+                    'Trigger input config. For @activepieces/piece-webhook / catch_webhook include authType: "none" unless the user asked for basic, header, or hmac auth.',
+                ),
                 auth: z.string().optional().describe('Connection externalId for trigger auth'),
             }).describe('Trigger configuration'),
             steps: z.array(stepSpec).describe('Array of steps added sequentially after trigger. Each step supports: PIECE (pieceName+actionName+input), CODE (sourceCode+input), LOOP_ON_ITEMS (loopItems), ROUTER.'),

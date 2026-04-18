@@ -365,6 +365,7 @@ import { MergeCanaryAndDedicatedWorkersIntoWorkerGroupId1775656136000 } from './
 import { AddAiProvidersEnabledToPlatformPlan1775728983000 } from './migration/postgres/1775728983000-AddAiProvidersEnabledToPlatformPlan'
 import { AddConcurrencyPoolTable1775800000000 } from './migration/postgres/1775800000000-AddConcurrencyPoolTable'
 import { AddDefaultToAiProvidersEnabled1776000000000 } from './migration/postgres/1776000000000-AddDefaultToAiProvidersEnabled'
+import { AddChatbotEmbedAndSessions1776100000000 } from './migration/postgres/1776100000000-AddChatbotEmbedAndSessions'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -745,6 +746,7 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddAiProvidersEnabledToPlatformPlan1775728983000,
         AddConcurrencyPoolTable1775800000000,
         AddDefaultToAiProvidersEnabled1776000000000,
+        AddChatbotEmbedAndSessions1776100000000,
     ]
     return migrations
 }

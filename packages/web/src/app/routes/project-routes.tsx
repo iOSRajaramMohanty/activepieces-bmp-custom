@@ -4,8 +4,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 
 import { PageTitle } from '@/app/components/page-title';
 import { RouteLoadingBar } from '@/components/custom/route-loading-bar';
-import { ApTableStateProvider } from '@/features/tables';
-import { routesThatRequireProjectId } from '@/lib/route-utils';
 
 import { BuilderLayout } from '../components/builder-layout';
 import { ProjectDashboardLayout } from '../components/project-layout';
@@ -14,6 +12,9 @@ import { RoutePermissionGuard } from '../guards/permission-guard';
 import { ProjectRouterWrapper } from '../guards/project-route-wrapper';
 
 import { AutomationsPage } from './automations';
+
+import { ApTableStateProvider } from '@/features/tables';
+import { routesThatRequireProjectId } from '@/lib/route-utils';
 
 const FlowBuilderPage = React.lazy(() =>
   import('./flows/id').then((m) => ({ default: m.FlowBuilderPage })),
@@ -34,6 +35,9 @@ const FlowRunPage = React.lazy(() =>
 );
 const AppConnectionsPage = React.lazy(() =>
   import('./connections').then((m) => ({ default: m.AppConnectionsPage })),
+);
+const ChatbotsPage = React.lazy(() =>
+  import('./chatbots').then((m) => ({ default: m.ChatbotsPage })),
 );
 const ApTableEditorPage = React.lazy(() =>
   import('./tables/id').then((m) => ({ default: m.ApTableEditorPage })),
@@ -154,6 +158,20 @@ export const projectRoutes = [
           </BuilderLayout>
         </PageTitle>
       </RoutePermissionGuard>
+    ),
+  }),
+  ...ProjectRouterWrapper({
+    path: routesThatRequireProjectId.chatbots,
+    element: (
+      <ProjectDashboardLayout>
+        <RoutePermissionGuard requiredPermissions={Permission.WRITE_FLOW}>
+          <PageTitle title="Chatbots">
+            <SuspenseWrapper>
+              <ChatbotsPage />
+            </SuspenseWrapper>
+          </PageTitle>
+        </RoutePermissionGuard>
+      </ProjectDashboardLayout>
     ),
   }),
   ...ProjectRouterWrapper({

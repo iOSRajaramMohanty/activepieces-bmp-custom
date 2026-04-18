@@ -1530,6 +1530,13 @@ div:has(> .ap-sdk-root) {
   max-height: calc(100vh - 4rem) !important;
 }
 
+/* In-app chatbot (Vaul right drawer): uses role="dialog" but is not a modal; SDK dialog cap would clip it */
+[data-radix-portal]
+  [data-slot='drawer-content'][data-ap-in-app-chatbot-drawer],
+[data-slot='drawer-content'][data-ap-in-app-chatbot-drawer] {
+  max-height: 100dvh !important;
+}
+
 /* Dialog header - fixed at top, no shrink */
 [data-slot="dialog-header"],
 [data-radix-dialog-content] > div:first-child:has(h2, [data-slot="dialog-title"]) {
@@ -2388,4 +2395,43 @@ button[data-variant="link"] {
   overflow: visible !important;
   text-overflow: clip !important;
   white-space: pre-wrap !important;
+}
+
+/* ==========================================================================
+   In-app chatbot (Vaul drawer) — portaled to body, OUTSIDE .ap-sdk-root
+   Host pages (Angular, etc.) often set large h1/h2 defaults; dropdowns default
+   to z-50 and render behind the drawer panel (z-60).
+   ========================================================================== */
+
+[data-slot='drawer-content'],
+[data-vaul-drawer][data-slot='drawer-content'] {
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  color: var(--foreground, #0a0a0a) !important;
+}
+
+[data-slot='drawer-title'],
+[data-slot='drawer-content'] [data-slot='drawer-title'] {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  font-weight: 600 !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+}
+
+[data-slot='drawer-content'] .text-sm,
+[data-slot='drawer-content'] [class*='text-sm'] {
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+}
+
+[data-slot='drawer-content'] .text-xs,
+[data-slot='drawer-content'] [class*='text-xs'] {
+  font-size: 0.75rem !important;
+  line-height: 1rem !important;
+}
+
+/* Mode dropdown is marked in in-app-chatbot; must sit above the drawer (z-60). */
+[data-radix-popper-content-wrapper]:has([data-ap-chatbot-mode-menu]) {
+  z-index: 10050 !important;
 }

@@ -36,8 +36,8 @@ export const distributedLockFactory = (
                 [key],
                 timeout,
                 {
-                    retryCount: Math.ceil(timeout / 200),
-                    retryDelay: 200,
+                    retryCount: Math.ceil(timeout / 250),
+                    retryDelay: 250,
                     automaticExtensionThreshold: 2000,
                     driftFactor: 0.01,
                 },

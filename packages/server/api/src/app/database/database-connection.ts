@@ -3,11 +3,14 @@ import {
     DataSource,
     EntitySchema,
 } from 'typeorm'
+import { AccountSwitchingActivityEntity } from '../account-switching/account-switching-activity.entity'
 import { AIProviderEntity } from '../ai/ai-provider-entity'
 import { PlatformAnalyticsReportEntity } from '../analytics/platform-analytics-report.entity'
 import { AppConnectionEntity } from '../app-connection/app-connection.entity'
 import { UserIdentityEntity } from '../authentication/user-identity/user-identity-entity'
-import { AccountSwitchingActivityEntity } from '../account-switching/account-switching-activity.entity'
+import { ChatbotEmbedEntity } from '../chatbot/chatbot-embed.entity'
+import { ChatbotSessionEntity } from '../chatbot/chatbot-session.entity'
+import { CloudOAuthAppEntity } from '../cloud-oauth/cloud-oauth-app.entity'
 import { AlertEntity } from '../ee/alerts/alerts-entity'
 import { ApiKeyEntity } from '../ee/api-keys/api-key-entity'
 import { AppCredentialEntity } from '../ee/app-credentials/app-credentials.entity'
@@ -41,6 +44,8 @@ import { McpServerEntity } from '../mcp/mcp-entity'
 import { McpOAuthClientEntity } from '../mcp/oauth/client/mcp-oauth-client.entity'
 import { McpOAuthAuthorizationCodeEntity } from '../mcp/oauth/code/mcp-oauth-code.entity'
 import { McpOAuthTokenEntity } from '../mcp/oauth/token/mcp-oauth-token.entity'
+import { OrganizationEnvironmentEntity } from '../organization/organization-environment.entity'
+import { OrganizationEntity } from '../organization/organization.entity'
 import { PieceMetadataEntity } from '../pieces/metadata/piece-metadata-entity'
 import { PieceTagEntity } from '../pieces/tags/pieces/piece-tag.entity'
 import { TagEntity } from '../pieces/tags/tag-entity'
@@ -59,9 +64,6 @@ import { TriggerSourceEntity } from '../trigger/trigger-source/trigger-source-en
 import { UserBadgeEntity } from '../user/badges/badge-entity'
 import { UserEntity } from '../user/user-entity'
 import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
-import { OrganizationEntity } from '../organization/organization.entity'
-import { OrganizationEnvironmentEntity } from '../organization/organization-environment.entity'
-import { CloudOAuthAppEntity } from '../cloud-oauth/cloud-oauth-app.entity'
 import { DatabaseType } from './database-type'
 import { createPGliteDataSource } from './pglite-connection'
 import { createPostgresDataSource } from './postgres-connection'
@@ -105,6 +107,8 @@ function getEntities(): EntitySchema<unknown>[] {
         McpOAuthTokenEntity,
         KnowledgeBaseFileEntity,
         KnowledgeBaseChunkEntity,
+        ChatbotEmbedEntity,
+        ChatbotSessionEntity,
         TriggerSourceEntity,
         UserBadgeEntity,
         AccountSwitchingActivityEntity,
@@ -155,16 +159,12 @@ const createDataSource = (): DataSource => {
     // Read DB_TYPE here instead of at module load time
     // This ensures .env variables are loaded first
     const databaseType = system.get(AppSystemProp.DB_TYPE)
-    
-    console.log('[database-connection] Creating DataSource with DB_TYPE:', databaseType)
-    
+
     switch (databaseType) {
         case DatabaseType.PGLITE:
-            console.log('[database-connection] Using PGlite')
             return createPGliteDataSource()
         case DatabaseType.POSTGRES:
         default:
-            console.log('[database-connection] Using PostgreSQL')
             return createPostgresDataSource()
     }
 }

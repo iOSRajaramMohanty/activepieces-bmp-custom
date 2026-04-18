@@ -9,9 +9,16 @@ import { TrophyIcon } from '@/components/icons/trophy';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar-shadcn';
 import { PurchaseExtraFlowsDialog } from '@/features/billing';
+import {
+  ChatbotInAppProvider,
+  IN_APP_CHATBOT_DRAWER_WIDTH_CLASS,
+  useChatbotInApp,
+} from '@/features/chatbots/chatbot-in-app-context';
+import { InAppChatbot } from '@/features/chatbots/components/in-app-chatbot';
 import { projectHooks } from '@/features/projects';
 import { flagsHooks } from '@/hooks/flags-hooks';
 
+import { cn } from '@/lib/utils';
 import { authenticationSession } from '../../../lib/authentication-session';
 import {
   GlobalSearchProvider,
@@ -86,13 +93,15 @@ export function ProjectDashboardLayout({
   return (
     <ProjectChangedRedirector currentProjectId={currentProjectId}>
       <GlobalSearchProvider>
-        <ProjectDashboardLayoutInner
-          hideHeader={hideHeader}
-          isEmbedded={isEmbedded}
-          currentProjectId={currentProjectId}
-        >
-          {children}
-        </ProjectDashboardLayoutInner>
+        <ChatbotInAppProvider>
+          <ProjectDashboardLayoutInner
+            hideHeader={hideHeader}
+            isEmbedded={isEmbedded}
+            currentProjectId={currentProjectId}
+          >
+            {children}
+          </ProjectDashboardLayoutInner>
+        </ChatbotInAppProvider>
         {edition === ApEdition.CLOUD && <PurchaseExtraFlowsDialog />}
       </GlobalSearchProvider>
     </ProjectChangedRedirector>
@@ -111,12 +120,18 @@ function ProjectDashboardLayoutInner({
   children: React.ReactNode;
 }) {
   const { open: searchOpen } = useGlobalSearch();
+  const { drawerOpen } = useChatbotInApp();
 
   return (
     <SidebarProvider hoverMode={!searchOpen}>
       {!isEmbedded && <ProjectDashboardSidebar />}
       <SidebarInset className="flex flex-col h-full overflow-hidden bg-sidebar">
-        <div className="flex-1 min-h-0 flex flex-col p-2 pt-3 pb-3 overflow-hidden">
+        <div
+          className={cn(
+            'flex-1 min-h-0 flex flex-col overflow-hidden p-2 pb-3 pt-3 transition-[padding] duration-200 ease-out',
+            drawerOpen && IN_APP_CHATBOT_DRAWER_WIDTH_CLASS,
+          )}
+        >
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-background rounded-xl shadow-[2px_0px_4px_-2px_rgba(0,0,0,0.05),0px_2px_4px_-2px_rgba(0,0,0,0.05)] border">
             {!hideHeader && (
               <ProjectDashboardLayoutHeader key={currentProjectId} />
@@ -126,6 +141,7 @@ function ProjectDashboardLayoutInner({
               {children}{' '}
             </div>
           </div>
+          <InAppChatbot />
         </div>
       </SidebarInset>
     </SidebarProvider>

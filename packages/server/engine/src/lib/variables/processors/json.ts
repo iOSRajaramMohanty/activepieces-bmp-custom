@@ -5,6 +5,9 @@ export const jsonProcessor: ProcessorFn = (_property, value) => {
     if (isNil(value)) {
         return value
     }
+    if (typeof value === 'string' && value.trim() === '') {
+        return undefined
+    }
     try {
         if (typeof value === 'object') {
             return value

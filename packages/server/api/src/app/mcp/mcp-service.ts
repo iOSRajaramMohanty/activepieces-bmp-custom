@@ -25,7 +25,8 @@ const MCP_SERVER_INSTRUCTIONS = `## Activepieces MCP Server
 
 ### Key patterns
 - **Auth**: ap_list_connections → get \`externalId\` → pass as \`auth\` param on ap_update_step/ap_update_trigger.
-- **Step refs**: \`{{stepName.field}}\` — no \`.output.\` in the path (e.g. \`{{trigger.body.email}}\`, \`{{step_1.id}}\`).
+- **Step refs**: \`{{stepName.field}}\` — no \`.output.\` in the path (e.g. \`{{trigger.body.email}}\`, \`{{step_1.id}}\`). Webhook JSON keys are case-sensitive; Salesforce Create Lead requires \`LastName\` — map it (e.g. \`{{trigger.body.lastName}}\` for common camelCase payloads).
+- **Catch Webhook trigger**: in trigger \`input\`, set \`authType\` to \`"none"\` by default (Authentication = None), unless the user requests basic/header/hmac.
 - **Step names**: \`trigger\`, \`step_1\`, \`step_2\`, etc. Use ap_flow_structure to see all names.
 - **Piece names**: full format (e.g. "@activepieces/piece-slack") for ap_add_step/ap_update_trigger. Short names work for lookup tools.
 - **Modifying steps**: use ap_update_step/ap_update_trigger. Never delete+recreate — loses sample data.

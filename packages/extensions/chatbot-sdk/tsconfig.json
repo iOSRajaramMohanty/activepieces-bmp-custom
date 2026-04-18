@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "target": "ES2022",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "sourceMap": true,
+    "skipLibCheck": true
+  }
+}
+

@@ -30,6 +30,7 @@ export const errorHandler = async (
             [ErrorCode.EMAIL_IS_NOT_VERIFIED]: StatusCodes.FORBIDDEN,
             [ErrorCode.USER_IS_INACTIVE]: StatusCodes.FORBIDDEN,
             [ErrorCode.DOMAIN_NOT_ALLOWED]: StatusCodes.FORBIDDEN,
+            [ErrorCode.RATE_LIMIT_EXCEEDED]: StatusCodes.TOO_MANY_REQUESTS,
             [ErrorCode.EMAIL_AUTH_DISABLED]: StatusCodes.FORBIDDEN,
             [ErrorCode.INVALID_SMTP_CREDENTIALS]: StatusCodes.BAD_REQUEST,
             [ErrorCode.INVALID_GIT_CREDENTIALS]: StatusCodes.BAD_REQUEST,
