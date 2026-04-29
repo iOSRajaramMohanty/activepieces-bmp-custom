@@ -1,4 +1,4 @@
-import { ActivepiecesError, ALL_PRINCIPAL_TYPES, apId, assertNotNullOrUndefined, EnginePrincipal, ErrorCode, isNil, PlatformId, Principal, PrincipalType, ProjectId, UserStatus, WorkerPrincipal } from '@activepieces/shared'
+import { ActivepiecesError, ALL_PRINCIPAL_TYPES, apId, EnginePrincipal, ErrorCode, isNil, PlatformId, Principal, PrincipalType, ProjectId, UserStatus, WorkerPrincipal } from '@activepieces/shared'
 import dayjs from 'dayjs'
 import { FastifyBaseLogger } from 'fastify'
 import { jwtUtils } from '../../helper/jwt-utils'

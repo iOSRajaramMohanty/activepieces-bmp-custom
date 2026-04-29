@@ -1,4 +1,4 @@
-import { ActivepiecesError, apId, assertEqual, assertNotNullOrUndefined, ErrorCode, InvitationStatus, InvitationType, isNil, Platform, PlatformRole, ProjectType, SeekPage, spreadIfDefined, User, UserInvitation, UserInvitationWithLink } from '@activepieces/shared'
+import { ActivepiecesError, apId, assertEqual, assertNotNullOrUndefined, ErrorCode, InvitationStatus, InvitationType, isNil, PlatformRole, ProjectType, SeekPage, spreadIfDefined, User, UserInvitation, UserInvitationWithLink } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { IsNull } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
@@ -11,10 +11,10 @@ import { projectRoleService } from '../ee/projects/project-role/project-role.ser
 import { JwtAudience, jwtUtils } from '../helper/jwt-utils'
 import { buildPaginator } from '../helper/pagination/build-paginator'
 import { paginationHelper } from '../helper/pagination/pagination-utils'
+import { organizationService } from '../organization/organization.service'
 import { platformService } from '../platform/platform.service'
 import { projectService } from '../project/project-service'
 import { userService } from '../user/user-service'
-import { organizationService } from '../organization/organization.service'
 import { UserInvitationEntity } from './user-invitation.entity'
 
 const repo = repoFactory(UserInvitationEntity)
@@ -116,7 +116,8 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                                 projectId: project.id,
                                 organizationId: invitation.organizationId,
                             }, '[provisionUserInvitation] Created shared project for org (first Admin)')
-                        } else {
+                        }
+                        else {
                             log.info({
                                 userId: user.id,
                                 email,
@@ -141,7 +142,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                             email, 
                             platformRole: invitation.platformRole,
                             invitationProjectId: invitation.projectId,
-                            invitationOrganizationId: invitation.organizationId
+                            invitationOrganizationId: invitation.organizationId,
                         }, '[provisionUserInvitation] OPERATOR/MEMBER - org shared project, visibility-based access')
                         
                         if (isNil(invitation.projectId) || isNil(invitation.organizationId)) {
@@ -160,7 +161,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                             userId: user.id,
                             email,
                             projectId: invitation.projectId,
-                            organizationId: invitation.organizationId
+                            organizationId: invitation.organizationId,
                         }, '[provisionUserInvitation] OPERATOR/MEMBER assigned organizationId; access via visibility filter (no projectMemberService)')
                     }
                     break
@@ -218,7 +219,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 platformRole, 
                 organizationId,
                 environment,
-                type 
+                type, 
             }, '[createInvitation] Creating PLATFORM invitation with platformRole')
         }
         
@@ -245,7 +246,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 platformId,
                 expectedRole: platformRole,
                 savedRole: savedInvitation.platformRole,
-                invitationId: savedInvitation.id
+                invitationId: savedInvitation.id,
             }, '[createInvitation] ERROR: PlatformRole mismatch after save!')
         }
 
@@ -364,10 +365,12 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                     platformId: invitation.platformId,
                     platformRole: PlatformRole.ADMIN,
                 })
-            } else {
+            }
+            else {
                 user = existingUser
             }
-        } else {
+        }
+        else {
             user = await userService(log).getOrCreateWithProject({
                 identity,
                 platformId: invitation.platformId,

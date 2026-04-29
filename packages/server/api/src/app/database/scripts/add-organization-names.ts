@@ -10,13 +10,13 @@
  * Run this script using: npx ts-node packages/server/api/src/app/database/scripts/add-organization-names.ts
  */
 
-import { databaseConnection } from '../database-connection'
-import { organizationService } from '../../organization/organization.service'
+import { userIdentityService } from '../../authentication/user-identity/user-identity-service'
 import { repoFactory } from '../../core/db/repo-factory'
+import { system } from '../../helper/system/system'
+import { organizationService } from '../../organization/organization.service'
 import { UserEntity } from '../../user/user-entity'
 import type { UserSchema } from '../../user/user-entity'
-import { userIdentityService } from '../../authentication/user-identity/user-identity-service'
-import { system } from '../../helper/system/system'
+import { databaseConnection } from '../database-connection'
 
 async function addOrganizationNames() {
     console.log('🚀 Starting organization name assignment...')
@@ -88,10 +88,12 @@ async function addOrganizationNames() {
             }
         }
 
-    } catch (error) {
+    }
+    catch (error) {
         console.error('❌ Error:', error)
         throw error
-    } finally {
+    }
+    finally {
         if (databaseConnection().isInitialized) {
             await databaseConnection().destroy()
             console.log('🔌 Database connection closed')
@@ -105,7 +107,7 @@ async function assignOrganization(
     platformId: string | null,
     orgsCreated: string[],
     usersUpdated: string[],
-    userRepoInstance: any
+    userRepoInstance: any,
 ) {
     if (!platformId) {
         console.log(`⚠️  Skipping user ${user.id}: no platformId`)
@@ -132,7 +134,8 @@ async function assignOrganization(
         usersUpdated.push(user.id)
         console.log(`   ✅ Updated user ${user.id} with organization: ${orgName}`)
 
-    } catch (error) {
+    }
+    catch (error) {
         console.error(`   ❌ Error assigning organization ${orgName} to user ${user.id}:`, error)
     }
 }

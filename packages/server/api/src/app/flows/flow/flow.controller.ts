@@ -35,7 +35,6 @@ import { platformPlanService } from '../../ee/platform/platform-plan/platform-pl
 import { gitRepoService } from '../../ee/projects/project-release/git-sync/git-sync.service'
 import { applicationEvents } from '../../helper/application-events'
 import { projectService } from '../../project/project-service'
-import { platformService } from '../../platform/platform.service'
 import { userService } from '../../user/user-service'
 import { migrateFlowVersionTemplate } from '../flow-version/migrations'
 import { FlowEntity } from './flow.entity'

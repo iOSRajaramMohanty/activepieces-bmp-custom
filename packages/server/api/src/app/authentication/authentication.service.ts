@@ -29,7 +29,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                     log.info({ 
                         email: params.email,
                         invitationId: platformInvitation.id,
-                        platformId: platformInvitation.platformId
+                        platformId: platformInvitation.platformId,
                     }, '[signUp] Found accepted invitation, using invitation platformId')
                     params.platformId = platformInvitation.platformId
                 }
@@ -94,8 +94,8 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 id: inv.id, 
                 type: inv.type, 
                 platformRole: inv.platformRole,
-                status: inv.status 
-            }))
+                status: inv.status, 
+            })),
         }, '[signUp] Found accepted invitations')
         
         const platformInvitation = acceptedInvitations.find(inv => inv.type === InvitationType.PLATFORM)
@@ -104,18 +104,20 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         let invitedPlatformRole = PlatformRole.MEMBER
         if (platformInvitation?.platformRole) {
             invitedPlatformRole = platformInvitation.platformRole
-        } else if (platformInvitation) {
+        }
+        else if (platformInvitation) {
             log.warn({ 
                 email: params.email,
                 invitationId: platformInvitation.id,
                 invitationType: platformInvitation.type,
-                platformRole: platformInvitation.platformRole
+                platformRole: platformInvitation.platformRole,
             }, '[signUp] WARNING: Platform invitation found but platformRole is null/undefined, defaulting to MEMBER')
-        } else {
+        }
+        else {
             log.warn({ 
                 email: params.email,
                 platformId: params.platformId,
-                invitationsCount: acceptedInvitations.length
+                invitationsCount: acceptedInvitations.length,
             }, '[signUp] WARNING: No platform invitation found, defaulting to MEMBER')
         }
         
@@ -124,7 +126,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             platformInvitationId: platformInvitation?.id,
             invitedPlatformRole,
             platformRoleFromInvitation: platformInvitation?.platformRole,
-            hasPlatformInvitation: !!platformInvitation
+            hasPlatformInvitation: !!platformInvitation,
         }, '[signUp] Using platform role from invitation')
         
         const userIdentity = await userIdentityService(log).create({
@@ -140,7 +142,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 userId: existingUser.id,
                 email: params.email,
                 existingRole: existingUser.platformRole,
-                expectedRole: invitedPlatformRole
+                expectedRole: invitedPlatformRole,
             }, '[signUp] User already exists, will update role if needed')
             
             // Update existing user's role to match invitation
@@ -154,7 +156,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                     userId: existingUser.id,
                     email: params.email,
                     oldRole: existingUser.platformRole,
-                    newRole: invitedPlatformRole
+                    newRole: invitedPlatformRole,
                 }, '[signUp] Updated existing user role to match invitation')
             }
         }
@@ -180,7 +182,8 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                     userId: user.id,
                     email: params.email,
                 }, '[signUp] Using existing user for organization ADMIN')
-            } else {
+            }
+            else {
                 user = await userService(log).create({
                     identityId: userIdentity.id,
                     platformId: params.platformId,
@@ -191,7 +194,8 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                     email: params.email,
                 }, '[signUp] Created new user for organization ADMIN (no auto-project)')
             }
-        } else {
+        }
+        else {
             // Standard flow: create user with generic project
             user = await userService(log).getOrCreateWithProject({
                 identity: userIdentity,
@@ -204,7 +208,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 email: params.email,
                 createdPlatformRole: user.platformRole,
                 expectedPlatformRole: invitedPlatformRole,
-                wasExistingUser: !!existingUser
+                wasExistingUser: !!existingUser,
             }, '[signUp] User created/retrieved with platform role')
         }
         
@@ -222,7 +226,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 email: params.email,
                 currentRole: updatedUser.platformRole,
                 expectedRole: invitedPlatformRole,
-                invitationRole: platformInvitation.platformRole
+                invitationRole: platformInvitation.platformRole,
             }, '[signUp] Role mismatch detected, correcting to invitation role')
             
             await userService(log).update({
@@ -235,14 +239,15 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 userId: correctedUser.id,
                 email: params.email,
                 correctedPlatformRole: correctedUser.platformRole,
-                expectedPlatformRole: invitedPlatformRole
+                expectedPlatformRole: invitedPlatformRole,
             }, '[signUp] Role corrected to match invitation')
-        } else {
+        }
+        else {
             log.info({ 
                 userId: updatedUser.id,
                 email: params.email,
                 finalPlatformRole: updatedUser.platformRole,
-                expectedPlatformRole: invitedPlatformRole
+                expectedPlatformRole: invitedPlatformRole,
             }, '[signUp] Final platform role after provisioning')
         }
 
@@ -258,7 +263,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         log.info({ identityId: identity.id, email: params.email }, '[signInWithPassword] Identity verified')
         log.info({ predefinedPlatformId: params.predefinedPlatformId }, '[signInWithPassword] predefinedPlatformId')
         
-        const platformId = isNil(params.predefinedPlatformId) ? await getPersonalPlatformIdForIdentity(identity.id, log) : params.predefinedPlatformId
+        const platformId = isNil(params.predefinedPlatformId) ? await getPreferredPlatformId(identity.id, log) : params.predefinedPlatformId
         log.info({ platformId, email: params.email }, '[signInWithPassword] Resolved platformId')
         if (isNil(platformId)) {
             const users = await userService(log).getByIdentityId({ identityId: identity.id })
@@ -266,7 +271,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 email: params.email, 
                 identityId: identity.id,
                 usersFound: users.length,
-                users: users.map(u => ({ id: u.id, platformId: u.platformId, platformRole: u.platformRole, status: u.status }))
+                users: users.map(u => ({ id: u.id, platformId: u.platformId, platformRole: u.platformRole, status: u.status })),
             }, '[signInWithPassword] No platform found for identity')
             
             throw new ActivepiecesError({
@@ -292,7 +297,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
                 params: { message: 'The platform associated with this account no longer exists.' },
             })
         }
-        let user = await userService(log).getOneByIdentityAndPlatform({
+        const user = await userService(log).getOneByIdentityAndPlatform({
             identityId: identity.id,
             platformId,
         })

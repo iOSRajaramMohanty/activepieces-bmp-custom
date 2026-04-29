@@ -1,14 +1,13 @@
+import { 
+    ActivepiecesError, 
+    apId, 
+    CheckAdminAvailabilityResponse,
+    EnvironmentType,
+    ErrorCode,
+    OrganizationEnvironment,
+} from '@activepieces/shared'
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEnvironmentEntity } from './organization-environment.entity'
-import { UserIdentityEntity } from '../authentication/user-identity/user-identity-entity'
-import { 
-    OrganizationEnvironment, 
-    EnvironmentType, 
-    apId,
-    CheckAdminAvailabilityResponse,
-    ActivepiecesError,
-    ErrorCode,
-} from '@activepieces/shared'
 
 export const organizationEnvironmentService = {
     async create(params: CreateOrganizationEnvironmentParams): Promise<OrganizationEnvironment> {
@@ -36,22 +35,22 @@ export const organizationEnvironmentService = {
             metadata: {},
         }
 
-        return await databaseConnection()
+        return databaseConnection()
             .getRepository(OrganizationEnvironmentEntity)
             .save(newOrgEnv)
     },
 
     async getById(id: string): Promise<OrganizationEnvironment | null> {
-        return await databaseConnection()
+        return databaseConnection()
             .getRepository(OrganizationEnvironmentEntity)
             .findOneBy({ id })
     },
 
     async getByOrgAndEnv(
         organizationId: string,
-        environment: EnvironmentType
+        environment: EnvironmentType,
     ): Promise<OrganizationEnvironment | null> {
-        return await databaseConnection()
+        return databaseConnection()
             .getRepository(OrganizationEnvironmentEntity)
             .findOneBy({
                 organizationId,
@@ -84,7 +83,7 @@ export const organizationEnvironmentService = {
                     WHEN 'Staging' THEN 2 
                     WHEN 'Production' THEN 3 
                     ELSE 4 
-                END`
+                END`,
             )
             .getRawMany()
         
@@ -137,7 +136,7 @@ export const organizationEnvironmentService = {
 
     async update(
         id: string,
-        updates: Partial<OrganizationEnvironment>
+        updates: Partial<OrganizationEnvironment>,
     ): Promise<OrganizationEnvironment> {
         const orgEnv = await this.getById(id)
         
@@ -178,13 +177,13 @@ export const organizationEnvironmentService = {
         const existing = await this.getByOrgAndEnv(organizationId, environment)
 
         if (existing) {
-            return await this.update(existing.id, { 
+            return this.update(existing.id, { 
                 adminUserId: adminUserId ?? undefined, 
-                projectId: projectId ?? undefined 
+                projectId: projectId ?? undefined, 
             })
         }
 
-        return await this.create({
+        return this.create({
             organizationId,
             environment,
             platformId,
@@ -211,13 +210,13 @@ export const organizationEnvironmentService = {
     },
 
     async getByAdminUserId(adminUserId: string): Promise<OrganizationEnvironment | null> {
-        return await databaseConnection()
+        return databaseConnection()
             .getRepository(OrganizationEnvironmentEntity)
             .findOneBy({ adminUserId })
     },
 
     async getAllByPlatform(platformId: string): Promise<OrganizationEnvironment[]> {
-        return await databaseConnection()
+        return databaseConnection()
             .getRepository(OrganizationEnvironmentEntity)
             .createQueryBuilder('orgEnv')
             .where('orgEnv.platformId = :platformId', { platformId })
@@ -228,7 +227,7 @@ export const organizationEnvironmentService = {
                     WHEN 'Staging' THEN 2 
                     WHEN 'Production' THEN 3 
                     ELSE 4 
-                END`
+                END`,
             )
             .getMany()
     },

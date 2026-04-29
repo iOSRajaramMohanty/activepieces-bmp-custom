@@ -1,13 +1,13 @@
 import { ActivepiecesError, ApEdition, ErrorCode, isNil, Permission, PlatformRole, Principal, PrincipalType, UserIdentityProvider } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import { authHooks } from '../../../../authentication/auth-hooks'
 import { userIdentityService } from '../../../../authentication/user-identity/user-identity-service'
 import { rbacService } from '../../../../ee/authentication/project-role/rbac-service'
-import { system } from '../../../../helper/system/system'
 import { projectMemberService } from '../../../../ee/projects/project-members/project-member.service'
+import { system } from '../../../../helper/system/system'
 import { userService } from '../../../../user/user-service'
 import { AuthorizationRouteSecurity, ProjectAuthorizationConfig } from '../../authorization/authorization'
 import { AuthorizationType, RouteKind } from '../../authorization/common'
-import { authHooks } from '../../../../authentication/auth-hooks'
 
 export const authorizeOrThrow = async (principal: Principal, security: AuthorizationRouteSecurity, log: FastifyBaseLogger): Promise<void> => {
     if (security.kind === RouteKind.PUBLIC) {
@@ -41,7 +41,7 @@ async function assertNonEmbedOrAdmin(principal: Principal, log: FastifyBaseLogge
         return
     }
     const user = await userService(log).getOneOrFail({ id: principal.id })
-    if (user.platformRole === PlatformRole.ADMIN) {
+    if (authHooks.get(log).isPrivilegedRole(user.platformRole)) {
         return
     }
     const identity = await userIdentityService(log).getOneOrFail({ id: user.identityId })

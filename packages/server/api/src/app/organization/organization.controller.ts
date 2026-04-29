@@ -1,21 +1,21 @@
-import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { z } from 'zod'
-import { organizationService } from './organization.service'
-import { organizationEnvironmentService } from './organization-environment.service'
 import {
-    EnvironmentType,
     ActivepiecesError,
+    EnvironmentType,
     ErrorCode,
-    PrincipalType,
     PlatformRole,
+    PrincipalType,
 } from '@activepieces/shared'
+import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
+import { z } from 'zod'
 import {
     canInitializeOrganizationEnvironments,
     effectiveUserOrganizationIdForScope,
     shouldIsolateOrganizationEnvironmentsForUser,
 } from '../bmp/bmp-runtime'
 import { securityAccess } from '../core/security/authorization/fastify-security'
+import { organizationEnvironmentService } from './organization-environment.service'
+import { organizationService } from './organization.service'
 
 // Zod schemas for request validation (converted from TypeBox for Zod validator compatibility)
 const CreateOrganizationRequestZod = z.object({
@@ -31,7 +31,7 @@ const CheckAdminAvailabilityRequestZod = z.object({
 export const organizationController: FastifyPluginAsyncZod = async (app) => {
     // Create organization
     app.post('/', CreateOrganizationRequestParams, async (request, reply) => {
-        const { name, platformId } = request.body as { name: string; platformId: string }
+        const { name, platformId } = request.body as { name: string, platformId: string }
 
         const organization = await organizationService.create({
             name,
@@ -54,7 +54,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
         const { userService } = await import('../user/user-service')
         const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
-        return await organizationService.list({
+        return organizationService.list({
             platformId,
             limit,
             cursor,
@@ -88,7 +88,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             id,
             request.principal.id,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
         if (!organization) {
             throw new ActivepiecesError({
@@ -128,7 +128,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             id,
             request.principal.id,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
         if (!organization) {
             throw new ActivepiecesError({
@@ -149,7 +149,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             organizationId,
             request.principal.id,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
         if (!organization) {
             throw new ActivepiecesError({
@@ -192,7 +192,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
 
     // Update organization environment metadata
     app.patch('/:organizationId/environments/:environmentId/metadata', UpdateEnvironmentMetadataRequestParams, async (request) => {
-        const { organizationId, environmentId } = request.params as { organizationId: string; environmentId: string }
+        const { organizationId, environmentId } = request.params as { organizationId: string, environmentId: string }
         const { metadata } = request.body as { metadata?: unknown }
 
         // Get current user's organization info for access control
@@ -204,7 +204,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             organizationId,
             request.principal.id,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
         if (!organization) {
             throw new ActivepiecesError({
@@ -228,25 +228,25 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             })
         }
 
-        return await organizationEnvironmentService.update(environmentId, { metadata })
+        return organizationEnvironmentService.update(environmentId, { metadata })
     })
 
     // Check admin availability for org-env
     app.post('/check-admin', CheckAdminRequestParams, async (request) => {
-        const body = request.body as { organizationId: string; environment: string }
+        const body = request.body as { organizationId: string, environment: string }
         const environment = body.environment as EnvironmentType
 
-        return await organizationEnvironmentService.checkAdminAvailability({
+        return organizationEnvironmentService.checkAdminAvailability({
             organizationId: body.organizationId,
-            environment
+            environment,
         })
     })
 
     // Get or create organization
     app.post('/get-or-create', GetOrCreateOrganizationRequestParams, async (request) => {
-        const { name, platformId } = request.body as { name: string; platformId: string }
+        const { name, platformId } = request.body as { name: string, platformId: string }
 
-        return await organizationService.getOrCreate({
+        return organizationService.getOrCreate({
             name,
             platformId,
         })
@@ -255,18 +255,18 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
     // Update organization
     app.patch('/:id', UpdateOrganizationRequestParams, async (request) => {
         const { id } = request.params as { id: string }
-        const updates = request.body as Partial<{ name?: string; platformId?: string; metadata?: unknown }>
+        const updates = request.body as Partial<{ name?: string, platformId?: string, metadata?: unknown }>
 
         // Get current user's organization info
         const { userService } = await import('../user/user-service')
         const currentUser = await userService(request.log).getOneOrFail({ id: request.principal.id })
 
-        return await organizationService.update(
+        return organizationService.update(
             id,
             updates,
             request.principal.id,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
     })
 
@@ -313,7 +313,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
     // Assign current user to an organization (auto-setup endpoint)
     // This allows the frontend to automatically assign users to organizations
     app.post('/assign-user', AssignUserRequestParams, async (request) => {
-        const { organizationId, platformRole } = request.body as { organizationId: string; platformRole: PlatformRole }
+        const { organizationId, platformRole } = request.body as { organizationId: string, platformRole: PlatformRole }
         const currentUserId = request.principal.id
         const platformId = request.principal.platform.id
 
@@ -325,7 +325,7 @@ export const organizationController: FastifyPluginAsyncZod = async (app) => {
             organizationId,
             currentUserId,
             effectiveUserOrganizationIdForScope(currentUser.organizationId),
-            currentUser.platformRole
+            currentUser.platformRole,
         )
         if (!organization) {
             throw new ActivepiecesError({

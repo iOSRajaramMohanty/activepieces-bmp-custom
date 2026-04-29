@@ -4,6 +4,7 @@ import {
   SeekPage,
   PopulatedFlow,
   isNil,
+  UserWithMetaInformation,
 } from '@activepieces/shared';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { t } from 'i18next';
@@ -52,7 +53,7 @@ import { flowsApi } from '@/features/flows/api/flows-api';
 import { FlowStatusToggle } from '@/features/flows/components/flow-status-toggle';
 import { PieceIconList } from '@/features/pieces/components/piece-icon-list';
 import { platformHooks } from '@/hooks/platform-hooks';
-import { platformUserHooks } from '@/hooks/platform-user-hooks';
+import { platformUserHooks } from '@/features/platform-admin/hooks/platform-user-hooks';
 import { userHooks } from '@/hooks/user-hooks';
 import { api } from '@/lib/api';
 import { authenticationSession } from '@/lib/authentication-session';
@@ -113,7 +114,7 @@ export function OwnerDashboard() {
     );
   }
 
-  const platformUsers = useMemo(() => {
+  const platformUsers = useMemo((): UserWithMetaInformation[] => {
     if (!usersData?.data) {
       console.log('[OwnerDashboard] No users data available', {
         usersData,

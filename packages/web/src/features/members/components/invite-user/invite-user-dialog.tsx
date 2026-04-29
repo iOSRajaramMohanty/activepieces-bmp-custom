@@ -10,14 +10,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { t } from 'i18next';
 import { CopyIcon } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { isBmpEnabled } from '@/features/bmp/bmp-integration';
-import { TagInput } from '@/components/custom/tag-input';
 import { useEmbedding } from '@/components/providers/embed-provider';
 import { Button } from '@/components/ui/button';
 import {
@@ -90,11 +89,6 @@ export const InviteUserDialog = ({
 }) => {
   const { embedState } = useEmbedding();
   const [invitationLink, setInvitationLink] = useState('');
-
-  const [inputValue, setInputValue] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [tagInputKey, setTagInputKey] = useState(0);
-  const inputRef = useRef<HTMLDivElement>(null);
   const { platform } = platformHooks.useCurrentPlatform();
   const { refetch } = userInvitationsHooks.useInvitations();
   const { data: currentUser } = userHooks.useCurrentUser();
@@ -195,9 +189,6 @@ export const InviteUserDialog = ({
     },
   });
 
-  // Watch emails to update suggestions
-  const currentEmails = form.watch('emails');
-
   // Subscribe to these so conditional UI (e.g. Organization) updates when role/type change.
   // `form.getValues()` does not trigger re-renders when nested fields update.
   const watchedInvitationType = form.watch('type');
@@ -293,20 +284,6 @@ export const InviteUserDialog = ({
     });
   };
 
-  const handleSelectUser = (email: string) => {
-    const currentEmails = form.getValues('emails');
-    form.setValue('emails', [...currentEmails, email]);
-    setInputValue('');
-    setShowSuggestions(false);
-    // Force TagInput to remount and clear its internal input state
-    setTagInputKey((prev) => prev + 1);
-  };
-
-  const handleInputChange = (value: string) => {
-    setInputValue(value);
-    setShowSuggestions(value.trim().length > 0 && !isPlatformPage);
-  };
-
   if (embedState.isEmbedded || !userHasPermissionToInviteUser) {
     return null;
   }
@@ -332,9 +309,6 @@ export const InviteUserDialog = ({
               organizationName: '',
             });
             setInvitationLink('');
-            setInputValue('');
-            setShowSuggestions(false);
-            setTagInputKey(0);
           }}
         >
           <DialogContent className="sm:max-w-[475px]">
@@ -383,23 +357,15 @@ export const InviteUserDialog = ({
                       <FormItem className="grid gap-2">
                         <Label htmlFor="emails">{t('Emails')}</Label>
                         <UserSuggestionsPopover
-                          open={showSuggestions}
-                          onOpenChange={setShowSuggestions}
-                          inputValue={inputValue}
-                          currentEmails={currentEmails}
-                          onSelectUser={handleSelectUser}
-                          isPlatformPage={isPlatformPage}
-                        >
-                          <div ref={inputRef}>
-                            <TagInput
-                              key={tagInputKey}
-                              {...field}
-                              type="email"
-                              placeholder={t('Invite users by email')}
-                              onInputChange={handleInputChange}
-                            />
-                          </div>
-                        </UserSuggestionsPopover>
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder={t('Invite users by email')}
+                          invitationType={
+                            isPlatformPage
+                              ? InvitationType.PLATFORM
+                              : watchedInvitationType
+                          }
+                        />
                         <FormMessage />
                       </FormItem>
                     )}

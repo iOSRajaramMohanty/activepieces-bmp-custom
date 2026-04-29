@@ -24,7 +24,6 @@ import { FastifyBaseLogger } from 'fastify'
 import { In } from 'typeorm'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { isBmpEnabled } from '../bmp/bmp-runtime'
-import { databaseConnection } from '../database/database-connection'
 import { repoFactory } from '../core/db/repo-factory'
 import { platformProjectService } from '../ee/projects/platform-project-service'
 import { projectMemberRepo } from '../ee/projects/project-role/project-role.service'
@@ -33,7 +32,6 @@ import { paginationHelper } from '../helper/pagination/pagination-utils'
 import { system } from '../helper/system/system'
 import { platformService } from '../platform/platform.service'
 import { projectService } from '../project/project-service'
-import { organizationService } from '../organization/organization.service'
 import { UserEntity, UserSchema } from './user-entity'
 
 
@@ -287,7 +285,7 @@ export const userService = (log: FastifyBaseLogger) => ({
             const otherUsersWithSameIdentity = await userRepo().count({
                 where: { identityId },
             })
-                if (otherUsersWithSameIdentity === 0) {
+            if (otherUsersWithSameIdentity === 0) {
                 await userIdentityService(log).delete({ id: identityId })
             }
         }
@@ -332,7 +330,8 @@ export const userService = (log: FastifyBaseLogger) => ({
                 const orgRepo = repoFactory(OrganizationEntity)
                 const organization = await orgRepo().findOneBy({ id: user.organizationId })
                 organizationName = organization?.name || null
-            } catch (error) {
+            }
+            catch (error) {
                 const errorMessage = error instanceof Error ? error.message : String(error)
                 log.warn(`Failed to fetch organization ${user.organizationId} for user ${user.id}: ${errorMessage}`)
             }
@@ -343,7 +342,8 @@ export const userService = (log: FastifyBaseLogger) => ({
                     where: { adminUserId: user.id },
                 })
                 environment = orgEnv?.environment || null
-            } else if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
+            }
+            else if (user.platformRole === PlatformRole.OPERATOR || user.platformRole === PlatformRole.MEMBER) {
                 const { ProjectMemberEntity } = await import('../ee/projects/project-members/project-member.entity')
                 const { ProjectEntity } = await import('../project/project-entity')
                 const projectMemberRepo = repoFactory(ProjectMemberEntity)

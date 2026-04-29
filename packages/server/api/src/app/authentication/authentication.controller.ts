@@ -1,7 +1,8 @@
+import { apDayjsDuration } from '@activepieces/server-utils'
 import {
+    ActivepiecesError,
     ApplicationEventName,
     assertNotNullOrUndefined,
-    ActivepiecesError,
     ErrorCode,
     InvitationStatus,
     InvitationType,
@@ -12,11 +13,10 @@ import {
     SwitchPlatformRequest,
     UserIdentityProvider,
 } from '@activepieces/shared'
-import { Type } from '@sinclair/typebox'
 import { RateLimitOptions } from '@fastify/rate-limit'
+import { Type } from '@sinclair/typebox'
+import { FastifyBaseLogger } from 'fastify'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { StatusCodes } from 'http-status-codes'
-import { apDayjsDuration } from '@activepieces/server-utils'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { applicationEvents } from '../helper/application-events'
 import { networkUtils } from '../helper/network-utils'
@@ -27,7 +27,6 @@ import { userService } from '../user/user-service'
 import { userInvitationsService } from '../user-invitations/user-invitation.service'
 import { authenticationService } from './authentication.service'
 import { isMultiTenantMode, multiTenantAuthService } from './multi-tenant-auth.service'
-import { FastifyBaseLogger } from 'fastify'
 
 /**
  * Map roleName string to PlatformRole enum
@@ -70,7 +69,7 @@ async function handleSDKClientIdAndOrganization({
     platformId,
     log,
 }: {
-    user: { id: string; clientId?: string | null; organizationId?: string | null }
+    user: { id: string, clientId?: string | null, organizationId?: string | null }
     clientId: string
     clientName?: string
     platformId: string
@@ -129,14 +128,16 @@ async function handleSDKClientIdAndOrganization({
                         organizationName: organization.name,
                         clientId,
                     }, '[handleSDKClientIdAndOrganization] Created new organization for clientId')
-                } else {
+                }
+                else {
                     log.warn({
                         userId: updatedUser.id,
                         clientName,
                         processedOrgName: orgName,
                     }, '[handleSDKClientIdAndOrganization] Invalid organization name after processing (must be 1-50 uppercase letters)')
                 }
-            } catch (orgError: any) {
+            }
+            catch (orgError: any) {
                 log.error({
                     userId: updatedUser.id,
                     error: orgError,
@@ -160,13 +161,15 @@ async function handleSDKClientIdAndOrganization({
                 organizationName: organization.name,
                 clientId,
             }, '[handleSDKClientIdAndOrganization] Assigned user to organization')
-        } else if (!clientName) {
+        }
+        else if (!clientName) {
             log.info({
                 userId: updatedUser.id,
                 clientId,
             }, '[handleSDKClientIdAndOrganization] clientId stored but no clientName provided and no existing organization found, skipping organization assignment')
         }
-    } else if (user.clientId !== clientId) {
+    }
+    else if (user.clientId !== clientId) {
         // Update clientId if different
         log.warn({
             userId: user.id,
@@ -179,7 +182,8 @@ async function handleSDKClientIdAndOrganization({
             platformId,
             clientId,
         })
-    } else {
+    }
+    else {
         log.info({
             userId: user.id,
             clientId,
@@ -237,8 +241,8 @@ export const authenticationController: FastifyPluginAsyncZod = async (
                 type: inv.type,
                 platformId: inv.platformId,
                 platformRole: inv.platformRole,
-                status: inv.status
-            }))
+                status: inv.status,
+            })),
         }, '[authenticationController] Checking for accepted invitations')
         
         const platformInvitation = allAcceptedInvitations.find(inv => inv.type === InvitationType.PLATFORM)
@@ -250,7 +254,7 @@ export const authenticationController: FastifyPluginAsyncZod = async (
                 email: request.body.email,
                 invitationId: platformInvitation.id,
                 invitationPlatformId: platformInvitation.platformId,
-                invitationPlatformRole: platformInvitation.platformRole
+                invitationPlatformRole: platformInvitation.platformRole,
             }, '[authenticationController] Found accepted invitation, using invitation platform (bypassing multi-tenant mode)')
             
             // Pass null for platformId - signUp() will resolve it from the invitation
@@ -259,14 +263,16 @@ export const authenticationController: FastifyPluginAsyncZod = async (
                 provider: UserIdentityProvider.EMAIL,
                 platformId: null, // Will be resolved from invitation in signUp()
             })
-        } else if (multiTenantMode) {
+        }
+        else if (multiTenantMode) {
             // Multi-tenant mode: Each signup gets their own isolated platform (only if no invitation)
             request.log.info('[authenticationController] Multi-tenant mode: Creating new platform for signup (no invitation found)')
             signUpResponse = await multiTenantAuthService(request.log).signUpWithNewPlatform({
                 ...request.body,
                 provider: UserIdentityProvider.EMAIL,
             })
-        } else {
+        }
+        else {
             // Standard mode: Use existing platform or create based on edition rules
             request.log.info('[authenticationController] Standard mode: Using platform resolution')
             const platformId = await platformUtils.getPlatformIdForRequest(request)
@@ -389,86 +395,348 @@ export const authenticationController: FastifyPluginAsyncZod = async (
             rateLimit: rateLimitOptions,
         },
         handler: async (request) => {
-        const body = request.body as {
-            email: string
-            password: string
-            firstName: string
-            lastName: string
-            platformId?: string
-            clientId?: string
-            clientName?: string
-            roleName?: string
-        }
-        const { email, password, firstName, lastName } = body
-        const providedPlatformId = body.platformId
-        const clientId = body.clientId
-        const clientName = body.clientName
-        const roleName = body.roleName // From localStorage: ada.roleName
+            const body = request.body as {
+                email: string
+                password: string
+                firstName: string
+                lastName: string
+                platformId?: string
+                clientId?: string
+                clientName?: string
+                roleName?: string
+            }
+            const { email, password, firstName, lastName } = body
+            const providedPlatformId = body.platformId
+            const clientId = body.clientId
+            const clientName = body.clientName
+            const roleName = body.roleName // From localStorage: ada.roleName
         
-        // SDK mode: Use provided platformId, otherwise resolve from request
-        const platformId = providedPlatformId || await platformUtils.getPlatformIdForRequest(request)
+            // SDK mode: Use provided platformId, otherwise resolve from request
+            const platformId = providedPlatformId || await platformUtils.getPlatformIdForRequest(request)
         
-        if (!platformId) {
-            throw new ActivepiecesError({
-                code: ErrorCode.VALIDATION,
-                params: {
-                    message: 'Platform ID could not be determined. Please provide platformId parameter or ensure the request is made to a valid platform.',
-                },
+            if (!platformId) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: 'Platform ID could not be determined. Please provide platformId parameter or ensure the request is made to a valid platform.',
+                    },
+                })
+            }
+        
+            // SDK mode: If platformId is provided, clientId should also be provided
+            if (providedPlatformId && !clientId) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: 'SDK mode requires both platformId and clientId. Please provide clientId when using platformId.',
+                    },
+                })
+            }
+        
+            // SDK mode: If platformId and clientId provided, use SDK auth flow
+            const isSDKMode = !!providedPlatformId && !!clientId
+        
+            // Ensure platform exists (avoids 500 later when sign-in/sign-up uses it)
+            const { platformService } = await import('../platform/platform.service')
+            const platform = await platformService(request.log).getOne(platformId)
+            if (!platform) {
+                throw new ActivepiecesError({
+                    code: ErrorCode.VALIDATION,
+                    params: {
+                        message: `Platform not found: ${platformId}. Please use a valid platform ID (tenant owner's platform).`,
+                    },
+                })
+            }
+        
+            // Map roleName to PlatformRole, default to ADMIN if not provided
+            const platformRole = mapRoleNameToPlatformRole(roleName)
+        
+            request.log.info({ 
+                email, 
+                platformId,
+                isSDKMode,
+                hasClientId: !!clientId,
+                hasClientName: !!clientName,
+                roleName,
+                platformRole,
+            }, '[auto-provision] Starting auto-provision for BMP user')
+        
+            // Import user identity service for direct identity lookup
+            const { userIdentityService } = await import('./user-identity/user-identity-service')
+        
+            // First, try to sign in - user may already exist on this platform
+            try {
+                const signInResponse = await authenticationService(request.log).signInWithPassword({
+                    email,
+                    password,
+                    predefinedPlatformId: platformId,
+                })
+            
+                // SDK mode: Handle clientId and organization after successful sign-in
+                if (isSDKMode && clientId) {
+                    const user = await userService(request.log).getOneOrFail({ id: signInResponse.id })
+                    await handleSDKClientIdAndOrganization({
+                        user,
+                        clientId,
+                        clientName,
+                        platformId,
+                        log: request.log,
+                    })
+                }
+            
+                request.log.info({ 
+                    email, 
+                    userId: signInResponse.id,
+                    isSDKMode,
+                }, '[auto-provision] User already exists, signed in successfully')
+            
+                return {
+                    ...signInResponse,
+                    isNewUser: false,
+                }
+            }
+            catch (signInError: any) {
+            // User doesn't exist or wrong password - continue to sign-up flow
+                request.log.info({ 
+                    email, 
+                    errorCode: signInError?.params?.code || signInError?.code,
+                    isSDKMode,
+                }, '[auto-provision] Sign-in failed, proceeding to auto-provision')
+            }
+        
+            // Check if the identity already exists (from another platform or previous attempt)
+            const existingIdentity = await userIdentityService(request.log).getIdentityByEmail(email)
+        
+            if (existingIdentity) {
+            // Identity exists - verify password matches
+                request.log.info({ 
+                    email, 
+                    identityId: existingIdentity.id, 
+                }, '[auto-provision] Identity exists, verifying password')
+            
+                try {
+                // This will throw if password doesn't match
+                    await userIdentityService(request.log).verifyIdentityPassword({ email, password })
+                }
+                catch (pwError: any) {
+                // Password doesn't match - don't allow account takeover
+                    request.log.warn({ 
+                        email,
+                        errorCode: pwError?.code, 
+                    }, '[auto-provision] Password verification failed for existing identity')
+                    throw new ActivepiecesError({
+                        code: ErrorCode.INVALID_CREDENTIALS,
+                        params: null,
+                    })
+                }
+            
+                request.log.info({ 
+                    email, 
+                    identityId: existingIdentity.id, 
+                }, '[auto-provision] Password verified')
+            
+                // Check if user already exists on this platform
+                const existingUser = await userService(request.log).getOneByIdentityAndPlatform({
+                    identityId: existingIdentity.id,
+                    platformId,
+                })
+            
+                const { projectService } = await import('../project/project-service')
+                const { ProjectType } = await import('@activepieces/shared')
+                const { authenticationUtils } = await import('./authentication-utils')
+            
+                let userId: string
+                let projectId: string | null = null
+                let isNewUser = false
+            
+                if (existingUser) {
+                // User exists on this platform - check if they have a project
+                    request.log.info({ 
+                        email, 
+                        userId: existingUser.id, 
+                    }, '[auto-provision] User already exists on this platform')
+                
+                    userId = existingUser.id
+                
+                    // Check for existing project
+                    const existingProject = await projectService(request.log).getOneByOwnerAndPlatform({
+                        ownerId: userId,
+                        platformId,
+                    })
+                
+                    if (existingProject) {
+                        projectId = existingProject.id
+                        request.log.info({ 
+                            email, 
+                            userId,
+                            projectId, 
+                        }, '[auto-provision] User has existing project')
+                    }
+                    else {
+                    // User exists but no project - create one
+                        request.log.info({ 
+                            email, 
+                            userId, 
+                        }, '[auto-provision] User exists but no project, creating one')
+                    
+                        const newProject = await projectService(request.log).create({
+                            displayName: `${existingIdentity.firstName}'s Project`,
+                            ownerId: userId,
+                            platformId,
+                            type: ProjectType.PERSONAL,
+                        })
+                        projectId = newProject.id
+                        isNewUser = true // Treat as new since they didn't have a working account
+                    }
+                }
+                else {
+                // User doesn't exist on this platform - create user and project
+                    request.log.info({ 
+                        email, 
+                        identityId: existingIdentity.id, 
+                    }, '[auto-provision] Creating user on this platform')
+                
+                    const newUser = await userService(request.log).create({
+                        identityId: existingIdentity.id,
+                        platformId,
+                        platformRole, // Use custom role from roleName or default ADMIN
+                    })
+                    userId = newUser.id
+                
+                    // SDK mode: Handle clientId and organization for new user
+                    let userOrganizationId: string | null = null
+                    if (isSDKMode && clientId) {
+                        await handleSDKClientIdAndOrganization({
+                            user: newUser,
+                            clientId,
+                            clientName,
+                            platformId,
+                            log: request.log,
+                        })
+                        // Reload user to get updated organizationId
+                        const updatedUser = await userService(request.log).getOneOrFail({ id: userId })
+                        userId = updatedUser.id
+                        userOrganizationId = updatedUser.organizationId ?? null
+                    }
+                
+                    // Create a project for this user (with organization if assigned)
+                    const newProject = await projectService(request.log).create({
+                        displayName: `${existingIdentity.firstName}'s Project`,
+                        ownerId: userId,
+                        platformId,
+                        type: ProjectType.PERSONAL,
+                        organizationId: userOrganizationId ?? undefined,
+                    })
+                    projectId = newProject.id
+                    isNewUser = true
+                }
+            
+                request.log.info({ 
+                    email, 
+                    userId,
+                    projectId,
+                    isNewUser, 
+                }, '[auto-provision] User ready with project')
+            
+                // Get the authentication response
+                const authResponse = await authenticationUtils(request.log).getProjectAndToken({
+                    userId,
+                    platformId,
+                    projectId,
+                })
+            
+                request.log.info({ 
+                    email, 
+                    userId,
+                    projectId: authResponse.projectId,
+                    hasToken: !!authResponse.token,
+                }, '[auto-provision] Got auth response, about to return')
+            
+                if (isNewUser) {
+                    applicationEvents(request.log).sendUserEvent({
+                        platformId: authResponse.platformId!,
+                        userId: authResponse.id,
+                        projectId: authResponse.projectId,
+                        ip: networkUtils.extractClientRealIp(request, system.get(AppSystemProp.CLIENT_REAL_IP_HEADER)),
+                    }, {
+                        action: ApplicationEventName.USER_SIGNED_UP,
+                        data: {
+                            source: 'credentials',
+                        },
+                    })
+                }
+            
+                const finalResponse = {
+                    ...authResponse,
+                    isNewUser,
+                }
+            
+                request.log.info({ 
+                    email, 
+                    hasProjectId: !!finalResponse.projectId,
+                    hasToken: !!finalResponse.token,
+                    isNewUser: finalResponse.isNewUser,
+                }, '[auto-provision] Returning final response')
+            
+                return finalResponse
+            }
+        
+            // Identity doesn't exist - create invitation and sign up normally
+            // Check if user already has an accepted invitation
+            const existingInvitations = await userInvitationsService(request.log).getAcceptedInvitationsByEmail({
+                email,
+                platformId,
             })
-        }
         
-        // SDK mode: If platformId is provided, clientId should also be provided
-        if (providedPlatformId && !clientId) {
-            throw new ActivepiecesError({
-                code: ErrorCode.VALIDATION,
-                params: {
-                    message: 'SDK mode requires both platformId and clientId. Please provide clientId when using platformId.',
-                },
-            })
-        }
+            if (existingInvitations.length === 0) {
+            // No invitation - create one with specified role (or default ADMIN)
+                request.log.info({ 
+                    email, 
+                    platformId,
+                    platformRole,
+                    roleName,
+                }, '[auto-provision] Creating auto-invitation with platform role')
+            
+                await userInvitationsService(request.log).create({
+                    email,
+                    type: InvitationType.PLATFORM,
+                    platformId,
+                    platformRole, // Use custom role from roleName or default ADMIN
+                    projectId: null,
+                    projectRoleId: null,
+                    organizationId: null,
+                    environment: null,
+                    invitationExpirySeconds: apDayjsDuration(1, 'day').asSeconds(),
+                    status: InvitationStatus.ACCEPTED, // Auto-accept the invitation
+                })
+            
+                request.log.info({ 
+                    email, 
+                    platformId, 
+                }, '[auto-provision] Auto-invitation created')
+            }
+            else {
+                request.log.info({ 
+                    email, 
+                    existingInvitationsCount: existingInvitations.length, 
+                }, '[auto-provision] User already has invitations')
+            }
         
-        // SDK mode: If platformId and clientId provided, use SDK auth flow
-        const isSDKMode = !!providedPlatformId && !!clientId
-        
-        // Ensure platform exists (avoids 500 later when sign-in/sign-up uses it)
-        const { platformService } = await import('../platform/platform.service')
-        const platform = await platformService(request.log).getOne(platformId)
-        if (!platform) {
-            throw new ActivepiecesError({
-                code: ErrorCode.VALIDATION,
-                params: {
-                    message: `Platform not found: ${platformId}. Please use a valid platform ID (tenant owner's platform).`,
-                },
-            })
-        }
-        
-        // Map roleName to PlatformRole, default to ADMIN if not provided
-        const platformRole = mapRoleNameToPlatformRole(roleName)
-        
-        request.log.info({ 
-            email, 
-            platformId,
-            isSDKMode,
-            hasClientId: !!clientId,
-            hasClientName: !!clientName,
-            roleName,
-            platformRole,
-        }, '[auto-provision] Starting auto-provision for BMP user')
-        
-        // Import user identity service for direct identity lookup
-        const { userIdentityService } = await import('./user-identity/user-identity-service')
-        
-        // First, try to sign in - user may already exist on this platform
-        try {
-            const signInResponse = await authenticationService(request.log).signInWithPassword({
+            // Now sign up the user (this will create identity + user + project)
+            const signUpResponse = await authenticationService(request.log).signUp({
                 email,
                 password,
-                predefinedPlatformId: platformId,
+                firstName,
+                lastName,
+                trackEvents: true,
+                newsLetter: false,
+                provider: UserIdentityProvider.EMAIL,
+                platformId,
             })
-            
-            // SDK mode: Handle clientId and organization after successful sign-in
+        
+            // SDK mode: Handle clientId and organization after signup
             if (isSDKMode && clientId) {
-                const user = await userService(request.log).getOneOrFail({ id: signInResponse.id })
+                const user = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
                 await handleSDKClientIdAndOrganization({
                     user,
                     clientId,
@@ -476,302 +744,45 @@ export const authenticationController: FastifyPluginAsyncZod = async (
                     platformId,
                     log: request.log,
                 })
-            }
             
-            request.log.info({ 
-                email, 
-                userId: signInResponse.id,
-                isSDKMode,
-            }, '[auto-provision] User already exists, signed in successfully')
-            
-            return {
-                ...signInResponse,
-                isNewUser: false,
-            }
-        } catch (signInError: any) {
-            // User doesn't exist or wrong password - continue to sign-up flow
-            request.log.info({ 
-                email, 
-                errorCode: signInError?.params?.code || signInError?.code,
-                isSDKMode,
-            }, '[auto-provision] Sign-in failed, proceeding to auto-provision')
-        }
-        
-        // Check if the identity already exists (from another platform or previous attempt)
-        const existingIdentity = await userIdentityService(request.log).getIdentityByEmail(email)
-        
-        if (existingIdentity) {
-            // Identity exists - verify password matches
-            request.log.info({ 
-                email, 
-                identityId: existingIdentity.id 
-            }, '[auto-provision] Identity exists, verifying password')
-            
-            try {
-                // This will throw if password doesn't match
-                await userIdentityService(request.log).verifyIdentityPassword({ email, password })
-            } catch (pwError: any) {
-                // Password doesn't match - don't allow account takeover
-                request.log.warn({ 
-                    email,
-                    errorCode: pwError?.code 
-                }, '[auto-provision] Password verification failed for existing identity')
-                throw new ActivepiecesError({
-                    code: ErrorCode.INVALID_CREDENTIALS,
-                    params: null,
-                })
-            }
-            
-            request.log.info({ 
-                email, 
-                identityId: existingIdentity.id 
-            }, '[auto-provision] Password verified')
-            
-            // Check if user already exists on this platform
-            const existingUser = await userService(request.log).getOneByIdentityAndPlatform({
-                identityId: existingIdentity.id,
-                platformId,
-            })
-            
-            const { projectService } = await import('../project/project-service')
-            const { ProjectType } = await import('@activepieces/shared')
-            const { authenticationUtils } = await import('./authentication-utils')
-            
-            let userId: string
-            let projectId: string | null = null
-            let isNewUser = false
-            
-            if (existingUser) {
-                // User exists on this platform - check if they have a project
-                request.log.info({ 
-                    email, 
-                    userId: existingUser.id 
-                }, '[auto-provision] User already exists on this platform')
-                
-                userId = existingUser.id
-                
-                // Check for existing project
-                const existingProject = await projectService(request.log).getOneByOwnerAndPlatform({
-                    ownerId: userId,
-                    platformId,
-                })
-                
-                if (existingProject) {
-                    projectId = existingProject.id
-                    request.log.info({ 
-                        email, 
-                        userId,
-                        projectId 
-                    }, '[auto-provision] User has existing project')
-                } else {
-                    // User exists but no project - create one
-                    request.log.info({ 
-                        email, 
-                        userId 
-                    }, '[auto-provision] User exists but no project, creating one')
-                    
-                    const newProject = await projectService(request.log).create({
-                        displayName: `${existingIdentity.firstName}'s Project`,
-                        ownerId: userId,
-                        platformId,
+                // Update the project's organizationId to match the user's organization
+                const updatedUser = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
+                if (updatedUser.organizationId && signUpResponse.projectId) {
+                    const { projectService } = await import('../project/project-service')
+                    const { ProjectType } = await import('@activepieces/shared')
+                    await projectService(request.log).update(signUpResponse.projectId, {
                         type: ProjectType.PERSONAL,
+                        organizationId: updatedUser.organizationId,
                     })
-                    projectId = newProject.id
-                    isNewUser = true // Treat as new since they didn't have a working account
+                    request.log.info({
+                        projectId: signUpResponse.projectId,
+                        organizationId: updatedUser.organizationId,
+                    }, '[auto-provision] Updated project organizationId')
                 }
-            } else {
-                // User doesn't exist on this platform - create user and project
-                request.log.info({ 
-                    email, 
-                    identityId: existingIdentity.id 
-                }, '[auto-provision] Creating user on this platform')
-                
-                const newUser = await userService(request.log).create({
-                    identityId: existingIdentity.id,
-                    platformId,
-                    platformRole, // Use custom role from roleName or default ADMIN
-                })
-                userId = newUser.id
-                
-                // SDK mode: Handle clientId and organization for new user
-                let userOrganizationId: string | null = null
-                if (isSDKMode && clientId) {
-                    await handleSDKClientIdAndOrganization({
-                        user: newUser,
-                        clientId,
-                        clientName,
-                        platformId,
-                        log: request.log,
-                    })
-                    // Reload user to get updated organizationId
-                    const updatedUser = await userService(request.log).getOneOrFail({ id: userId })
-                    userId = updatedUser.id
-                    userOrganizationId = updatedUser.organizationId ?? null
-                }
-                
-                // Create a project for this user (with organization if assigned)
-                const newProject = await projectService(request.log).create({
-                    displayName: `${existingIdentity.firstName}'s Project`,
-                    ownerId: userId,
-                    platformId,
-                    type: ProjectType.PERSONAL,
-                    organizationId: userOrganizationId ?? undefined,
-                })
-                projectId = newProject.id
-                isNewUser = true
             }
-            
+        
             request.log.info({ 
                 email, 
-                userId,
-                projectId,
-                isNewUser 
-            }, '[auto-provision] User ready with project')
-            
-            // Get the authentication response
-            const authResponse = await authenticationUtils(request.log).getProjectAndToken({
-                userId,
-                platformId,
-                projectId,
+                userId: signUpResponse.id,
+                projectId: signUpResponse.projectId, 
+            }, '[auto-provision] User signed up successfully')
+        
+            applicationEvents(request.log).sendUserEvent({
+                platformId: signUpResponse.platformId!,
+                userId: signUpResponse.id,
+                projectId: signUpResponse.projectId,
+                ip: networkUtils.extractClientRealIp(request, system.get(AppSystemProp.CLIENT_REAL_IP_HEADER)),
+            }, {
+                action: ApplicationEventName.USER_SIGNED_UP,
+                data: {
+                    source: 'credentials',
+                },
             })
-            
-            request.log.info({ 
-                email, 
-                userId,
-                projectId: authResponse.projectId,
-                hasToken: !!authResponse.token,
-            }, '[auto-provision] Got auth response, about to return')
-            
-            if (isNewUser) {
-                applicationEvents(request.log).sendUserEvent({
-                    platformId: authResponse.platformId!,
-                    userId: authResponse.id,
-                    projectId: authResponse.projectId,
-                    ip: networkUtils.extractClientRealIp(request, system.get(AppSystemProp.CLIENT_REAL_IP_HEADER)),
-                }, {
-                    action: ApplicationEventName.USER_SIGNED_UP,
-                    data: {
-                        source: 'credentials',
-                    },
-                })
+        
+            return {
+                ...signUpResponse,
+                isNewUser: true,
             }
-            
-            const finalResponse = {
-                ...authResponse,
-                isNewUser,
-            }
-            
-            request.log.info({ 
-                email, 
-                hasProjectId: !!finalResponse.projectId,
-                hasToken: !!finalResponse.token,
-                isNewUser: finalResponse.isNewUser,
-            }, '[auto-provision] Returning final response')
-            
-            return finalResponse
-        }
-        
-        // Identity doesn't exist - create invitation and sign up normally
-        // Check if user already has an accepted invitation
-        const existingInvitations = await userInvitationsService(request.log).getAcceptedInvitationsByEmail({
-            email,
-            platformId,
-        })
-        
-        if (existingInvitations.length === 0) {
-            // No invitation - create one with specified role (or default ADMIN)
-            request.log.info({ 
-                email, 
-                platformId,
-                platformRole,
-                roleName,
-            }, '[auto-provision] Creating auto-invitation with platform role')
-            
-            await userInvitationsService(request.log).create({
-                email,
-                type: InvitationType.PLATFORM,
-                platformId,
-                platformRole, // Use custom role from roleName or default ADMIN
-                projectId: null,
-                projectRoleId: null,
-                organizationId: null,
-                environment: null,
-                invitationExpirySeconds: apDayjsDuration(1, 'day').asSeconds(),
-                status: InvitationStatus.ACCEPTED, // Auto-accept the invitation
-            })
-            
-            request.log.info({ 
-                email, 
-                platformId 
-            }, '[auto-provision] Auto-invitation created')
-        } else {
-            request.log.info({ 
-                email, 
-                existingInvitationsCount: existingInvitations.length 
-            }, '[auto-provision] User already has invitations')
-        }
-        
-        // Now sign up the user (this will create identity + user + project)
-        const signUpResponse = await authenticationService(request.log).signUp({
-            email,
-            password,
-            firstName,
-            lastName,
-            trackEvents: true,
-            newsLetter: false,
-            provider: UserIdentityProvider.EMAIL,
-            platformId,
-        })
-        
-        // SDK mode: Handle clientId and organization after signup
-        if (isSDKMode && clientId) {
-            const user = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
-            await handleSDKClientIdAndOrganization({
-                user,
-                clientId,
-                clientName,
-                platformId,
-                log: request.log,
-            })
-            
-            // Update the project's organizationId to match the user's organization
-            const updatedUser = await userService(request.log).getOneOrFail({ id: signUpResponse.id })
-            if (updatedUser.organizationId && signUpResponse.projectId) {
-                const { projectService } = await import('../project/project-service')
-                const { ProjectType } = await import('@activepieces/shared')
-                await projectService(request.log).update(signUpResponse.projectId, {
-                    type: ProjectType.PERSONAL,
-                    organizationId: updatedUser.organizationId,
-                })
-                request.log.info({
-                    projectId: signUpResponse.projectId,
-                    organizationId: updatedUser.organizationId,
-                }, '[auto-provision] Updated project organizationId')
-            }
-        }
-        
-        request.log.info({ 
-            email, 
-            userId: signUpResponse.id,
-            projectId: signUpResponse.projectId 
-        }, '[auto-provision] User signed up successfully')
-        
-        applicationEvents(request.log).sendUserEvent({
-            platformId: signUpResponse.platformId!,
-            userId: signUpResponse.id,
-            projectId: signUpResponse.projectId,
-            ip: networkUtils.extractClientRealIp(request, system.get(AppSystemProp.CLIENT_REAL_IP_HEADER)),
-        }, {
-            action: ApplicationEventName.USER_SIGNED_UP,
-            data: {
-                source: 'credentials',
-            },
-        })
-        
-        return {
-            ...signUpResponse,
-            isNewUser: true,
-        }
         },
     })
 

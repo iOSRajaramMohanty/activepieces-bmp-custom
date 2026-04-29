@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Send Bulk Message — mock (JSON-driven)</title>
+<style>
+:root{--b:#e2e5eb;--m:#6b7280;--t:#1a1d26;--a:#6366f1;--d:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:#f8f9fb;font-family:system-ui,sans-serif;color:var(--t);display:flex;justify-content:flex-end}
+.shell{width:min(480px,100vw);min-height:100vh;background:#fff;border-left:1px solid var(--b);display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(15,23,42,.06)}
+.ban{margin:0 16px 8px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:.75rem;color:#92400e}
+.ban.err{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--b)}
+h1{margin:0;font-size:1rem;font-weight:600}
+.scroll{flex:1;overflow:auto;padding:12px 16px 24px}
+.field{margin-bottom:16px}
+.label{font-size:.8125rem;font-weight:500;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.req{color:var(--d)}
+.fn{font-size:.65rem;border:1px solid var(--b);padding:1px 4px;border-radius:3px;color:var(--m)}
+.ctrl{display:flex;align-items:center;border:1px solid var(--b);border-radius:8px;padding:0 10px;min-height:38px;gap:8px;background:#fff}
+.ctrl.disabled{background:#f9fafb;color:var(--m)}
+select,input[type=text],textarea{flex:1;border:0;background:transparent;font:inherit;outline:none;padding:8px 0}
+textarea{min-height:72px;resize:vertical}
+.hint{font-size:.75rem;color:var(--m);margin-top:6px;line-height:1.4}
+.info{background:#f5f7ff;border:1px solid #e0e7ff;border-radius:8px;padding:10px 12px;font-size:.8125rem;margin-bottom:16px}
+.tag-cp{font-size:.65rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:2px 5px;border-radius:4px}
+.tag-std{font-size:.65rem;font-weight:700;color:#0369a1;background:#e0f2fe;padding:2px 5px;border-radius:4px}
+.dd{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--b);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.12);max-height:240px;overflow:auto;display:none;z-index:20}
+.dd.open{display:block}
+.wrap{position:relative}
+.dd-item{padding:8px 12px;font-size:.8125rem;cursor:pointer;display:flex;gap:6px;align-items:center}
+.dd-item:hover,.dd-item.active{background:#f3f4f6}
+.hidden{display:none!important}
+footer{padding:12px 16px;font-size:.7rem;color:var(--m);border-top:1px solid var(--b);background:#fafafa}
+.dynamic{border:1px dashed var(--b);border-radius:8px;padding:12px;margin-top:8px;background:#fafafa}
+.dynamic h3{margin:0 0 10px;font-size:.8125rem;font-weight:600}
+.subsec{margin-bottom:14px}
+.subsec h4{margin:0 0 6px;font-size:.75rem;color:var(--m);font-weight:600;text-transform:uppercase;letter-spacing:.02em}
+pre.preview{font-size:.7rem;white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;background:#fff;border:1px solid var(--b);border-radius:6px;max-height:120px;overflow:auto}
+button.primary{width:100%;padding:10px;background:var(--a);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;margin-top:8px}
+#payloadOut{font-size:.65rem;max-height:200px;overflow:auto}
+.btn-browse{background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:.8125rem;cursor:pointer;font-weight:600;white-space:nowrap}
+.btn-browse:hover{filter:brightness(1.05)}
+.row-media{display:flex;align-items:center;gap:8px;border:1px solid var(--b);border-radius:8px;padding:4px 10px;background:#fff;min-height:38px}
+.row-media input[type=text]{flex:1;border:0;outline:none;font:inherit}
+</style>
+</head>
+<body>
+<div class="shell">
+<div class="ban" id="loadBanner">Loading bmp-templates-filtered.json…</div>
+<header><h1>Send Bulk Message</h1><button type="button" style="border:0;background:transparent;cursor:pointer">✕</button></header>
+<div class="scroll">
+<div class="info"><strong>JSON-driven mock</strong><br/>Loads <code>bmp-templates-filtered.json</code> from this folder. Requires HTTP: <code>cd docs &amp;&amp; python3 -m http.server 8765</code> → <code>http://localhost:8765/send-bulk-message-mock-ui.html</code></div>
+<div class="field"><div class="label">Message Type <span class="req">*</span></div><div class="ctrl"><select id="mt"><option value="text">Send WA Text</option><option value="template" selected>Send WA Template</option><option value="catalog">Send WA Catalog</option><option value="media">Send WA Media</option><option value="button">Send WA Button</option><option value="list">Send WA List</option></select><span style="color:var(--m)">▾</span></div></div>
+<div id="tb">
+<div class="field"><div class="label">Template Category</div><div class="ctrl"><select id="tc"><option value="AUTHENTICATION">AUTHENTICATION</option><option value="MARKETING" selected>MARKETING</option><option value="UTILITY">UTILITY</option></select></div><p class="hint">Filtered JSON has no <strong>AUTHENTICATION</strong> templates — list will be empty for AUTH.</p></div>
+<div class="field"><div class="label">Template</div><div class="wrap"><div class="ctrl" id="trig" role="button" tabindex="0"><span id="tdisp">Select…</span><span style="color:var(--m)">▾</span></div>
+<div class="dd" id="dd"><div style="padding:8px;border-bottom:1px solid var(--b)"><input id="ts" type="search" placeholder="Search…" style="width:100%;padding:6px;border:1px solid var(--b);border-radius:6px"/></div><div id="ddList"></div></div></div>
+<p class="hint"><span id="tplCount">0</span> templates for this category</p></div>
+<div id="dynamicRoot"></div>
+<button type="button" class="primary" id="btnPreview">Preview mock payload (JSON)</button>
+<div class="field hidden" id="payloadWrap"><div class="label">BMP bulk request preview (<code>POST …/contact-category/bulkmessage</code>)</div><pre class="preview" id="payloadOut"></pre></div>
+</div>
+<div class="field hidden" id="messageFieldWrap"><div class="label" id="ml">Message <span class="req">*</span></div><div class="ctrl" style="align-items:stretch"><textarea id="messageBox"></textarea></div><p class="hint" id="mh">Message body for non-template message types.</p></div>
+<div class="field hidden" id="ph"><div class="ctrl disabled"><span>Template when Message Type = template</span></div></div>
+</div>
+<footer>bmp-templates-filtered.json · {{n}} + carousel · not production piece</footer>
+</div>
+<script>
+(function(){
+var ALL=[],selected=null;
+function extractPlaceholders(str){if(!str||typeof str!=='string')return[];var re=/\{\{(\d+)\}\}/g,set={},m;while((m=re.exec(str))!==null)set[m[1]]=true;return Object.keys(set).map(Number).sort(function(a,b){return a-b})}
+function normHT(ht){if(ht==null)return'';var s=String(ht);if(s==='null'||s==='')return'';return s}
+function rawHeaderTypeStr(t){if(t.headerType===undefined||t.headerType===null)return'';return String(t.headerType)}
+function showsHeaderMediaBrowse(ht){if(ht===undefined||ht===null)return false;var s=String(ht);if(s==='null')return true;var u=s.toUpperCase();return u==='IMAGE'||u==='VIDEO'||u==='DOCUMENT'}
+function renderHeaderOptionalBrowse(box,t){var raw=rawHeaderTypeStr(t);var sec=document.createElement('div');sec.className='subsec';var h=document.createElement('h4');h.textContent='Header (Optional)';sec.appendChild(h);var sel=document.createElement('select');sel.disabled=true;sel.style.cssText='width:100%;padding:8px;border:1px solid var(--b);border-radius:8px;background:#f9fafb';var pick='';if(raw==='null')pick='';else if(raw){var u=raw.toUpperCase();if(['TEXT','IMAGE','VIDEO','DOCUMENT'].indexOf(u)!==-1)pick=u}['','TEXT','IMAGE','VIDEO','DOCUMENT'].forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v||' ';if(v===pick)o.selected=true;sel.appendChild(o)});var sw=document.createElement('div');sw.className='ctrl';sw.appendChild(sel);sec.appendChild(sw);var h4m=document.createElement('h4');h4m.textContent='Header Media';h4m.style.marginTop='10px';sec.appendChild(h4m);var hint=document.createElement('p');hint.className='hint';hint.textContent=raw==='null'?'Optional — add marketing header media if needed (BMP uses string "null" for no fixed header type).':'Upload or replace header media; JSON may contain a fixed CDN URL below.';sec.appendChild(hint);var row=document.createElement('div');row.className='row-media';var fi=document.createElement('input');fi.type='text';fi.readOnly=true;fi.placeholder='No file chosen';fi.dataset.slot='headerMedia:fileName';var btn=document.createElement('button');btn.type='button';btn.className='btn-browse';btn.textContent='Browse';btn.addEventListener('click',function(e){e.preventDefault();alert('Mock: file picker would open');});row.appendChild(fi);row.appendChild(btn);sec.appendChild(row);if((t.header||'').length>0){var pre=document.createElement('pre');pre.className='preview';pre.style.marginTop='8px';pre.textContent=(t.header||'').slice(0,240)+((t.header||'').length>240?'…':'');sec.appendChild(pre)}box.appendChild(sec)}
+function renderParam(box,prefix,indices,hintArr){if(!indices.length)return;var w=document.createElement('div');w.className='subsec';var h=document.createElement('h4');h.textContent=prefix;w.appendChild(h);indices.forEach(function(n,i){var lab=document.createElement('div');lab.className='label';lab.innerHTML='Param '+n+' <span class="req">*</span> <span class="hint" style="margin:0;font-weight:400">'+(hintArr&&hintArr[i]!=null?'(e.g. '+hintArr[i]+')':'')+'</span>';var row=document.createElement('div');row.className='ctrl';var inp=document.createElement('input');inp.type='text';inp.dataset.slot=prefix+':'+n;inp.placeholder='{{'+n+'}}';row.appendChild(inp);w.appendChild(lab);w.appendChild(row)});box.appendChild(w)}
+function renderCarousel(box,cards){if(!cards||!cards.length)return;var sec=document.createElement('div');sec.className='subsec';var h=document.createElement('h4');h.textContent='Carousel';sec.appendChild(h);cards.forEach(function(cardParts,ci){if(!Array.isArray(cardParts))return;var header=cardParts.find(function(p){return p.type==='header'});var body=cardParts.find(function(p){return p.type==='body'});var ct=document.createElement('div');ct.style.fontWeight='600';ct.style.fontSize='.8rem';ct.style.marginBottom='6px';ct.textContent='Card '+(ci+1)+(header&&header.format?' · '+header.format:'');sec.appendChild(ct);if(header&&header.media_url){var mu=document.createElement('p');mu.className='hint';mu.textContent='Header media: '+(header.media_url.slice(0,56)+(header.media_url.length>56?'…':''));sec.appendChild(mu)}if(body&&body.text){var prev=document.createElement('pre');prev.className='preview';prev.textContent=body.text;sec.appendChild(prev);renderParam(sec,'Card '+(ci+1)+' body',extractPlaceholders(body.text),body.parameters||null)}});box.appendChild(sec)}
+function buildDynamic(t){var root=document.getElementById('dynamicRoot');root.innerHTML='';if(!t)return;var box=document.createElement('div');box.className='dynamic';var title=document.createElement('h3');title.textContent='From JSON: '+t.name;box.appendChild(title);var meta=document.createElement('p');meta.className='hint';meta.innerHTML='<strong>category</strong> '+t.category+' · <strong>type</strong> '+(t.type||'(empty)')+' · <strong>headerType</strong> '+(rawHeaderTypeStr(t)||'—');box.appendChild(meta);var ht=normHT(t.headerType);if(showsHeaderMediaBrowse(t.headerType)){renderHeaderOptionalBrowse(box,t)}else if(ht==='TEXT'&&t.header){renderParam(box,'Header text',extractPlaceholders(t.header),null)}if(t.body){var ttl=document.createElement('div');ttl.className='label';ttl.innerHTML='Template Text <span class="req">*</span>';ttl.style.marginTop='8px';box.appendChild(ttl);var bp=document.createElement('pre');bp.className='preview';bp.textContent=t.body;box.appendChild(bp);renderParam(box,'Body',extractPlaceholders(t.body),t.bodyParameters)}if(t.footer){var fp=extractPlaceholders(t.footer);if(fp.length)renderParam(box,'Footer',fp,t.footerParameters)}if(t.type==='carousel'&&Array.isArray(t.carouselCards))renderCarousel(box,t.carouselCards);if(t.buttons&&Array.isArray(t.buttons)){var bu=document.createElement('div');bu.className='subsec';bu.innerHTML='<h4>Buttons</h4>';t.buttons.forEach(function(b,i){var line=document.createElement('p');line.className='hint';line.textContent=(i+1)+'. '+(b.type||'')+' — '+(b.text||'')+(b.url?' · '+b.url:'');bu.appendChild(line);if(b.type==='QUICK_REPLY'){var pl=document.createElement('div');pl.className='label';pl.style.marginTop='6px';pl.style.fontSize='.75rem';pl.textContent='Quick reply payload (slot '+(i+1)+')';var row=document.createElement('div');row.className='ctrl';var inp=document.createElement('input');inp.type='text';inp.dataset.slot='payload:'+i;inp.placeholder='optional';row.appendChild(inp);bu.appendChild(pl);bu.appendChild(row)}});box.appendChild(bu)}root.appendChild(box)}
+function filterBy(cat){return ALL.filter(function(t){return t.category===cat})}
+function renderDD(list){var le=document.getElementById('ddList');le.innerHTML='';list.forEach(function(t){var row=document.createElement('div');row.className='dd-item';var tag=document.createElement('span');tag.className=t.isCallPermissionRequest?'tag-cp':'tag-std';tag.textContent=t.isCallPermissionRequest?'CP':'STD';row.appendChild(tag);row.appendChild(document.createTextNode(' '+t.name));row.addEventListener('click',function(){selected=t;document.querySelectorAll('.dd-item').forEach(function(x){x.classList.remove('active')});row.classList.add('active');document.getElementById('tdisp').textContent=t.name;document.getElementById('dd').classList.remove('open');buildDynamic(t)});le.appendChild(row)});document.getElementById('tplCount').textContent=String(list.length)}
+function refresh(){var cat=document.getElementById('tc').value,list=filterBy(cat);selected=null;document.getElementById('tdisp').textContent=list.length?'Select a template…':'No templates in JSON for '+cat;document.getElementById('dynamicRoot').innerHTML='';renderDD(list);syncMessageFieldVisibility()}
+function getSlotsMap(){var slots={};document.querySelectorAll('#dynamicRoot input[data-slot]').forEach(function(inp){slots[inp.dataset.slot]=inp.value});return slots}
+function slotVal(slots,k){return slots[k]!==undefined&&slots[k]!==null?slots[k]:'';}
+function buildTemplateDataOrdered(t,slots){
+var out=[],numsH=extractPlaceholders(t.header||''),numsB=extractPlaceholders(t.body||''),numsF=extractPlaceholders(t.footer||'');
+numsH.forEach(function(n){out.push(slotVal(slots,'Header text:'+n));});
+numsB.forEach(function(n){out.push(slotVal(slots,'Body:'+n));});
+numsF.forEach(function(n){out.push(slotVal(slots,'Footer:'+n));});
+return out;
+}
+function buildCarouselCardsForPayload(t,slots){
+if(!t.carouselCards||!Array.isArray(t.carouselCards))return null;
+return t.carouselCards.map(function(cardParts,ci){
+if(!Array.isArray(cardParts))return cardParts;
+return cardParts.map(function(part){
+if(part.type==='body'&&part.text){
+var nums=extractPlaceholders(part.text);
+var params=nums.map(function(n){return slotVal(slots,'Card '+(ci+1)+' body:'+n);});
+return{type:part.type,format:part.format||'',text:part.text,media_url:part.media_url,parameters:params};
+}
+return{type:part.type,format:part.format||'',text:part.text,media_url:part.media_url,buttons:part.buttons,parameters:part.parameters};
+});
+});
+}
+function buildBmpBulkNonTemplatePayload(mt){
+var from='<from>',to=['<contactCategoryId>'],tag2='Send bulk to contact category';
+var msg=document.getElementById('messageBox').value||'';
+return{from:from,to:to,type:mt,channel:'CONTACT',platform:'WA',text:msg,tag2:tag2};
+}
+function buildBmpBulkTemplatePayload(t,slots,tc){
+var from='<from>',to=['<contactCategoryId>'],tag2='Send bulk to contact category';
+if((t.category==='MARKETING'||t.category==='UTILITY')&&t.isCallPermissionRequest){
+return{from:from,to:to,type:'template',templateId:t.id,buttons:[],templateLang:t.language||'en',templateName:t.name,headerType:'TEXT',platform:'WA',channel:'CONTACT',payload:null,tag2:tag2};
+}
+if(t.category==='AUTHENTICATION'){
+var otp=document.getElementById('messageBox').value||'';
+return{from:from,to:to,type:'template',templateId:t.id,buttons:[null,null],templateData:[otp],templateLang:t.language||'en',templateName:t.name,templateButton:[[otp],[]],headerType:'TEXT',platform:'WA',channel:'CONTACT',payload:['',''],tag2:tag2};
+}
+if(t.type==='carousel'&&t.carouselCards){
+var headerTypeRaw=rawHeaderTypeStr(t);
+var outC={
+from:from,to:to,type:'template',templateId:t.id,templateName:t.name,templateLang:t.language||'en',platform:'WA',channel:'CONTACT',tag2:tag2,
+templateData:buildTemplateDataOrdered(t,slots),
+templateCarouselCards:buildCarouselCardsForPayload(t,slots),
+buttons:null,templateButton:null,payload:null
+};
+if(headerTypeRaw&&String(headerTypeRaw).toLowerCase()!=='null'){outC.headerType=String(headerTypeRaw).toUpperCase();}
+else{outC.headerType='TEXT';}
+var htc=(headerTypeRaw||'').toUpperCase();
+if(htc==='TEXT'&&t.header){outC.header=(t.header||'').trim();}
+return outC;
+}
+var btnList=t.buttons;
+if(Array.isArray(btnList)&&btnList.length>0){
+var nBtn=btnList.length,buttonsArr=[],tbArr=[],payloadArr=[],i;
+for(i=0;i<nBtn;i++){buttonsArr.push(null);tbArr.push([]);}
+var templateData=buildTemplateDataOrdered(t,slots);
+for(i=0;i<nBtn;i++){
+var btype=(btnList[i]||{}).type;
+if(btype==='QUICK_REPLY'){payloadArr.push(slotVal(slots,'payload:'+i));}
+else{payloadArr.push('');}
+}
+var headerTypeRaw=rawHeaderTypeStr(t);
+var out={
+from:from,to:to,type:'template',templateId:t.id,buttons:buttonsArr,templateData:templateData,templateButton:tbArr,templateLang:t.language||'en',templateName:t.name,platform:'WA',channel:'CONTACT',payload:payloadArr,tag2:tag2
+};
+if(t.type==='catalog'&&String(t.headerType)==='null'){out.headerType='null';}
+else if(headerTypeRaw&&String(headerTypeRaw).toLowerCase()!=='null'){out.headerType=String(headerTypeRaw).toUpperCase();}
+else{out.headerType='TEXT';}
+var ht=(headerTypeRaw||'').toUpperCase();
+if(ht==='IMAGE'||ht==='VIDEO'||ht==='DOCUMENT'){
+out.header=(t.header||'').trim();
+out.fileName=slotVal(slots,'headerMedia:fileName').trim()||'ada-logo.png';
+}else if(String(t.headerType)==='null'&&(t.type==='catalog'||t.type==='')){
+out.header=(t.header||'').trim();
+var fn=slotVal(slots,'headerMedia:fileName').trim();if(fn)out.fileName=fn;
+}else if(ht==='TEXT'&&t.header){out.header=(t.header||'').trim();}
+return out;
+}
+var headerTypeRawF=rawHeaderTypeStr(t);
+var outF={
+from:from,to:to,type:'template',templateId:t.id,templateName:t.name,templateLang:t.language||'en',platform:'WA',channel:'CONTACT',tag2:tag2,
+templateData:buildTemplateDataOrdered(t,slots)
+};
+if(t.type==='catalog'&&String(t.headerType)==='null'){outF.headerType='null';}
+else if(headerTypeRawF&&String(headerTypeRawF).toLowerCase()!=='null'){outF.headerType=String(headerTypeRawF).toUpperCase();}
+else{outF.headerType='TEXT';}
+var htf=(headerTypeRawF||'').toUpperCase();
+if(htf==='IMAGE'||htf==='VIDEO'||htf==='DOCUMENT'){
+outF.header=(t.header||'').trim();
+outF.fileName=slotVal(slots,'headerMedia:fileName').trim()||'ada-logo.png';
+}else if(String(t.headerType)==='null'&&(t.type==='catalog'||t.type==='')){
+outF.header=(t.header||'').trim();
+var fnf=slotVal(slots,'headerMedia:fileName').trim();if(fnf)outF.fileName=fnf;
+}else if(htf==='TEXT'&&t.header){outF.header=(t.header||'').trim();}
+return outF;
+}
+function collect(){
+var slots=getSlotsMap();
+var mt=document.getElementById('mt').value;
+var tc=document.getElementById('tc').value;
+if(mt==='template'&&selected){return buildBmpBulkTemplatePayload(selected,slots,tc);}
+if(mt==='template'){
+return{from:'<from>',to:['<contactCategoryId>'],type:'template',channel:'CONTACT',platform:'WA',tag2:'Send bulk to contact category',_previewNote:'Select a template from the dropdown for the full BMP bulkmessage payload.'};
+}
+return buildBmpBulkNonTemplatePayload(mt);
+}
+document.getElementById('btnPreview').addEventListener('click',function(){document.getElementById('payloadWrap').classList.remove('hidden');document.getElementById('payloadOut').textContent=JSON.stringify(collect(),null,2)});
+document.getElementById('tc').addEventListener('change',refresh);
+document.getElementById('trig').addEventListener('click',function(e){e.stopPropagation();document.getElementById('dd').classList.toggle('open')});
+document.addEventListener('click',function(){document.getElementById('dd').classList.remove('open')});
+document.getElementById('dd').addEventListener('click',function(e){e.stopPropagation()});
+document.getElementById('ts').addEventListener('input',function(){var q=document.getElementById('ts').value.toLowerCase();document.querySelectorAll('#ddList .dd-item').forEach(function(el){el.style.display=el.textContent.toLowerCase().indexOf(q)!==-1?'flex':'none'})});
+function syncMessageFieldVisibility(){var mt=document.getElementById('mt').value;var tc=document.getElementById('tc').value;var isTemplate=mt==='template';document.getElementById('tb').classList.toggle('hidden',!isTemplate);document.getElementById('ph').classList.toggle('hidden',isTemplate);var showMessage=(!isTemplate)||(isTemplate&&tc==='AUTHENTICATION');document.getElementById('messageFieldWrap').classList.toggle('hidden',!showMessage);var ml=document.getElementById('ml'),mh=document.getElementById('mh');if(isTemplate&&tc==='AUTHENTICATION'){ml.innerHTML='Message / OTP <span class="req">*</span>';ml.style.color='var(--d)';mh.textContent='Enter OTP for AUTHENTICATION templates (matches send_bulk_message).'}else{ml.innerHTML='Message <span class="req">*</span>';ml.style.color='var(--t)';mh.textContent='Message body when Message Type is not Send WA Template.'}}document.getElementById('mt').addEventListener('change',syncMessageFieldVisibility);
+fetch('bmp-templates-filtered.json').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(function(json){ALL=json.data||[];var b=document.getElementById('loadBanner');b.classList.remove('err');b.textContent='Loaded '+ALL.length+' templates from bmp-templates-filtered.json';refresh();syncMessageFieldVisibility()}).catch(function(err){var b=document.getElementById('loadBanner');b.classList.add('err');b.innerHTML='<strong>Cannot load JSON.</strong> Use local server (file:// blocks fetch): <code>cd docs &amp;&amp; python3 -m http.server 8765</code> → <code>http://localhost:8765/send-bulk-message-mock-ui.html</code><br><small>'+String(err)+'</small>'})})();
+</script>
+</body>
+</html>

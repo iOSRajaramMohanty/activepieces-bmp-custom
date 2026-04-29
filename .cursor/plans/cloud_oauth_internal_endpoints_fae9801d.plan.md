@@ -448,7 +448,7 @@ The following UI mockups have been created for this feature. All mockups maintai
 
 **Existing Super Admin Dashboard** - Current Super Admin Dashboard design (styling reference)
 
-![Reference Super Admin Dashboard](reference-super-admin-dashboard.png)
+Reference Super Admin Dashboard
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/reference-super-admin-dashboard.png`*
 
@@ -460,7 +460,7 @@ The following UI mockups have been created for this feature. All mockups maintai
 
 Cloud OAuth Apps page with expanded sidebar, stats cards, and data table (Slack, HubSpot, Google Sheets, Gmail)
 
-![Main Dashboard View](cloud-oauth-main-view-v2.png)
+Main Dashboard View
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-main-view-v2.png`*
 
@@ -470,7 +470,7 @@ Cloud OAuth Apps page with expanded sidebar, stats cards, and data table (Slack,
 
 Expanded sidebar showing "Cloud OAuth Apps" added under "Super Admin Dashboard"
 
-![Sidebar Expanded](cloud-oauth-sidebar-expanded-v2.png)
+Sidebar Expanded
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-sidebar-expanded-v2.png`*
 
@@ -480,7 +480,7 @@ Expanded sidebar showing "Cloud OAuth Apps" added under "Super Admin Dashboard"
 
 Add dialog with piece dropdown showing available pieces (Slack, HubSpot, Google Sheets, Gmail, etc.)
 
-![Add Dialog with Dropdown](cloud-oauth-add-dialog-v2.png)
+Add Dialog with Dropdown
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-add-dialog-v2.png`*
 
@@ -490,7 +490,7 @@ Add dialog with piece dropdown showing available pieces (Slack, HubSpot, Google 
 
 Edit dialog with read-only piece name (Slack) and editable Client ID/Secret
 
-![Edit Dialog](cloud-oauth-edit-dialog-v2.png)
+Edit Dialog
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-edit-dialog-v2.png`*
 
@@ -500,7 +500,7 @@ Edit dialog with read-only piece name (Slack) and editable Client ID/Secret
 
 Delete confirmation with warning about existing connections
 
-![Delete Confirmation](cloud-oauth-delete-dialog-v2.png)
+Delete Confirmation
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-delete-dialog-v2.png`*
 
@@ -510,7 +510,7 @@ Delete confirmation with warning about existing connections
 
 Empty state with key icon and "Add OAuth App" CTA when no apps configured
 
-![Empty State](cloud-oauth-empty-state-v2.png)
+Empty State
 
 *Full path: `/Users/rajarammohanty/Documents/POC/activepieces/.cursor/plans/cloud-oauth-empty-state-v2.png`*
 

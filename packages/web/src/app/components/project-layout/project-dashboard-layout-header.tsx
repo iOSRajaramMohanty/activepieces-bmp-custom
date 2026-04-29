@@ -21,10 +21,6 @@ import { ProjectDashboardPageHeader } from './project-dashboard-page-header';
 
 import { ProjectDashboardLayoutHeaderTab } from '.';
 
-import { projectCollectionUtils } from '@/features/projects';
-import { useAuthorization } from '@/hooks/authorization-hooks';
-import { authenticationSession } from '@/lib/authentication-session';
-
 type AnimatedIconHandle = {
   startAnimation: () => void;
   stopAnimation: () => void;

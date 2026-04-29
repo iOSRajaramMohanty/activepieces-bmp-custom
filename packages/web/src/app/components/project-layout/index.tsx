@@ -18,8 +18,6 @@ import { InAppChatbot } from '@/features/chatbots/components/in-app-chatbot';
 import { projectHooks } from '@/features/projects';
 import { flagsHooks } from '@/hooks/flags-hooks';
 import { cn } from '@/lib/utils';
-
-import { cn } from '@/lib/utils';
 import { authenticationSession } from '../../../lib/authentication-session';
 import {
   GlobalSearchProvider,

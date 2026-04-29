@@ -385,7 +385,8 @@ export const createSqlLiteDataSourceForMigrations = (): DataSource => {
     // This prevents loading sqlite3 native bindings when using PostgreSQL
     try {
         require('sqlite3')
-    } catch (error) {
+    }
+    catch (error) {
         // If sqlite3 is not available, that's okay - this function should only be called
         // when migrating from SQLite to PGLite, which is rare
         const log = system.globalLogger()

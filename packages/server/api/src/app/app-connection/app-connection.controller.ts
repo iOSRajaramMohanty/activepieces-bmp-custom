@@ -1,5 +1,5 @@
-import { ApId,
-    ActivepiecesError,
+import { ActivepiecesError,
+    ApId,
     AppConnectionOwners,
     AppConnectionScope,
     AppConnectionWithoutSensitiveData,

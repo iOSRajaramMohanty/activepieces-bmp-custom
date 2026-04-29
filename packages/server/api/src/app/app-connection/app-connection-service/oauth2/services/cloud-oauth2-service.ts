@@ -9,14 +9,13 @@ import {
 } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { isBmpEnabled } from '../../../../bmp/bmp-runtime'
-import { apAxios } from '../../../../helper/ap-axios'
 import { system } from '../../../../helper/system/system'
+import { cloudOAuthHooks } from '../../../cloud-oauth-hooks'
 import {
     ClaimOAuth2Request,
     OAuth2Service,
     RefreshOAuth2Request,
 } from '../oauth2-service'
-import { cloudOAuthHooks } from '../../../cloud-oauth-hooks'
 
 export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudOAuth2ConnectionValue> => ({
     refresh: async (params: RefreshOAuth2Request<CloudOAuth2ConnectionValue>): Promise<CloudOAuth2ConnectionValue> => {

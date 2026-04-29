@@ -17,9 +17,6 @@ import { ProjectRouterWrapper } from '../guards/project-route-wrapper';
 import { AutomationsPage } from './automations';
 import { ChatWithAIPage } from './chat-with-ai';
 
-import { ApTableStateProvider } from '@/features/tables';
-import { routesThatRequireProjectId } from '@/lib/route-utils';
-
 const FlowBuilderPage = React.lazy(() =>
   import('./flows/id').then((m) => ({ default: m.FlowBuilderPage })),
 );
