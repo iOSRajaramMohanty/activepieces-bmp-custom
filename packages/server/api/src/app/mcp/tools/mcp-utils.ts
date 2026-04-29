@@ -1,6 +1,8 @@
 import { PieceMetadataModel, PiecePropertyMap, PropertyType } from '@activepieces/pieces-framework'
-import { isNil } from '@activepieces/shared'
+import { BranchOperator, FlowActionType, flowStructureUtil, isNil, isObject, singleValueConditions } from '@activepieces/shared'
+import type { RouterAction, Step } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
+import { z } from 'zod'
 import { pieceMetadataService } from '../../pieces/metadata/piece-metadata-service'
 
 const NON_INPUT_PROP_TYPES = new Set<PropertyType>([
@@ -20,8 +22,17 @@ const RESOLVABLE_PROP_TYPES = new Set<PropertyType>([
 const STEP_REFERENCE_HINT = 'Use {{stepName.field}} to reference prior steps (no .output. in path).'
 
 function mcpToolError(prefix: string, err: unknown): { content: [{ type: 'text', text: string }] } {
-    const message = err instanceof Error ? err.message : String(err)
+    const raw = err instanceof Error ? err.message : String(err)
+    const message = sanitizeErrorMessage(raw)
     return { content: [{ type: 'text', text: `❌ ${prefix}: ${message}` }] }
+}
+
+function sanitizeErrorMessage(message: string): string {
+    return message
+        .replace(/\/root\/codes\/[^\s:)]+/g, '<sandbox>')
+        .replace(/\/root\/common\/[^\s:)]+/g, '<internal>')
+        .replace(/\/home\/[^\s:)]+node_modules\/[^\s:)]+/g, '<internal>')
+        .replace(/node_modules\/\.bun\/[^\s:)]+/g, '<internal>')
 }
 
 function formatOptionsHint(options: Array<{ label: string, value: unknown }> | undefined): string {
@@ -79,7 +90,9 @@ function diagnosePieceProps({ props, input, pieceAuth, requireAuth, componentTyp
     return { parts, missing, uiRequired, hasAuth }
 }
 
-function buildPropSummaries(props: PiecePropertyMap): PropSummary[] {
+const MAX_PROP_DEPTH = 3
+
+function buildPropSummaries(props: PiecePropertyMap, depth = 0): PropSummary[] {
     return Object.entries(props)
         .filter(([, prop]) => !NON_INPUT_PROP_TYPES.has(prop.type))
         .map(([name, prop]) => {
@@ -103,6 +116,10 @@ function buildPropSummaries(props: PiecePropertyMap): PropSummary[] {
             }
             if (prop.type === PropertyType.DYNAMIC) {
                 summary.note = 'DYNAMIC — call ap_get_piece_props with auth+input to resolve sub-fields.'
+            }
+            if (prop.type === PropertyType.ARRAY && 'properties' in prop && isObject(prop.properties) && depth < MAX_PROP_DEPTH) {
+                const arraySubProps: PiecePropertyMap = prop.properties
+                summary.items = buildPropSummaries(arraySubProps, depth + 1)
             }
             return summary
         })
@@ -149,6 +166,68 @@ function findResolvableProps({ props, componentProps, auth, providedInput }: Fin
     })
 }
 
+const SINGLE_VALUE_OPERATORS_HINT = singleValueConditions.join(', ')
+const BRANCH_CONDITIONS_INPUT_SCHEMA = z.array(
+    z.array(
+        z.object({
+            firstValue: z.string().min(1, 'firstValue must be a non-empty string or template expression (e.g. {{trigger.field}})').describe('Left-hand value (template expressions like {{step_1.field}} are allowed). Must be non-empty.'),
+            operator: z.enum(Object.values(BranchOperator) as [BranchOperator, ...BranchOperator[]]).optional().describe(`Comparison operator. Single-value operators (no secondValue needed): ${SINGLE_VALUE_OPERATORS_HINT}.`),
+            secondValue: z.string().min(1, 'secondValue must be a non-empty string when provided').optional().describe('Right-hand value — required (and non-empty) for all operators except single-value ones.'),
+            caseSensitive: z.boolean().optional().describe('For text operators: whether to match case sensitively'),
+        }).superRefine((cond, ctx) => {
+            if (cond.operator !== undefined
+                && !(singleValueConditions as BranchOperator[]).includes(cond.operator)
+                && cond.secondValue === undefined) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['secondValue'],
+                    message: `secondValue is required when operator is "${cond.operator}". Use a single-value operator (${SINGLE_VALUE_OPERATORS_HINT}) if you do not have a secondValue.`,
+                })
+            }
+            if (cond.operator === undefined && cond.secondValue !== undefined) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['operator'],
+                    message: 'operator is required when secondValue is provided — pick a comparison operator (e.g. TEXT_CONTAINS, TEXT_EXACTLY_MATCHES, NUMBER_IS_EQUAL_TO).',
+                })
+            }
+        }),
+    ),
+)
+
+function truncate(str: string, max: number): string {
+    return str.length <= max ? str : str.slice(0, max) + '... (truncated)'
+}
+
+function resolveRouterStep({ stepName, trigger }: { stepName: string, trigger: Step }): ResolveRouterStepResult {
+    const step = flowStructureUtil.getStep(stepName, trigger)
+    if (isNil(step) || step.type !== FlowActionType.ROUTER) {
+        const routers = flowStructureUtil.getAllSteps(trigger)
+            .filter(s => s.type === FlowActionType.ROUTER)
+            .map(s => s.name)
+            .join(', ')
+        return {
+            error: { content: [{ type: 'text', text: `❌ Step "${stepName}" is not a ROUTER step. Available routers: ${routers || 'none'}` }] },
+        }
+    }
+    return { routerStep: step as RouterAction }
+}
+
+function routerInvalidWarning({ stepName, trigger }: { stepName: string, trigger: Step }): string {
+    const step = flowStructureUtil.getStep(stepName, trigger)
+    if (isNil(step) || step.valid) {
+        return ''
+    }
+    return `\n⚠️ The router "${stepName}" is now marked invalid (step.valid=false) — the UI will show "Incomplete" and the flow cannot be published. Inspect the branch conditions with ap_flow_structure: every condition needs a non-empty firstValue, and any non-single-value operator (TEXT_*, NUMBER_*, DATE_*, LIST_CONTAINS/LIST_DOES_NOT_CONTAIN) needs a non-empty secondValue.`
+}
+
+function publishedFlowWarning(publishedVersionId: string | null | undefined): string {
+    if (isNil(publishedVersionId)) {
+        return ''
+    }
+    return '\n⚠️ This flow is published. Changes apply to the draft only — use ap_lock_and_publish to push them live.'
+}
+
 function validateAuth(auth: string | undefined): { content: [{ type: 'text', text: string }] } | null {
     if (auth !== undefined && /['{}\[\]]/.test(auth)) {
         return { content: [{ type: 'text', text: '❌ auth must be a plain externalId with no special characters. Use the exact value from ap_list_connections.' }] }
@@ -192,7 +271,22 @@ async function fillDefaultsForMissingOptionalProps({ settings, platformId, log }
     }
 }
 
-export const mcpUtils = { mcpToolError, diagnosePieceProps, buildPropSummaries, normalizePieceName, lookupPieceComponent, findResolvableProps, validateAuth, fillDefaultsForMissingOptionalProps, STEP_REFERENCE_HINT }
+export const mcpUtils = {
+    mcpToolError,
+    truncate,
+    resolveRouterStep,
+    routerInvalidWarning,
+    publishedFlowWarning,
+    diagnosePieceProps,
+    buildPropSummaries,
+    normalizePieceName,
+    lookupPieceComponent,
+    findResolvableProps,
+    validateAuth,
+    fillDefaultsForMissingOptionalProps,
+    STEP_REFERENCE_HINT,
+    BRANCH_CONDITIONS_INPUT_SCHEMA,
+}
 
 export type { PropSummary }
 
@@ -227,6 +321,7 @@ type PropSummary = {
     defaultValue?: unknown
     options?: Array<{ label: string, value: unknown }>
     dynamicFields?: PropSummary[]
+    items?: PropSummary[]
     note?: string
 }
 
@@ -241,3 +336,9 @@ type LookupPieceComponentParams = {
 type LookupPieceComponentResult =
     | { piece: PieceMetadataModel, component: { props: PiecePropertyMap, requireAuth: boolean, name: string, displayName: string, description: string }, pieceName: string, error?: never }
     | { error: { content: [{ type: 'text', text: string }] }, piece?: never, component?: never, pieceName?: never }
+
+type McpToolResult = { content: [{ type: 'text', text: string }] }
+
+type ResolveRouterStepResult =
+    | { routerStep: RouterAction, error?: never }
+    | { error: McpToolResult, routerStep?: never }

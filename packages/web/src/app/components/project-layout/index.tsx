@@ -17,6 +17,7 @@ import {
 import { InAppChatbot } from '@/features/chatbots/components/in-app-chatbot';
 import { projectHooks } from '@/features/projects';
 import { flagsHooks } from '@/hooks/flags-hooks';
+import { cn } from '@/lib/utils';
 
 import { cn } from '@/lib/utils';
 import { authenticationSession } from '../../../lib/authentication-session';
@@ -34,6 +35,7 @@ export type ProjectDashboardLayoutHeaderTab = {
   icon: ComponentType<{ className?: string; size?: number }>;
   hasPermission: boolean;
   show: boolean;
+  beta?: boolean;
 };
 
 const ProjectChangedRedirector = ({
@@ -82,6 +84,13 @@ export function ProjectDashboardLayout({
       label: t('Leaderboard'),
       show: !isEmbedded,
       icon: TrophyIcon,
+      hasPermission: true,
+    },
+    {
+      to: '/chat-with-ai',
+      label: t('Chat with AI'),
+      show: !isEmbedded,
+      icon: CompassIcon,
       hasPermission: true,
     },
   ];

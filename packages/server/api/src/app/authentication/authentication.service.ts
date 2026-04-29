@@ -38,29 +38,47 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         
         if (!isNil(params.platformId)) {
             await authenticationUtils(log).assertEmailAuthIsEnabled({
-                platformId: params.platformId,
+                platformId,
                 provider: params.provider,
             })
             await authenticationUtils(log).assertDomainIsAllowed({
                 email: params.email,
-                platformId: params.platformId,
+                platformId,
             })
         }
         
         if (isNil(params.platformId)) {
             // No invitation found, create new platform
+            const hasInvitations = await userInvitationsService(log).hasAnyAcceptedInvitationsForEmail({ email: params.email })
+            const isFederatedProvider = params.provider === UserIdentityProvider.GOOGLE || params.provider === UserIdentityProvider.JWT || params.provider === UserIdentityProvider.SAML
             const userIdentity = await userIdentityService(log).create({
                 ...params,
-                verified: params.provider === UserIdentityProvider.GOOGLE || params.provider === UserIdentityProvider.JWT || params.provider === UserIdentityProvider.SAML,
+                verified: hasInvitations || isFederatedProvider,
             })
             const response = await createUserAndPlatform(userIdentity, log)
+            await userInvitationsService(log).provisionUserInvitation({ email: params.email })
+            const preferredPlatformId = await getPreferredPlatformId(userIdentity.id, log)
+            if (!isNil(preferredPlatformId)) {
+                const user = await userService(log).getOneByIdentityAndPlatform({
+                    identityId: userIdentity.id,
+                    platformId: preferredPlatformId,
+                })
+                if (!isNil(user)) {
+                    log.info({ email: params.email, provider: params.provider, preferredPlatformId }, 'User signed up with invitation, returning preferred platform token')
+                    return authenticationUtils(log).getProjectAndToken({
+                        userId: user.id,
+                        platformId: preferredPlatformId,
+                        projectId: null,
+                    })
+                }
+            }
             log.info({ email: params.email, provider: params.provider }, 'User signed up and platform created')
             return response
         }
 
         await authenticationUtils(log).assertUserIsInvitedToPlatformOrProject({
             email: params.email,
-            platformId: params.platformId,
+            platformId,
         })
         
         // Get the accepted invitation to determine the platform role
@@ -228,10 +246,10 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             }, '[signUp] Final platform role after provisioning')
         }
 
-        log.info({ email: params.email, platformId: params.platformId }, 'User signed up to existing platform')
+        log.info({ email: params.email, platformId }, 'User signed up to existing platform')
         return authenticationUtils(log).getProjectAndToken({
             userId: user.id,
-            platformId: params.platformId,
+            platformId,
             projectId: null,
         })
     },
@@ -288,7 +306,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         })
     },
     async federatedAuthn(params: FederatedAuthnParams): Promise<AuthenticationResponse> {
-        const platformId = isNil(params.predefinedPlatformId) ? await getPersonalPlatformIdForFederatedAuthn(params.email, log) : params.predefinedPlatformId
+        const platformId = isNil(params.predefinedPlatformId) ? await getPreferredPlatformIdForFederatedAuthn(params.email, log) : params.predefinedPlatformId
         const userIdentity = await userIdentityService(log).getIdentityByEmail(params.email)
 
         if (isNil(platformId)) {
@@ -326,10 +344,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             identity: userIdentity,
             platformId,
         })
-        await userInvitationsService(log).provisionUserInvitation({
-            email: params.email,
-            user,
-        })
+        await userInvitationsService(log).provisionUserInvitation({ email: params.email })
         return authenticationUtils(log).getProjectAndToken({
             userId: user.id,
             platformId,
@@ -414,11 +429,13 @@ async function createUserAndPlatform(userIdentity: UserIdentity, log: FastifyBas
 
     switch (cloudEdition) {
         case ApEdition.CLOUD:
-            await otpService(log).createAndSend({
-                platformId: platform.id,
-                email: userIdentity.email,
-                type: OtpType.EMAIL_VERIFICATION,
-            })
+            if (!userIdentity.verified) {
+                await otpService(log).createAndSend({
+                    platformId: platform.id,
+                    email: userIdentity.email,
+                    type: OtpType.EMAIL_VERIFICATION,
+                })
+            }
             break
         case ApEdition.COMMUNITY:
         case ApEdition.ENTERPRISE:
@@ -444,15 +461,15 @@ async function createUserAndPlatform(userIdentity: UserIdentity, log: FastifyBas
     })
 }
 
-async function getPersonalPlatformIdForFederatedAuthn(email: string, log: FastifyBaseLogger): Promise<string | null> {
+async function getPreferredPlatformIdForFederatedAuthn(email: string, log: FastifyBaseLogger): Promise<string | null> {
     const identity = await userIdentityService(log).getIdentityByEmail(email)
     if (isNil(identity)) {
         return null
     }
-    return getPersonalPlatformIdForIdentity(identity.id, log)
+    return getPreferredPlatformId(identity.id, log)
 }
 
-async function getPersonalPlatformIdForIdentity(identityId: string, log: FastifyBaseLogger): Promise<string | null> {
+async function getPreferredPlatformId(identityId: string, log: FastifyBaseLogger): Promise<string | null> {
     const edition = system.getEdition()
     
     // First, check if user has a direct platformId (for owners, super admins, admins, etc.)
@@ -473,10 +490,9 @@ async function getPersonalPlatformIdForIdentity(identityId: string, log: Fastify
     // Fallback: In Cloud edition or CE multi-tenant mode, find user's platform via projects
     if (edition === ApEdition.CLOUD) {
         const platforms = await platformService(log).listPlatformsForIdentityWithAtleastProject({ identityId })
-        const platform = platforms.find((platform) => !platformUtils.isCustomerOnDedicatedDomain(platform))
-        if (platform?.id) {
-            return platform.id
-        }
+        const nonDedicated = platforms.filter((p) => !platformUtils.isCustomerOnDedicatedDomain(p))
+        const licensed = nonDedicated.find((p) => !isNil(p.plan.licenseKey))
+        return licensed?.id ?? nonDedicated[0]?.id ?? null
     }
     
     // In CE/EE multi-tenant mode, find the first platform the user owns or is a member of

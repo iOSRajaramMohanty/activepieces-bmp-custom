@@ -8,7 +8,7 @@ import { smtpEmailSender } from '../ee/helper/email/email-sender/smtp-email-send
 import { emailService } from '../ee/helper/email/email-service'
 import { projectMemberService } from '../ee/projects/project-members/project-member.service'
 import { projectRoleService } from '../ee/projects/project-role/project-role.service'
-import { jwtUtils } from '../helper/jwt-utils'
+import { JwtAudience, jwtUtils } from '../helper/jwt-utils'
 import { buildPaginator } from '../helper/pagination/build-paginator'
 import { paginationHelper } from '../helper/pagination/pagination-utils'
 import { platformService } from '../platform/platform.service'
@@ -30,6 +30,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         const decodedToken = await jwtUtils.decodeAndVerify<UserInvitationToken>({
             jwt: invitationToken,
             key: await jwtUtils.getJwtSecret(),
+            audience: JwtAudience.USER_INVITATION,
         })
         const invitation = await repo().findOneBy({
             id: decodedToken.id,
@@ -45,7 +46,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         }
         return invitation
     },
-    async provisionUserInvitation({ user, email }: ProvisionUserInvitationParams): Promise<void> {
+    async provisionUserInvitation({ email }: ProvisionUserInvitationParams): Promise<void> {
         const invitations = await repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
             .andWhere('"user_invitation"."platformId" = :platformId', { platformId: user.platformId })
@@ -54,9 +55,18 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
             })
             .getMany()
 
+        if (invitations.length === 0) return
+
+        const identity = await userIdentityService(log).getIdentityByEmail(email)
+        if (isNil(identity)) return
+
         log.info({ count: invitations.length }, '[provisionUserInvitation] list invitations')
         for (const invitation of invitations) {
             log.info({ invitation }, '[provisionUserInvitation] provision')
+            const user = await userService(log).getOrCreateWithProject({
+                identity,
+                platformId: invitation.platformId,
+            })
             switch (invitation.type) {
                 case InvitationType.PLATFORM: {
                     assertNotNullOrUndefined(invitation.platformRole, 'platformRole')
@@ -311,7 +321,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         }
         return invitation
     },
-    async accept({ invitationId, platformId }: AcceptParams): Promise<{ registered: boolean }> {
+    async accept({ invitationId, platformId }: AcceptParams): Promise<void> {
         const invitation = await this.getOneOrThrow({ id: invitationId, platformId })
         const identity = await userIdentityService(log).getIdentityByEmail(invitation.email)
         if (isNil(identity)) {
@@ -365,11 +375,14 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
         }
         await this.provisionUserInvitation({
             email: invitation.email,
-            user,
         })
-        return {
-            registered: true,
-        }
+    },
+    async hasAnyAcceptedInvitationsForEmail({ email }: { email: string }): Promise<boolean> {
+        const count = await repo().createQueryBuilder('user_invitation')
+            .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
+            .andWhere({ status: InvitationStatus.ACCEPTED })
+            .getCount()
+        return count > 0
     },
     async hasAnyAcceptedInvitations({
         email,
@@ -427,6 +440,7 @@ async function generateInvitationLink(userInvitation: UserInvitation, expireyInS
         },
         expiresInSeconds: expireyInSeconds,
         key: await jwtUtils.getJwtSecret(),
+        audience: JwtAudience.USER_INVITATION,
     })
 
     return domainHelper.getPublicUrl({
@@ -462,7 +476,6 @@ type HasAnyAcceptedInvitationsParams = {
     platformId: string
 }
 type ProvisionUserInvitationParams = {
-    user: User
     email: string
 }
 

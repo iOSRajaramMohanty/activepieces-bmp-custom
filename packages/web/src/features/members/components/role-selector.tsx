@@ -1,5 +1,6 @@
 import { PlatformRole } from '@activepieces/shared';
 import { t } from 'i18next';
+import { Loader2 } from 'lucide-react';
 
 import {
   Select,
@@ -57,6 +58,8 @@ interface RoleSelectorProps {
   disabled?: boolean;
   placeholder?: string;
   roles?: Array<{ name: string }>;
+  isLoading?: boolean;
+  isAssigningRole?: boolean;
 }
 
 export const RoleSelector = ({
@@ -66,11 +69,17 @@ export const RoleSelector = ({
   disabled = false,
   placeholder,
   roles = [],
+  isLoading = false,
+  isAssigningRole = false,
 }: RoleSelectorProps) => {
   const { data: currentUser } = userHooks.useCurrentUser();
   const isPlatform = type === 'platform';
   const isOwner = currentUser?.platformRole === PlatformRole.OWNER;
   const isAdmin = currentUser?.platformRole === PlatformRole.ADMIN;
+  const projectRolesLoading = !isPlatform && isLoading;
+  const projectRoleAssigning = !isPlatform && isAssigningRole;
+  const showProjectSpinner = projectRolesLoading || projectRoleAssigning;
+  const selectDisabled = disabled || showProjectSpinner;
 
   const label = isPlatform ? t('Platform Roles') : t('Project Roles');
 
@@ -98,9 +107,18 @@ export const RoleSelector = ({
   const selectedRole = options.find((r) => r.value === value);
 
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      disabled={selectDisabled}
+    >
       <SelectTrigger className="w-full">
-        {selectedRole ? (
+        {showProjectSpinner ? (
+          <span className="flex items-center gap-2 font-normal text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            {projectRoleAssigning ? t('Saving...') : t('Loading...')}
+          </span>
+        ) : selectedRole ? (
           <span className="font-normal">{selectedRole.label}</span>
         ) : (
           <SelectValue placeholder={placeholder || t('Select Role')} />

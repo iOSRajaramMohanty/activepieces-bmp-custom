@@ -1,5 +1,6 @@
 
 import { OAuth2AuthorizationMethod } from '@activepieces/pieces-framework'
+import { safeHttp } from '@activepieces/server-utils'
 import {
     ActivepiecesError,
     AppConnectionType,
@@ -42,7 +43,7 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
         }, '[AP OAuth Cloud] refresh: calling secrets.activepieces.com/refresh')
 
         const response = (
-            await apAxios.post('https://secrets.activepieces.com/refresh', requestBody, {
+            await safeHttp.retryingAxios.post('https://secrets.activepieces.com/refresh', requestBody, {
                 timeout: 20000,
             })
         ).data
@@ -90,7 +91,7 @@ export const cloudOAuth2Service = (log: FastifyBaseLogger): OAuth2Service<CloudO
             }, '[AP OAuth Cloud] claim: calling secrets.activepieces.com/claim')
 
             const value = (
-                await apAxios.post<CloudOAuth2ConnectionValue>(
+                await safeHttp.retryingAxios.post<CloudOAuth2ConnectionValue>(
                     'https://secrets.activepieces.com/claim',
                     cloudRequest,
                     {
