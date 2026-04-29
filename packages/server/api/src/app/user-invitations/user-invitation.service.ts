@@ -49,7 +49,6 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
     async provisionUserInvitation({ email }: ProvisionUserInvitationParams): Promise<void> {
         const invitations = await repo().createQueryBuilder('user_invitation')
             .where('LOWER("user_invitation"."email") = :email', { email: email.toLowerCase().trim() })
-            .andWhere('"user_invitation"."platformId" = :platformId', { platformId: user.platformId })
             .andWhere('user_invitation.status IN (:...statuses)', {
                 statuses: invitationStatusesEligibleForSignup,
             })
@@ -331,9 +330,7 @@ export const userInvitationsService = (log: FastifyBaseLogger) => ({
                 platformId,
                 email: invitation.email,
             }, '[accept] No account yet — keeping invitation PENDING; user row is created when they complete sign-up')
-            return {
-                registered: false,
-            }
+            return
         }
 
         await repo().update(invitation.id, {

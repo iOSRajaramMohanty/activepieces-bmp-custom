@@ -38,12 +38,12 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         
         if (!isNil(params.platformId)) {
             await authenticationUtils(log).assertEmailAuthIsEnabled({
-                platformId,
+                platformId: params.platformId,
                 provider: params.provider,
             })
             await authenticationUtils(log).assertDomainIsAllowed({
                 email: params.email,
-                platformId,
+                platformId: params.platformId,
             })
         }
         
@@ -78,7 +78,7 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
 
         await authenticationUtils(log).assertUserIsInvitedToPlatformOrProject({
             email: params.email,
-            platformId,
+            platformId: params.platformId,
         })
         
         // Get the accepted invitation to determine the platform role
@@ -215,7 +215,6 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
         // Provision invitation (this will create the organization-specific project for org admins)
         await userInvitationsService(log).provisionUserInvitation({
             email: params.email,
-            user,
         })
         
         // Verify and fix the role after provisioning to ensure it matches invitation
@@ -251,10 +250,10 @@ export const authenticationService = (log: FastifyBaseLogger) => ({
             }, '[signUp] Final platform role after provisioning')
         }
 
-        log.info({ email: params.email, platformId }, 'User signed up to existing platform')
+        log.info({ email: params.email, platformId: params.platformId }, 'User signed up to existing platform')
         return authenticationUtils(log).getProjectAndToken({
             userId: user.id,
-            platformId,
+            platformId: params.platformId,
             projectId: null,
         })
     },
