@@ -102,6 +102,7 @@ function AppConnectionsPage() {
       displayName,
     },
     extraKeys: [location.search, projectId],
+    showErrorDialog: true,
   });
 
   const { mutateAsync: deleteConnections } =
