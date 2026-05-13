@@ -277,8 +277,13 @@ module.exports = composePlugins(withNx(), (config) => {
     packageName: '@floating-ui/react-dom',
   });
 
+  // Resolve /fonts/ path in CSS to packages/web/public/fonts
+  const webPublicFontsPath = path.resolve(__dirname, '../../web/public/fonts');
+  
   config.resolve.alias = {
     ...config.resolve.alias,
+    // Resolve /fonts/ absolute URL in CSS to web/public/fonts
+    '/fonts': webPublicFontsPath,
     // Force single React instance - critical for hooks to work
     'react': reactPath,
     'react-dom': reactDomPath,
@@ -419,6 +424,17 @@ module.exports = composePlugins(withNx(), (config) => {
     )
   );
 
+  // Handle /fonts/ absolute paths in CSS (Vite serves public/ at root, webpack needs explicit path)
+  config.plugins.push(
+    new NormalModuleReplacementPlugin(
+      /^\/fonts\//,
+      (resource) => {
+        const relativePath = resource.request.replace(/^\/fonts\//, '');
+        resource.request = path.resolve(__dirname, '../../web/public/fonts', relativePath);
+      }
+    )
+  );
+
   // Handle CSS imports and assets
   config.module = config.module || {};
   config.module.rules = config.module.rules || [];
@@ -458,6 +474,15 @@ module.exports = composePlugins(withNx(), (config) => {
       },
     });
   }
+
+  // Add font file handling
+  config.module.rules.push({
+    test: /\.(woff2?|eot|ttf|otf)$/i,
+    type: 'asset/resource',
+    generator: {
+      filename: 'fonts/[name][ext]',
+    },
+  });
 
   return config;
 });
