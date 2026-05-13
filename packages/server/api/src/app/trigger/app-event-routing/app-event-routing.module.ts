@@ -1,4 +1,4 @@
-import { Piece, PieceAuthProperty } from '@activepieces/pieces-framework'
+import { Piece } from '@activepieces/pieces-framework'
 import {
     ActivepiecesError,
     apId,
@@ -22,8 +22,8 @@ import { WebhookFlowVersionToRun, webhookService } from '../../webhooks/webhook.
 import { jobQueue, JobType } from '../../workers/job-queue/job-queue'
 import { payloadOffloader } from '../../workers/payload-offloader'
 import { triggerSourceService } from '../trigger-source/trigger-source-service'
-import { appEventRoutingService } from './app-event-routing.service'
 import { appEventRoutingHooks } from './app-event-routing.hooks'
+import { appEventRoutingService } from './app-event-routing.service'
 
 // Lazy-initialized piece registry (populated from hooks on first access)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

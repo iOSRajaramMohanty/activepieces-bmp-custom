@@ -5,8 +5,8 @@
  */
 import { EntitySchema } from 'typeorm'
 import {
-    BaseColumnSchemaPart,
     ApIdSchema,
+    BaseColumnSchemaPart,
 } from '../database/database-common'
 
 export type AccountSwitchingActivitySchema = {

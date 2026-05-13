@@ -16,17 +16,13 @@ import {
     UserId,
 } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
-import { Brackets, EntityManager, IsNull, Not, ObjectLiteral, SelectQueryBuilder, In } from 'typeorm'
-import { repoFactory } from '../core/db/repo-factory'
+import { Brackets, EntityManager, In, IsNull, Not, ObjectLiteral, SelectQueryBuilder } from 'typeorm'
 import { isBmpEnabled } from '../bmp/bmp-runtime'
-import { getProjectConcurrencyPoolKey } from '../database/redis/keys'
-import { distributedStore } from '../database/redis-connections'
+import { repoFactory } from '../core/db/repo-factory'
 import { databaseConnection } from '../database/database-connection'
 import { OrganizationEntity } from '../organization/organization.entity'
-import { platformService } from '../platform/platform.service'
-import { userService } from '../user/user-service'
 import { UserEntity } from '../user/user-entity'
-import { ProjectEntity } from './project-entity'
+import { userService } from '../user/user-service'
 import { projectHooks } from './project-hooks'
 import { projectRepo } from './project-repo'
 
@@ -356,14 +352,16 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
                         .where('project."organizationId" = :userOrganizationId', { userOrganizationId })
                         .orWhere(orgSharedProjectViaOrganizationTable, { userOrganizationId })
                 }))
-            } else {
+            }
+            else {
                 qb.where(
                     'project."ownerId" = :userId AND project.type = :personalType',
                     { userId, personalType: ProjectType.PERSONAL },
                 )
             }
             qb.orWhere(projectMemberCondition, { userId, platformId })
-        } else {
+        }
+        else {
             // OPERATOR/MEMBER: org shared project (by project.organizationId or organization.projectId) + project_member
             if (!isNil(userOrganizationId)) {
                 qb.where(new Brackets((inner) => {
@@ -372,7 +370,8 @@ export async function applyProjectsAccessFilters<T extends ObjectLiteral>(
                         .orWhere(orgSharedProjectViaOrganizationTable, { userOrganizationId })
                         .orWhere(projectMemberCondition, { userId, platformId })
                 }))
-            } else {
+            }
+            else {
                 qb.where(projectMemberCondition, { userId, platformId })
             }
         }

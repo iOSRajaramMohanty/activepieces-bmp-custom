@@ -1,16 +1,15 @@
+import { ActivepiecesError, apId, ErrorCode, FilteredPieceBehavior, PlatformRole, PrincipalType, UserIdentityProvider } from '@activepieces/shared'
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
-import { z } from 'zod'
 import { StatusCodes } from 'http-status-codes'
-import { ActivepiecesError, AuthenticationResponse, ErrorCode, FilteredPieceBehavior, PlatformRole, PrincipalType, apId, UserIdentityProvider, ProjectType } from '@activepieces/shared'
+import { z } from 'zod'
+import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
+import { authenticationUtils } from '../authentication/authentication-utils'
+import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { databaseConnection } from '../database/database-connection'
-import { userService } from '../user/user-service'
-import { platformRepo, platformService } from '../platform/platform.service'
-import { userIdentityService } from '../authentication/user-identity/user-identity-service'
-import { projectService } from '../project/project-service'
-import { authenticationUtils } from '../authentication/authentication-utils'
-import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
 import { defaultTheme } from '../flags/theme'
+import { platformRepo, platformService } from '../platform/platform.service'
+import { userService } from '../user/user-service'
 
 /**
  * Super Admin Controller
@@ -494,7 +493,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 platformRole: PlatformRole.SUPER_ADMIN,
                 message: 'Super admin created successfully',
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, email }, '[SuperAdmin] Failed to create super admin')
             throw error
         }
@@ -571,7 +571,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 message: 'Super admin role updated successfully',
                 platformRole,
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, userId }, '[SuperAdmin] Failed to update super admin')
             throw error
         }
@@ -625,7 +626,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 message: 'User promoted to super admin successfully',
                 platformRole: PlatformRole.SUPER_ADMIN,
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, userId }, '[SuperAdmin] Failed to promote user to super admin')
             throw error
         }
@@ -736,7 +738,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 ownerEmail,
                 message: 'Tenant created successfully',
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, name, ownerEmail }, '[SuperAdmin] Failed to create tenant')
             throw error
         }
@@ -772,13 +775,13 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             // Delete all projects associated with this platform
             await databaseConnection().query(
                 'DELETE FROM project WHERE "platformId" = $1',
-                [platformId]
+                [platformId],
             )
             
             // Get all users associated with this platform (including owner)
             const users = await databaseConnection().query(
                 'SELECT id, "identityId" FROM "user" WHERE "platformId" = $1',
-                [platformId]
+                [platformId],
             )
             
             const ownerId = platform.ownerId
@@ -786,19 +789,19 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             // Delete users EXCEPT the owner (platform.ownerId references the owner)
             await databaseConnection().query(
                 'DELETE FROM "user" WHERE "platformId" = $1 AND id != $2',
-                [platformId, ownerId]
+                [platformId, ownerId],
             )
             
             // Delete the platform FIRST (this removes the foreign key reference to owner)
             await databaseConnection().query(
                 'DELETE FROM platform WHERE id = $1',
-                [platformId]
+                [platformId],
             )
             
             // Now delete the owner user (platform reference is gone)
             await databaseConnection().query(
                 'DELETE FROM "user" WHERE id = $1',
-                [ownerId]
+                [ownerId],
             )
             
             // Collect all identity IDs (including owner)
@@ -808,7 +811,7 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             if (allIdentityIds.length > 0) {
                 await databaseConnection().query(
                     'DELETE FROM user_identity WHERE id = ANY($1)',
-                    [allIdentityIds]
+                    [allIdentityIds],
                 )
             }
 
@@ -822,7 +825,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 success: true,
                 message: `Tenant "${platform.name}" and ${users.length} user(s) deleted successfully`,
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, platformId }, '[SuperAdmin] Failed to delete tenant')
             throw error
         }
@@ -843,69 +847,72 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
         },
         handler: async (request, reply) => {
             const { platformId } = request.params as { platformId: string }
-        const superAdminId = request.principal.id
+            const superAdminId = request.principal.id
         
-        request.log.info({ platformId, superAdminId }, '[SuperAdmin] Switching to tenant account')
+            request.log.info({ platformId, superAdminId }, '[SuperAdmin] Switching to tenant account')
         
-        try {
-            // Get tenant platform
-            const platform = await platformService(request.log).getOneOrThrow(platformId)
-            const owner = await userService(request.log).getOneOrFail({ id: platform.ownerId })
-            
-            // Verify owner belongs to this platform
-            if (owner.platformId !== platformId) {
-                throw new ActivepiecesError({
-                    code: ErrorCode.ENTITY_NOT_FOUND,
-                    params: {
-                        message: 'Owner not found for this platform',
-                    },
-                })
-            }
-            
-            const superAdminIdentity = await userIdentityService(request.log).getOneOrFail({ id: (await userService(request.log).getOneOrFail({ id: superAdminId })).identityId })
-            const ownerIdentity = await userIdentityService(request.log).getOneOrFail({ id: owner.identityId })
-            
-            request.log.info({
-                platformId,
-                ownerId: owner.id,
-                ownerEmail: ownerIdentity.email,
-            }, '[SuperAdmin] Switching to owner account')
-            
-            // Log the account switching activity (wrapped in try-catch in case migration hasn't run)
             try {
-                await accountSwitchingActivityService(request.log).logActivity({
-                    originalUserId: superAdminId,
-                    switchedToUserId: owner.id,
-                    switchType: 'SUPER_ADMIN_TO_OWNER',
-                    originalUserEmail: superAdminIdentity.email,
-                    switchedToUserEmail: ownerIdentity.email,
-                    originalPlatformId: null, // Super Admin has no platform
-                    switchedToPlatformId: platform.id,
-                })
-                request.log.info({ superAdminId, ownerId: owner.id }, '[SuperAdmin] Successfully logged account switching activity')
-            } catch (error: any) {
-                // Log error but don't fail the switch if table doesn't exist yet
-                const errorMessage = error?.message || String(error)
-                if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
-                    request.log.warn({ error: errorMessage }, '[SuperAdmin] Account switching activity table does not exist yet. Migration needs to run. Switch will proceed without logging.')
-                } else {
-                    request.log.error({ error }, '[SuperAdmin] Failed to log account switching activity')
+            // Get tenant platform
+                const platform = await platformService(request.log).getOneOrThrow(platformId)
+                const owner = await userService(request.log).getOneOrFail({ id: platform.ownerId })
+            
+                // Verify owner belongs to this platform
+                if (owner.platformId !== platformId) {
+                    throw new ActivepiecesError({
+                        code: ErrorCode.ENTITY_NOT_FOUND,
+                        params: {
+                            message: 'Owner not found for this platform',
+                        },
+                    })
                 }
+            
+                const superAdminIdentity = await userIdentityService(request.log).getOneOrFail({ id: (await userService(request.log).getOneOrFail({ id: superAdminId })).identityId })
+                const ownerIdentity = await userIdentityService(request.log).getOneOrFail({ id: owner.identityId })
+            
+                request.log.info({
+                    platformId,
+                    ownerId: owner.id,
+                    ownerEmail: ownerIdentity.email,
+                }, '[SuperAdmin] Switching to owner account')
+            
+                // Log the account switching activity (wrapped in try-catch in case migration hasn't run)
+                try {
+                    await accountSwitchingActivityService(request.log).logActivity({
+                        originalUserId: superAdminId,
+                        switchedToUserId: owner.id,
+                        switchType: 'SUPER_ADMIN_TO_OWNER',
+                        originalUserEmail: superAdminIdentity.email,
+                        switchedToUserEmail: ownerIdentity.email,
+                        originalPlatformId: null, // Super Admin has no platform
+                        switchedToPlatformId: platform.id,
+                    })
+                    request.log.info({ superAdminId, ownerId: owner.id }, '[SuperAdmin] Successfully logged account switching activity')
+                }
+                catch (error: any) {
+                // Log error but don't fail the switch if table doesn't exist yet
+                    const errorMessage = error?.message || String(error)
+                    if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+                        request.log.warn({ error: errorMessage }, '[SuperAdmin] Account switching activity table does not exist yet. Migration needs to run. Switch will proceed without logging.')
+                    }
+                    else {
+                        request.log.error({ error }, '[SuperAdmin] Failed to log account switching activity')
+                    }
+                }
+            
+                // Return owner's authentication token
+                // Owner has no personal projects, so projectId will be null
+                const authResponse = await authenticationUtils(request.log).getProjectAndToken({
+                    userId: owner.id,
+                    platformId: platform.id,
+                    projectId: null,
+                })
+            
+                return reply.status(StatusCodes.OK).send(authResponse)
             }
-            
-            // Return owner's authentication token
-            // Owner has no personal projects, so projectId will be null
-            const authResponse = await authenticationUtils(request.log).getProjectAndToken({
-                userId: owner.id,
-                platformId: platform.id,
-                projectId: null,
-            })
-            
-            return reply.status(StatusCodes.OK).send(authResponse)
-        } catch (error) {
-            request.log.error({ error, platformId }, '[SuperAdmin] Failed to switch to tenant account')
-            throw error
-        }
+            catch (error) {
+                request.log.error({ error, platformId }, '[SuperAdmin] Failed to switch to tenant account')
+                throw error
+            }
         },
     })
 
@@ -928,7 +935,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             try {
                 const activities = await accountSwitchingActivityService(request.log).getAllActivities(limit)
                 return activities
-            } catch (error: any) {
+            }
+            catch (error: any) {
                 // If table doesn't exist yet (migration not run), return empty array
                 if (error?.message?.includes('does not exist') || error?.message?.includes('relation')) {
                     request.log.warn({ error }, '[SuperAdmin] Account switching activity table does not exist yet (migration may not have run)')
@@ -975,7 +983,7 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             // Delete all projects owned by the Super Admin
             const deletedProjects = await databaseConnection().query(
                 'DELETE FROM project WHERE "ownerId" = $1 RETURNING id',
-                [superAdminId]
+                [superAdminId],
             )
             
             request.log.info({
@@ -988,7 +996,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 message: `Cleaned up ${deletedProjects.length} project(s) for Super Admin`,
                 deletedProjects: deletedProjects.length,
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, superAdminId }, '[SuperAdmin] Failed to clean up Super Admin account')
             throw error
         }
@@ -1046,13 +1055,13 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             // Delete all projects owned by this super admin (if any)
             await databaseConnection().query(
                 'DELETE FROM project WHERE "ownerId" = $1',
-                [userId]
+                [userId],
             )
             
             // Super admin may own a platform (created via POST /super-admins). Delete it first.
             const ownedPlatforms = await databaseConnection().query(
                 'SELECT id, name FROM platform WHERE "ownerId" = $1',
-                [userId]
+                [userId],
             )
             for (const platform of ownedPlatforms) {
                 const platformId = platform.id
@@ -1064,14 +1073,14 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
             // Now delete the super admin user
             await databaseConnection().query(
                 'DELETE FROM "user" WHERE id = $1',
-                [userId]
+                [userId],
             )
             
             // Delete user identity
             if (userToDelete.identityId) {
                 await databaseConnection().query(
                     'DELETE FROM user_identity WHERE id = $1',
-                    [userToDelete.identityId]
+                    [userToDelete.identityId],
                 )
             }
             
@@ -1083,7 +1092,8 @@ export const superAdminController: FastifyPluginAsyncZod = async (app) => {
                 success: true,
                 message: 'Super admin user deleted successfully. Owners (tenants) created by this super admin were preserved.',
             })
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, userId }, '[SuperAdmin] Failed to delete super admin user')
             throw error
         }

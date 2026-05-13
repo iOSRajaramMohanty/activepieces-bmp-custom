@@ -17,8 +17,8 @@ import {
 import { FastifyPluginAsyncZod } from 'fastify-type-provider-zod'
 import { StatusCodes } from 'http-status-codes'
 import { z } from 'zod'
-import { authenticationUtils } from '../authentication/authentication-utils'
 import { accountSwitchingActivityService } from '../account-switching/account-switching-activity.service'
+import { authenticationUtils } from '../authentication/authentication-utils'
 import { userIdentityService } from '../authentication/user-identity/user-identity-service'
 import { securityAccess } from '../core/security/authorization/fastify-security'
 import { platformToEditMustBeOwnedByCurrentUser } from '../ee/authentication/ee-authorization'
@@ -29,13 +29,22 @@ import { fileService } from '../file/file.service'
 import { system } from '../helper/system/system'
 import { SystemJobName } from '../helper/system-jobs/common'
 import { systemJobsSchedule } from '../helper/system-jobs/system-job'
-import { projectRepo, projectService } from '../project/project-service'
+import { userIdentityHelper } from '../helper/user-identity-helper'
+import { projectService } from '../project/project-service'
 import { userRepo, userService } from '../user/user-service'
 import { platformService } from './platform.service'
 
 const edition = system.getEdition()
 export const platformController: FastifyPluginAsyncZod = async (app) => {
     app.post('/:id', UpdatePlatformRequest, async (req, _res) => {
+        if (req.principal.platform.id !== req.params.id) {
+            throw new ActivepiecesError({
+                code: ErrorCode.AUTHORIZATION,
+                params: {
+                    message: 'You are not authorized to access this platform',
+                },
+            })
+        }
         const platformId = req.principal.platform.id
 
         const [logoIconUrl, fullLogoUrl, favIconUrl] = await Promise.all([
@@ -60,13 +69,13 @@ export const platformController: FastifyPluginAsyncZod = async (app) => {
         ])
 
         await platformService(req.log).update({
-            id: req.params.id,
+            id: platformId,
             ...req.body,
             logoIconUrl,
             fullLogoUrl,
             favIconUrl,
         })
-        return platformService(req.log).getOneWithPlanAndUsageOrThrow(req.params.id)
+        return platformService(req.log).getOneWithPlanAndUsageOrThrow(platformId)
     })
 
     app.get('/:id', GetPlatformRequest, async (req) => {
@@ -78,7 +87,20 @@ export const platformController: FastifyPluginAsyncZod = async (app) => {
                 },
             })
         }
-        return platformService(req.log).getOneWithPlanAndUsageOrThrow(req.principal.platform.id)
+        const platform = await platformService(req.log).getOneWithPlanAndUsageOrThrow(req.principal.platform.id)
+        if (req.principal.type === PrincipalType.USER) {
+            const isEmbedded = await userIdentityHelper(req.log).isUserEmbedded(req.principal.id)
+            if (isEmbedded) {
+                return {
+                    ...platform,
+                    plan: {
+                        ...platform.plan,
+                        licenseKey: null,
+                    },
+                }
+            }
+        }
+        return platform
     })
 
     app.get('/assets/:id', GetAssetRequest, async (req, reply) => {
@@ -288,12 +310,14 @@ export const platformController: FastifyPluginAsyncZod = async (app) => {
                     switchedToPlatformId: platformId,
                 })
                 request.log.info({ ownerId, adminId: admin.id }, '[Platform] Successfully logged account switching activity')
-            } catch (error: any) {
+            }
+            catch (error: any) {
                 // Log error but don't fail the switch if table doesn't exist yet
                 const errorMessage = error?.message || String(error)
                 if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
                     request.log.warn({ error: errorMessage }, '[Platform] Account switching activity table does not exist yet. Migration needs to run. Switch will proceed without logging.')
-                } else {
+                }
+                else {
                     request.log.error({ error }, '[Platform] Failed to log account switching activity')
                 }
             }
@@ -310,12 +334,13 @@ export const platformController: FastifyPluginAsyncZod = async (app) => {
             // Return admin's authentication token
             const authResponse = await authenticationUtils(request.log).getProjectAndToken({
                 userId: admin.id,
-                platformId: platformId,
+                platformId,
                 projectId: defaultProjectId,
             })
             
             return reply.status(StatusCodes.OK).send(authResponse)
-        } catch (error) {
+        }
+        catch (error) {
             request.log.error({ error, adminId, ownerId }, '[Platform] Failed to switch to admin account')
             throw error
         }

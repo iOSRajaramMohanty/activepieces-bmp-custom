@@ -27,6 +27,9 @@ RUN apt-get update && \
         procps \
         locales \
         unzip \
+        curl \
+        ca-certificates \
+        iptables \
         libcap-dev && \
     sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && \
     locale-gen en_US.UTF-8 && \

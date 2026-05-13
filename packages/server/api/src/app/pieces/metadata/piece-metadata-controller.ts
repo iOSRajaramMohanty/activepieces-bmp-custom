@@ -9,9 +9,6 @@ import {
     GetPieceRequestWithScopeParams,
     isNil,
     ListPiecesRequestQuery,
-    ListPieceVersionsRequestParams,
-    ListPieceVersionsResponse,
-    ListPieceVersionsWithScopeRequestParams,
     LocalesEnum,
     PieceCategory,
     PieceOptionRequest,
@@ -28,11 +25,11 @@ import { ProjectResourceType } from '../../core/security/authorization/common'
 import { securityAccess } from '../../core/security/authorization/fastify-security'
 import { flowService } from '../../flows/flow/flow.service'
 import { sampleDataService } from '../../flows/step-run/sample-data.service'
+import { organizationEnvironmentService } from '../../organization/organization-environment.service'
+import { projectService } from '../../project/project-service'
 import { userInteractionWatcher } from '../../workers/user-interaction-watcher'
 import { pieceSyncService } from '../piece-sync-service'
 import { getPiecePackageWithoutArchive, pieceMetadataService } from './piece-metadata-service'
-import { organizationEnvironmentService } from '../../organization/organization-environment.service'
-import { projectService } from '../../project/project-service'
 
 const isBmpPiece = (pieceName: string): boolean =>
     pieceName === '@activepieces/piece-ada-bmp'
@@ -88,35 +85,6 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
     })
 
     app.get(
-        '/:scope/:name/versions',
-        ListPieceVersionsWithScopeRequest,
-        async (req): Promise<ListPieceVersionsResponse> => {
-            const { name, scope } = req.params
-            const decodeScope = decodeURIComponent(scope)
-            const decodedName = decodeURIComponent(name)
-            return pieceMetadataService(req.log).listVersions({
-                name: `${decodeScope}/${decodedName}`,
-                platformId: req.principal.platform.id,
-                projectId: req.projectId,
-            })
-        },
-    )
-
-    app.get(
-        '/:name/versions',
-        ListPieceVersionsRequest,
-        async (req): Promise<ListPieceVersionsResponse> => {
-            const { name } = req.params
-            const decodedName = decodeURIComponent(name)
-            return pieceMetadataService(req.log).listVersions({
-                name: decodedName,
-                platformId: req.principal.platform.id,
-                projectId: req.projectId,
-            })
-        },
-    )
-
-    app.get(
         '/:scope/:name',
         GetPieceParamsWithScopeRequest,
         async (req) => {
@@ -155,6 +123,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
     app.get('/registry', RegistryPiecesRequest, async (req) => {
         const pieces = await pieceMetadataService(req.log).registry({
             release: req.query.release,
+            platformId: getPlatformId(req.principal),
         })
         return pieces
     })
@@ -180,7 +149,7 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
                 const project = await projectService(req.log).getOneOrThrow(projectId)
                 if (project.organizationId) {
                     const orgEnvs = await organizationEnvironmentService.listByOrganization(project.organizationId)
-                    let orgEnv: { metadata?: unknown; environment: string } | undefined
+                    let orgEnv: { metadata?: unknown, environment: string } | undefined
 
                     if (isBmpPiece(req.body.pieceName)) {
                         const authEnvironment = await extractEnvironmentFromConnection(
@@ -202,14 +171,16 @@ const basePiecesController: FastifyPluginAsyncZod = async (app) => {
                             environment: orgEnv.environment,
                             hasApiUrl: !!(orgEnv.metadata as Record<string, unknown>)?.ADA_BMP_API_URL,
                         }, '[Pieces Options] Fetched organization environment metadata')
-                    } else {
+                    }
+                    else {
                         req.log.info({
                             organizationId: project.organizationId,
                             projectId,
                         }, '[Pieces Options] No metadata found for project')
                     }
                 }
-            } catch (error) {
+            }
+            catch (error) {
                 req.log.warn({ error }, '[Pieces Options] Failed to fetch organization environment metadata')
             }
             
@@ -318,28 +289,6 @@ const OptionsPieceRequest = {
         security: securityAccess.project([PrincipalType.USER], undefined, {
             type: ProjectResourceType.BODY,
         }),
-    },
-}
-
-const ListPieceVersionsRequest = {
-    config: {
-        security: securityAccess.project([PrincipalType.USER], undefined, {
-            type: ProjectResourceType.QUERY,
-        }),
-    },
-    schema: {
-        params: ListPieceVersionsRequestParams,
-    },
-}
-
-const ListPieceVersionsWithScopeRequest = {
-    config: {
-        security: securityAccess.project([PrincipalType.USER], undefined, {
-            type: ProjectResourceType.QUERY,
-        }),
-    },
-    schema: {
-        params: ListPieceVersionsWithScopeRequestParams,
     },
 }
 

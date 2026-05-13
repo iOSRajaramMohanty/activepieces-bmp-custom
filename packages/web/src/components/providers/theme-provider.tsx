@@ -19,11 +19,15 @@ type ThemeProviderProps = {
 type ThemeProviderState = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  forceLightMode: boolean;
+  setForceLightMode: (value: boolean) => void;
 };
 
 const initialState: ThemeProviderState = {
   theme: 'system',
   setTheme: () => null,
+  forceLightMode: false,
+  setForceLightMode: () => null,
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
@@ -45,6 +49,7 @@ export function ThemeProvider({
   const [theme, setTheme] = useState<Theme>(
     () => (localStorage.getItem(storageKey) as Theme) || defaultTheme,
   );
+  const [forceLightMode, setForceLightMode] = useState(false);
   const branding = flagsHooks.useWebsiteBranding();
   useEffect(() => {
     if (!branding) {
@@ -53,7 +58,11 @@ export function ThemeProvider({
     }
     const root = window.document.documentElement;
 
-    const resolvedTheme = theme === 'system' ? 'light' : theme;
+    const resolvedTheme = forceLightMode
+      ? 'light'
+      : theme === 'system'
+      ? 'light'
+      : theme;
     root.classList.remove('light', 'dark');
 
     // Don't modify document title or favicon in SDK mode - let host app control these
@@ -94,7 +103,7 @@ export function ThemeProvider({
     }
 
     root.classList.add(resolvedTheme);
-  }, [theme, branding]);
+  }, [theme, branding, forceLightMode]);
 
   const value = {
     theme,
@@ -102,6 +111,8 @@ export function ThemeProvider({
       localStorage.setItem(storageKey, theme);
       setTheme(theme);
     },
+    forceLightMode,
+    setForceLightMode,
   };
 
   return (

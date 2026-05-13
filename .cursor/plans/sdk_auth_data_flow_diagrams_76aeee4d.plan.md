@@ -11,7 +11,7 @@ isProject: false
 
 Add a new section to [docs/project/BMP_MULTIPLE_USER_HANDLING_WITH_ROLES.md](docs/project/BMP_MULTIPLE_USER_HANDLING_WITH_ROLES.md) containing two **Mermaid sequence diagrams** (Auth Data Flow):
 
-1. **Original SDK authentication flow** – host supplies token/config; SDK sets `__AP_SDK_CONFIG__` and storage; React UI uses them for API calls (SDK does not perform login).
+1. **Original SDK authentication flow** – host supplies token/config; SDK sets `__AP_SDK_CONFIG_`_ and storage; React UI uses them for API calls (SDK does not perform login).
 2. **bmp-fe-web authentication flow** – based on [bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts](/Users/rajarammohanty/Documents/ADA/bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts): `ngAfterViewInit` → `exchangeToken` (localStorage ada.*, POST auto-provision) → `ensureOrganizationSetup` (if platformId) → `ensureBmpConnection` (GET /client/apikey, POST app-connections) → set config → load SDK → mount component.
 
 Reference: existing doc (same file), react-ui-sdk config/storage usage, and the bmp-fe-web component code above.
@@ -38,7 +38,7 @@ Reference: existing doc (same file), react-ui-sdk config/storage usage, and the 
       - Assign project to org
       - Initialize org environments and set environment metadata (`ADA_BMP_API_URL`) from `environment.api`
 - **Role of platformId**
-  - **Activepieces (backend) – required for multi-tenant:** On the Activepieces side, **platformId is required to handle multi-tenancy**. Each **platform** is a **tenant**; user, project, and organization are scoped by `platformId`. The backend resolves `platformId` as: (1) `request.body.platformId` (SDK mode), or (2) `platformUtils.getPlatformIdForRequest(request)` (from request principal, or hostname/custom domain, or in Community Edition the oldest platform). If **platformId cannot be determined**, the API returns validation error: *"Platform ID could not be determined. Please provide platformId parameter or ensure the request is made to a valid platform."* For **SDK/embedded** use (e.g. one host like bmp-fe-web serving multiple tenants), the request usually has no tenant context from URL/principal, so **the client must send `platformId**` in the request body so Activepieces knows which tenant (platform) to use. See [authentication.controller.ts](packages/server/api/src/app/authentication/authentication.controller.ts) (lines 384–398, 414–422) and [platform.utils.ts](packages/server/api/src/app/platform/platform.utils.ts) (`getPlatformIdForRequest`).
+  - **Activepieces (backend) – required for multi-tenant:** On the Activepieces side, **platformId is required to handle multi-tenancy**. Each **platform** is a **tenant**; user, project, and organization are scoped by `platformId`. The backend resolves `platformId` as: (1) `request.body.platformId` (SDK mode), or (2) `platformUtils.getPlatformIdForRequest(request)` (from request principal, or hostname/custom domain, or in Community Edition the oldest platform). If **platformId cannot be determined**, the API returns validation error: *"Platform ID could not be determined. Please provide platformId parameter or ensure the request is made to a valid platform."* For **SDK/embedded** use (e.g. one host like bmp-fe-web serving multiple tenants), the request usually has no tenant context from URL/principal, so **the client must send `platformId`** in the request body so Activepieces knows which tenant (platform) to use. See [authentication.controller.ts](packages/server/api/src/app/authentication/authentication.controller.ts) (lines 384–398, 414–422) and [platform.utils.ts](packages/server/api/src/app/platform/platform.utils.ts) (`getPlatformIdForRequest`).
   - **When `platformId` is provided to `/auto-provision` (SDK mode):** `clientId` is required; user and org are scoped to that platform (tenant). Same `clientId` + same `platformId` → same organization. `platformId` should be the platform of an OWNER (tenant owner).
   - **bmp-fe-web:** `platformId` comes from **environment** (`environment.activepieces?.platformId`). If set: (1) sent in auto-provision so Activepieces can scope the user to that tenant; (2) after auth, **ensureOrganizationSetup** is called with this `platformId`. If not set, auto-provision may still run only when the request context (e.g. hostname) resolves a platform; in typical SDK embedding, **platformId must be set** for correct multi-tenant behavior.
 - **Importance of platformId for the SDK config**
@@ -137,7 +137,7 @@ sequenceDiagram
 
 
 
-**Narrative to include in doc:** **platformId is required on the Activepieces side for multi-tenant handling:** each platform is a tenant; the backend needs platformId to determine which tenant to use and will return a validation error if it cannot be determined. bmp-fe-web reads `ada.email`, `ada.id` (used as password), `ada.clientId`, `ada.clientName`, and `ada.roleName` from localStorage, and **platformId** from **environment** (`environment.activepieces.platformId`). It POSTs to `/v1/authentication/auto-provision` with platformId and clientId so the backend scopes the user to that tenant (same platformId + same clientId → same organization). Backend signs in or signs up, applies clientId/organization and role, returns token and projectId. Frontend stores them. **If platformId is set**, it runs `ensureOrganizationSetup` (org + env with ADA_BMP_API_URL) using that platformId; then `ensureBmpConnection` (GET BMP API key from BMP backend, then create/update BMP app-connection via Activepieces API). Finally it sets `__AP_SDK_CONFIG__`, loads the SDK script, calls `configureAPI` and `mountReactComponent`. From then on, SDK behavior matches the original SDK flow.
+**Narrative to include in doc:** **platformId is required on the Activepieces side for multi-tenant handling:** each platform is a tenant; the backend needs platformId to determine which tenant to use and will return a validation error if it cannot be determined. bmp-fe-web reads `ada.email`, `ada.id` (used as password), `ada.clientId`, `ada.clientName`, and `ada.roleName` from localStorage, and **platformId** from **environment** (`environment.activepieces.platformId`). It POSTs to `/v1/authentication/auto-provision` with platformId and clientId so the backend scopes the user to that tenant (same platformId + same clientId → same organization). Backend signs in or signs up, applies clientId/organization and role, returns token and projectId. Frontend stores them. **If platformId is set**, it runs `ensureOrganizationSetup` (org + env with ADA_BMP_API_URL) using that platformId; then `ensureBmpConnection` (GET BMP API key from BMP backend, then create/update BMP app-connection via Activepieces API). Finally it sets `__AP_SDK_CONFIG_`_, loads the SDK script, calls `configureAPI` and `mountReactComponent`. From then on, SDK behavior matches the original SDK flow.
 
 ---
 
@@ -160,20 +160,8 @@ sequenceDiagram
 - [docs/project/BMP_MULTIPLE_USER_HANDLING_WITH_ROLES.md](docs/project/BMP_MULTIPLE_USER_HANDLING_WITH_ROLES.md) only.
 
 ---
-<!--
-## Mermaid Compliance (per user instructions)
 
-- No spaces in node IDs (use camelCase/PascalCase).
-- Edge labels with parentheses quoted: `|"label (detail)"|`.
-- Node labels with special characters in double quotes: `["Label (detail)"]`.
-- No reserved keywords as node IDs (`end`, `subgraph`, `graph`).
-- No explicit colors or `click` usage.
 
-All diagrams above follow these rules.
-
----
-- ...
--->
 
 ## Summary
 
@@ -183,6 +171,10 @@ All diagrams above follow these rules.
 - **Diagram 2:** Sequence diagram – bmp-fe-web: ngAfterViewInit → exchangeToken (localStorage ada.*, **platformId from environment**, POST auto-provision) → ensureOrganizationSetup **when platformId set** → ensureBmpConnection → set config → load SDK → mount; then same as original. **platformId** = tenant scope and gates org setup.
 - **platformId and SDK config:** SDK config has no platformId field. **platformId is required on the Activepieces side for multi-tenant handling** (backend needs it to scope the tenant); the host must provide it (e.g. in environment) so the token and projectId passed to the SDK are for the correct tenant.
 - **bmp-fe-web code ref:** `bmp-fe-web/src/app/pages/activepieces/page/activepieces.component.ts`
-- **Lint:** Mermaid blocks fenced with ```mermaid; sequenceDiagram syntax (participant, Note, alt/opt).
+- **Lint:** Mermaid blocks fenced with
+
+```mermaid; sequenceDiagram syntax (participant, Note, alt/opt).
 
 No code or backend changes; documentation only.
+```
+

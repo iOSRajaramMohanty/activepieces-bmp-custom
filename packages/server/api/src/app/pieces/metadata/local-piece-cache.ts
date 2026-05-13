@@ -1,9 +1,6 @@
 import path from 'path'
 import { pieceTranslation } from '@activepieces/pieces-framework'
 import { memoryLock } from '@activepieces/server-utils'
-import { AppSystemProp } from '../../helper/system/system-props'
-import { filePiecesUtils } from './utils/file-pieces-utils'
-import { rejectedPromiseHandler } from '../../helper/promise-handler'
 import { ApEnvironment, apId, isEmpty, isNil, LocalesEnum, PackageType, PieceType } from '@activepieces/shared'
 // Lazy import KeyvSqlite - only load when cache is created (prevents loading sqlite3 when using PostgreSQL)
 // import KeyvSqlite from '@keyv/sqlite'
@@ -13,9 +10,12 @@ import Keyv from 'keyv'
 import cron from 'node-cron'
 import semVer from 'semver'
 import { repoFactory } from '../../core/db/repo-factory'
+import { rejectedPromiseHandler } from '../../helper/promise-handler'
 import { pubsub } from '../../helper/pubsub'
 import { system } from '../../helper/system/system'
+import { AppSystemProp } from '../../helper/system/system-props'
 import { PieceMetadataEntity, PieceMetadataSchema } from './piece-metadata-entity'
+import { filePiecesUtils } from './utils/file-pieces-utils'
 
 const repo = repoFactory(PieceMetadataEntity)
 const environment = system.get<ApEnvironment>(AppSystemProp.ENVIRONMENT)
@@ -250,7 +250,8 @@ async function getOrCreateCache(): Promise<KVCacheInstance> {
                         busyTimeout: 15000, // Wait up to 15s if DB is locked (e.g. during Nx watch restart)
                     }),
                 })
-            } catch (err) {
+            }
+            catch (err) {
                 // Fallback to in-memory when sqlite3 is not available (e.g. PostgreSQL-only setups)
                 system.globalLogger().info(
                     { err: err instanceof Error ? err.message : String(err) },

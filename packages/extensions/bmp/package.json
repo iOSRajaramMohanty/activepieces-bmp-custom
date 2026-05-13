@@ -40,7 +40,8 @@
     "hooks"
   ],
   "dependencies": {
-    "@sinclair/typebox": "^0.34.33"
+    "@sinclair/typebox": "^0.34.33",
+    "axios": "^1.7.7"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

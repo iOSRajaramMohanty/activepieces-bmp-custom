@@ -29,10 +29,9 @@ import { securityAccess } from '../core/security/authorization/fastify-security'
 import { platformMustBeOwnedByCurrentUser, platformMustHaveFeatureEnabled, projectMustBeTeamType } from '../ee/authentication/ee-authorization'
 import { assertRoleHasPermission } from '../ee/authentication/project-role/rbac-middleware'
 import { projectRoleService } from '../ee/projects/project-role/project-role.service'
+import { organizationService } from '../organization/organization.service'
 import { projectService } from '../project/project-service'
 import { userService } from '../user/user-service'
-import { organizationService } from '../organization/organization.service'
-import { organizationEnvironmentService } from '../organization/organization-environment.service'
 import { userInvitationsService } from './user-invitation.service'
 
 export const invitationModule: FastifyPluginAsyncZod = async (app) => {
@@ -45,7 +44,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
         const { email, type } = request.body
         let targetProjectId: string | null = null
         let organizationId: string | null = null
-        let environment: string | null = null
+        const environment: string | null = null
         
         switch (type) {
             case InvitationType.PROJECT:
@@ -69,7 +68,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                     // Handle organization for ADMIN invitations from OWNER
                     // ADMIN invite: organization only, no environment; one Admin per org (enforced server-side)
                     if (isBmpEnabled() && user.platformRole === PlatformRole.OWNER && request.body.platformRole === PlatformRole.ADMIN) {
-                        const body = request.body as any;
+                        const body = request.body as any
                         // Accept either organizationName (for creating new) or organizationId (for existing)
                         if (!body.organizationName && !body.organizationId) {
                             throw new ActivepiecesError({
@@ -80,7 +79,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                             })
                         }
                         
-                        let organization;
+                        let organization
                         if (body.organizationId) {
                             // Use existing organization by ID
                             organization = await organizationService.getById(body.organizationId)
@@ -101,7 +100,8 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                                     },
                                 })
                             }
-                        } else {
+                        }
+                        else {
                             // Create or get organization by name
                             organization = await organizationService.getOrCreate({
                                 name: body.organizationName,
@@ -147,12 +147,13 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                         request.log.info({ 
                             adminId: user.id,
                             projectId: org.projectId,
-                            organizationId: organizationId,
+                            organizationId,
                             inviteeEmail: email,
-                            inviteeRole: request.body.platformRole
+                            inviteeRole: request.body.platformRole,
                         }, '[POST /user-invitations] ADMIN inviting OPERATOR/MEMBER - using org shared project')
                     }
-                } else {
+                }
+                else {
                     // For SERVICE principal, use EE hook
                     await platformMustBeOwnedByCurrentUser.call(app, request, reply)
                 }
@@ -194,7 +195,7 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                     filterProjectId = org.projectId
                     request.log.info({ 
                         adminId: user.id,
-                        projectId: org.projectId 
+                        projectId: org.projectId, 
                     }, '[GET /user-invitations] Filtering PLATFORM invitations for ADMIN by org shared project')
                 }
             }
@@ -249,7 +250,8 @@ const invitationController: FastifyPluginAsyncZod = async (app) => {
                             },
                         })
                     }
-                } else {
+                }
+                else {
                     // For SERVICE principal, use EE hook
                     await platformMustBeOwnedByCurrentUser.call(app, request, reply)
                 }

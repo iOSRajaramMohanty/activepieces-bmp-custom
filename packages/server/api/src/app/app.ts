@@ -4,9 +4,11 @@ import replyFrom from '@fastify/reply-from'
 import swagger from '@fastify/swagger'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { FastifyInstance, FastifyRequest, HTTPMethods } from 'fastify'
+import Mustache from 'mustache'
 import { cloudOAuthController } from '../../../../extensions/bmp/src/server/controllers/cloud-oauth.controller'
 import { bmpAppEventRoutingHooks } from '../../../../extensions/bmp/src/server/hooks/app-event-routing.hooks'
 import { bmpCloudOAuthHooks } from '../../../../extensions/bmp/src/server/hooks/cloud-oauth.hooks'
+import { agentsModule } from './agents/agents-module'
 import { aiProviderService } from './ai/ai-provider-service'
 import { aiProviderModule } from './ai/ai-provider.module'
 import { platformAnalyticsModule } from './analytics/platform-analytics.module'
@@ -17,6 +19,7 @@ import { connectionHooks } from './app-connection/connection-hooks'
 import { authHooks } from './authentication/auth-hooks'
 import { authenticationModule } from './authentication/authentication.module'
 import { isBmpEnabled } from './bmp/bmp-runtime'
+import { chatModule } from './chat/chat.module'
 import { chatbotModule } from './chatbot/chatbot.module'
 import { canaryRoutingMiddleware } from './core/canary/canary-routing.middleware'
 import { collaborativeModule } from './core/collaborative/collaborative.module'
@@ -89,7 +92,6 @@ import { tagsModule } from './pieces/tags/tags-module'
 import { platformBackgroundJobs } from './platform/platform-jobs'
 import { platformModule } from './platform/platform.module'
 import { projectHooks } from './project/project-hooks'
-import { projectModule } from './project/project-module'
 // BMP modules - conditionally loaded based on AP_BMP_ENABLED
 // Import references kept for type checking, actual registration is conditional
 import { storeEntryModule } from './store-entry/store-entry.module'
@@ -263,6 +265,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(mcpServerModule)
     await app.register(mcpOAuthApproveController)
     await app.register(chatbotModule)
+    await app.register(agentsModule)
     await app.register(platformUserModule)
     await app.register(alertsModule)
     await app.register(invitationModule)
@@ -272,6 +275,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
     await app.register(licenseKeysModule)
     await app.register(tablesModule)
     await app.register(knowledgeBaseModule)
+    await app.register(chatModule)
     await app.register(userModule)
     await app.register(templateModule)
     await app.register(userBadgeModule)
@@ -285,19 +289,15 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
             request: FastifyRequest<{ Querystring: { code: string } }>,
             reply,
         ) => {
-            const params = {
-                code: request.query.code,
+            const code = request.query.code
+            if (!code) {
+                return reply.type('text/plain').send('The code is missing in url')
             }
-            if (!params.code) {
-                return reply.send('The code is missing in url')
-            }
-            else {
-                return reply
-                    .type('text/html')
-                    .send(
-                        `<script>if(window.opener){window.opener.postMessage({ 'code': ${JSON.stringify(params.code)} },'*')}</script> <html>Redirect succuesfully, this window should close now</html>`,
-                    )
-            }
+            return reply
+                .type('text/html')
+                .header('Content-Security-Policy', 'default-src \'none\'; script-src \'unsafe-inline\'')
+                .header('X-Content-Type-Options', 'nosniff')
+                .send(Mustache.render(REDIRECT_HTML_TEMPLATE, { code }))
         },
     )
 
@@ -370,7 +370,7 @@ export const setupApp = async (app: FastifyInstance): Promise<FastifyInstance> =
             flagHooks.set(enterpriseFlagsHooks)
             break
         case ApEdition.COMMUNITY:
-            await app.register(projectModule)
+            await app.register(platformProjectModule)
             await app.register(communityPiecesModule)
             break
     }
@@ -427,3 +427,21 @@ The application started on ${await domainHelper.getPublicApiUrl({ path: '' })}, 
     }
     void startDevPieceWatcher(app)
 }
+
+const REDIRECT_HTML_TEMPLATE = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Redirect</title></head>
+<body>
+Redirect successful, this window should close now.
+<meta id="ap-oauth-code" content="{{code}}">
+<script>
+(function () {
+    var el = document.getElementById('ap-oauth-code');
+    var code = el ? el.getAttribute('content') : null;
+    if (window.opener && code) {
+        window.opener.postMessage({ code: code }, '*');
+    }
+})();
+</script>
+</body>
+</html>`

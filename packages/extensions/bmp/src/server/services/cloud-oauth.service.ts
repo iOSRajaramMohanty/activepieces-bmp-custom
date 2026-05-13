@@ -1,4 +1,5 @@
 import { OAuth2AuthorizationMethod } from '@activepieces/pieces-framework'
+import axios from 'axios'
 import {
     ActivepiecesError,
     AppConnectionType,
@@ -10,7 +11,6 @@ import {
 } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 
-import { apAxios } from '../../../../../server/api/src/app/helper/ap-axios'
 import { encryptUtils } from '../../../../../server/api/src/app/helper/encryption'
 import { repoFactory } from '../../../../../server/api/src/app/core/db/repo-factory'
 import { CloudOAuthAppEntity } from '../../../../../server/api/src/app/cloud-oauth/cloud-oauth-app.entity'
@@ -201,7 +201,7 @@ export const cloudOAuthService = (log: FastifyBaseLogger) => {
                     throw new Error(`Unknown authorization method: ${authorizationMethod}`)
             }
 
-            const tokenResponse = await apAxios.post(
+            const tokenResponse = await axios.post(
                 request.tokenUrl,
                 new URLSearchParams(body),
                 { headers, timeout: 10000 },
@@ -283,7 +283,7 @@ export const cloudOAuthService = (log: FastifyBaseLogger) => {
                     throw new Error(`Unknown authorization method: ${authorizationMethod}`)
             }
 
-            const tokenResponse = await apAxios.post(
+            const tokenResponse = await axios.post(
                 connectionValue.token_url,
                 new URLSearchParams(body),
                 { headers, timeout: 20000 },

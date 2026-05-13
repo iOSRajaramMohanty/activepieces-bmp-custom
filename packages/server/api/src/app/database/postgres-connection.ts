@@ -308,7 +308,6 @@ import { AddPersonalProjectsForAllUsers1765107860778 } from './migration/postgre
 import { AddOpenRouterKeyToPlatformPlan1765109187883 } from './migration/postgres/1765109187883-AddOpenRouterKeyToPlatformPlan'
 import { MigrateSqliteToPglite1765308234291 } from './migration/postgres/1765308234291-MigrateSqliteToPglite'
 import { AddLastActiveToUser1765325909187 } from './migration/postgres/1765325909187-AddLastActiveToUser'
-import { AddAccountSwitchingActivity1768457416000 } from './migration/postgres/1768457416000-AddAccountSwitchingActivity'
 import { AddStepsExecutedAndAICreditsToFlowRun1765461560795 } from './migration/postgres/1765461560795-AddStepsExecutedAndAICreditsToFlowRun'
 import { ChangeTeamsToPersonalInCommunity1765709274266 } from './migration/postgres/1765709274266-ChangeTeamsToPersonalInCommunity'
 import { AddMinutesSavedToFlowForAnalytics1765732721451 } from './migration/postgres/1765732721451-AddMinutesSavedToFlowForAnalytics'
@@ -331,15 +330,16 @@ import { UpdateCacheStructure1767904545112 } from './migration/postgres/17679045
 import { AddOutdatedToReport1767994436597 } from './migration/postgres/1767994436597-AddOutdatedToReport'
 import { AddNotesToFlowVersion1768130030028 } from './migration/postgres/1768130030028-AddNotesToFlowVersion'
 import { AddTablesIntoTemplateEntity1768306510367 } from './migration/postgres/1768306510367-AddTablesIntoTemplateEntity'
+import { AddAccountSwitchingActivity1768457416000 } from './migration/postgres/1768457416000-AddAccountSwitchingActivity'
 import { AddImageToUser1768502658760 } from './migration/postgres/1768502658760-ADDIMAGETOUSER'
 import { RemoveUsageCountFromTemplates1768738475196 } from './migration/postgres/1768738475196-RemoveUsageCountFromTemplates'
 import { AddTemplateIdToFlowEntity1768829135202 } from './migration/postgres/1768829135202-AddTemplateIdToFlowEntity'
+import { AddEventStreaming1769084311004 } from './migration/postgres/1769084311004-AddEventStreaming'
 import { AddOrganizationTables1769126400000 } from './migration/postgres/1769126400000-AddOrganizationTables'
 import { AddOrganizationToUserInvitation1769127000000 } from './migration/postgres/1769127000000-AddOrganizationToUserInvitation'
 import { AddMetadataToOrganizationEnvironment1769127500000 } from './migration/postgres/1769127500000-AddMetadataToOrganizationEnvironment'
 import { AddProjectIdToOrganization1769127600000 } from './migration/postgres/1769127600000-AddProjectIdToOrganization'
 import { AddMissingOrganizationEnvironments1769127700000 } from './migration/postgres/1769127700000-AddMissingOrganizationEnvironments'
-import { AddEventStreaming1769084311004 } from './migration/postgres/1769084311004-AddEventStreaming'
 import { RemoveOperatorRole1769613456917 } from './migration/postgres/1769613456917-RemoveOperatorRole'
 import { AddFolderColumnToTable1769638834372 } from './migration/postgres/1769638834372-add-folder-column-to-table'
 import { AddTableFolderForeignKey1769638834373 } from './migration/postgres/1769638834373-AddTableFolderForeignKey'
@@ -363,9 +363,16 @@ import { AddMcpOAuthTables1774500000000 } from './migration/postgres/17745000000
 import { AddCanaryToPlatformPlan1774600000000 } from './migration/postgres/1774600000000-AddCanaryToPlatformPlan'
 import { MergeCanaryAndDedicatedWorkersIntoWorkerGroupId1775656136000 } from './migration/postgres/1775656136000-MergeCanaryAndDedicatedWorkersIntoWorkerGroupId'
 import { AddAiProvidersEnabledToPlatformPlan1775728983000 } from './migration/postgres/1775728983000-AddAiProvidersEnabledToPlatformPlan'
+import { AddWaitpointTable1775747638323 } from './migration/postgres/1775747638323-AddWaitpointTable'
 import { AddConcurrencyPoolTable1775800000000 } from './migration/postgres/1775800000000-AddConcurrencyPoolTable'
 import { AddDefaultToAiProvidersEnabled1776000000000 } from './migration/postgres/1776000000000-AddDefaultToAiProvidersEnabled'
 import { AddChatbotEmbedAndSessions1776100000000 } from './migration/postgres/1776100000000-AddChatbotEmbedAndSessions'
+import { AddChatTables1776200000000 } from './migration/postgres/1776200000000-AddChatTables'
+import { DropWaitpointTimeoutSeconds1776342514732 } from './migration/postgres/1776342514732-DropWaitpointTimeoutSeconds'
+import { AddMcpServerTokenIndex1776400000000 } from './migration/postgres/1776400000000-AddMcpServerTokenIndex'
+import { AddRunStatusCoverIndex1777370308000 } from './migration/postgres/1777370308000-AddRunStatusCoverIndex'
+import { DropChatTokenColumns1782000000000 } from './migration/postgres/1782000000000-DropChatTokenColumns'
+import { AddUserSandboxTable1784000000000 } from './migration/postgres/1784000000000-AddUserSandboxTable'
 
 const getSslConfig = (): boolean | TlsOptions => {
     const useSsl = system.get(AppSystemProp.POSTGRES_USE_SSL)
@@ -742,11 +749,18 @@ export const getMigrations = (): (new () => Migration)[] => {
         AddKnowledgeBaseChunkTable1773627989515,
         AddMcpOAuthTables1774500000000,
         AddCanaryToPlatformPlan1774600000000,
+        AddWaitpointTable1775747638323,
         MergeCanaryAndDedicatedWorkersIntoWorkerGroupId1775656136000,
         AddAiProvidersEnabledToPlatformPlan1775728983000,
         AddConcurrencyPoolTable1775800000000,
         AddDefaultToAiProvidersEnabled1776000000000,
         AddChatbotEmbedAndSessions1776100000000,
+        DropWaitpointTimeoutSeconds1776342514732,
+        AddChatTables1776200000000,
+        AddMcpServerTokenIndex1776400000000,
+        AddRunStatusCoverIndex1777370308000,
+        DropChatTokenColumns1782000000000,
+        AddUserSandboxTable1784000000000,
     ]
     return migrations
 }

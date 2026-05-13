@@ -44,6 +44,7 @@ import { buildPaginator } from '../../helper/pagination/build-paginator'
 import { paginationHelper } from '../../helper/pagination/pagination-utils'
 import { system } from '../../helper/system/system'
 import { AppSystemProp } from '../../helper/system/system-props'
+import { organizationEnvironmentService } from '../../organization/organization-environment.service'
 import {
     getPiecePackageWithoutArchive,
     pieceMetadataService,
@@ -55,11 +56,10 @@ import {
     AppConnectionEntity,
     AppConnectionSchema,
 } from '../app-connection.entity'
+import { connectionHooks } from '../connection-hooks'
 import { appConnectionHandler } from './app-connection.handler'
 import { oauth2Handler } from './oauth2'
 import { oauth2Util } from './oauth2/oauth2-util'
-import { organizationEnvironmentService } from '../../organization/organization-environment.service'
-import { connectionHooks } from '../connection-hooks'
 export const appConnectionsRepo = repoFactory(AppConnectionEntity)
 
 // Use connectionHooks to check if a piece is a BMP piece
@@ -549,7 +549,7 @@ const engineValidateAuth = async (
     })
 
     // Fetch organization_environment metadata for the selected environment (required for BMP)
-    const authConn = auth as { props?: { environment?: string }; environment?: string }
+    const authConn = auth as { props?: { environment?: string }, environment?: string }
     const authEnvironment = authConn?.props?.environment ?? authConn?.environment
     let environmentMetadata: Record<string, unknown> = {}
     const project = await projectRepo().findOneBy({ id: projectId })

@@ -1,24 +1,24 @@
-import { isBmpEnabled } from '../bmp/bmp-runtime'
-import { databaseConnection } from '../database/database-connection'
-import { OrganizationEntity } from './organization.entity'
-import { OrganizationEnvironmentEntity } from './organization-environment.entity'
 import {
     ActivepiecesError,
+    apId,
     ErrorCode,
     InvitationStatus,
     Organization,
     PlatformRole,
     SeekPage,
-    apId,
 } from '@activepieces/shared'
-import { UserEntity } from '../user/user-entity'
-import { AppConnectionEntity } from '../app-connection/app-connection.entity'
+import pino from 'pino'
 import { In, IsNull, Like, Not } from 'typeorm'
-import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
+import { AppConnectionEntity } from '../app-connection/app-connection.entity'
+import { isBmpEnabled } from '../bmp/bmp-runtime'
+import { databaseConnection } from '../database/database-connection'
 import { FlowEntity } from '../flows/flow/flow.entity'
 import { ProjectEntity } from '../project/project-entity'
-import pino from 'pino'
+import { UserEntity } from '../user/user-entity'
 import { userService } from '../user/user-service'
+import { UserInvitationEntity } from '../user-invitations/user-invitation.entity'
+import { OrganizationEnvironmentEntity } from './organization-environment.entity'
+import { OrganizationEntity } from './organization.entity'
 
 const serviceLogger = pino({ level: 'info' })
 
@@ -48,7 +48,7 @@ export const organizationService = {
             metadata: {},
         }
 
-        return await databaseConnection().getRepository(OrganizationEntity).save(newOrganization)
+        return databaseConnection().getRepository(OrganizationEntity).save(newOrganization)
     },
 
     async getById(id: string, userId?: string, userOrganizationId?: string | undefined, userPlatformRole?: string): Promise<Organization | null> {
@@ -71,7 +71,7 @@ export const organizationService = {
     },
 
     async getByNameAndPlatform(name: string, platformId: string): Promise<Organization | null> {
-        return await databaseConnection().getRepository(OrganizationEntity).findOneBy({
+        return databaseConnection().getRepository(OrganizationEntity).findOneBy({
             name,
             platformId,
         })
@@ -196,12 +196,14 @@ export const organizationService = {
                 }
                 try {
                     await userService(serviceLogger).delete({ id: user.id, platformId: user.platformId })
-                } catch (error: any) {
+                }
+                catch (error: any) {
                     if (error?.message?.includes('fk_platform') || error?.code === '23503') {
                         await databaseConnection()
                             .getRepository(UserEntity)
                             .update({ id: user.id }, { organizationId: null as any })
-                    } else {
+                    }
+                    else {
                         throw error
                     }
                 }
@@ -225,7 +227,7 @@ export const organizationService = {
             return existing
         }
 
-        return await this.create(params)
+        return this.create(params)
     },
 
     async assertOrganizationIsAvailableForAdminInvite(platformId: string, organizationId: string): Promise<void> {

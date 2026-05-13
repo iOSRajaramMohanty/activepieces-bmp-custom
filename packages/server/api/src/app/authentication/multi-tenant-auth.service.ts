@@ -1,19 +1,18 @@
 import { cryptoUtils } from '@activepieces/server-utils'
-import { AppSystemProp } from '../helper/system/system-props'
 import {
     ApEdition,
     ApFlagId,
     AuthenticationResponse,
+    OtpType,
     PlatformRole,
     ProjectType,
-    UserIdentity,
     UserIdentityProvider,
-    OtpType,
 } from '@activepieces/shared'
 import { FastifyBaseLogger } from 'fastify'
 import { otpService } from '../ee/authentication/otp/otp-service'
 import { flagService } from '../flags/flag.service'
 import { system } from '../helper/system/system'
+import { AppSystemProp } from '../helper/system/system-props'
 import { platformService } from '../platform/platform.service'
 import { projectService } from '../project/project-service'
 import { userService } from '../user/user-service'
@@ -89,7 +88,7 @@ export const multiTenantAuthService = (log: FastifyBaseLogger) => ({
             id: user.id,
         })
 
-        log.info(`[multiTenantAuthService] Associated user with platform`)
+        log.info('[multiTenantAuthService] Associated user with platform')
 
         // Step 5: Create default project within the platform
         const projectName = params.projectName || `${userIdentity.firstName}'s Project`
